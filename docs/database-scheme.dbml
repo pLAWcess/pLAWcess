@@ -49,6 +49,12 @@ Table mentee_records {
   strengths_weaknesses   text
   desired_mentor         text
 
+  // AI 분석 결과
+  star_analysis          jsonb        // AI가 분석한 STAR 구조화 결과
+  ai_story_outline       text         // AI 추천 자소서 스토리라인
+  ai_keywords            jsonb        // AI 추출 핵심 역량 키워드
+  ai_analyzed_at         timestamp    // 분석 시각
+
   // 상태
   current_step           smallint     [not null, default: 1]  // 1~4
   created_at             timestamp    [not null, default: `now()`]
