@@ -4,7 +4,7 @@
 // 변경 이력
 //   v2  - MenteeRecord.submitted_at 제거 (Application.submitted_at으로 통일)
 //       - MentorRecord.applied_schools → MentorAppliedSchool 테이블 분리
-//       - MentorRecord.mentoring_fields → MentorField 테이블 분리
+//       - MentorRecord.ㅠmentoring_fields → MentorField 테이블 분리
 //       - User.is_deleted / deleted_at 추가 (Soft Delete)
 //       - varchar → PostgreSQL enum 전환
 //       - ApplicationStatus.draft 추가
@@ -17,7 +17,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ================================================================
@@ -146,10 +145,17 @@ model MenteeRecord {
   target_school_na      String?           @db.VarChar(100)  // 나군 희망 학교
   is_special_admission  Boolean           @default(false)
 
-  // 3단계: 자소서·정성
-  qualitative_activities Json?            // { volunteer, conference, thesis, club, external }
-  core_keywords          String?          @db.VarChar(500)
-  story_summary          String?          @db.Text
+  // 3단계: 자소서·정성 (사용자 직접 입력)
+  qualitative_activities Json?    // { volunteer, conference, thesis, club, external }
+  core_keywords          String?  @db.VarChar(500)
+  story_summary          String?  @db.Text
+
+  // AI 분석 결과 (LLM Output)
+  star_analysis          Json?    // STAR 구조화 결과
+  ai_story_outline       String?  @db.Text  // AI 추천 스토리라인
+  ai_keywords            Json?    // ["논리적 사고", "문제해결력"] — 확장성 위해 Json 권장
+  is_ai_analyzed         Boolean  @default(false) // 분석 완료 여부 (빠른 필터링용)
+  ai_analyzed_at         DateTime?               // 분석 완료 시각
 
   // 4단계: 기타 고민
   strengths_weaknesses  String?           @db.Text
