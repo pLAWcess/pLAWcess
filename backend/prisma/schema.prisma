@@ -1,0 +1,356 @@
+// ================================================================
+// pLAWcess — Prisma Schema (PostgreSQL)
+// ================================================================
+// 변경 이력
+//   v2  - MenteeRecord.submitted_at 제거 (Application.submitted_at으로 통일)
+//       - MentorRecord.applied_schools → MentorAppliedSchool 테이블 분리
+//       - MentorRecord.mentoring_fields → MentorField 테이블 분리
+//       - User.is_deleted / deleted_at 추가 (Soft Delete)
+//       - varchar → PostgreSQL enum 전환
+//       - ApplicationStatus.draft 추가
+//       - CurrentRole.admin 추가
+// ================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================================================
+// ENUMS
+// ================================================================
+
+enum Gender {
+  male
+  female
+}
+
+enum AcademicStatus {
+  enrolled        // 재학
+  on_leave        // 휴학
+  graduated       // 졸업
+  completed       // 수료
+  expelled        // 제적
+}
+
+enum AccountStatus {
+  active
+  inactive
+  blocked
+}
+
+enum CurrentRole {
+  none
+  mentee
+  mentor
+  admin
+}
+
+enum ApplicationRole {
+  mentee
+  mentor
+}
+
+/// MenteeRecord.record_status: draft/submitted 만 사용
+/// Application.application_status: submitted 이후 상태만 사용
+enum ApplicationStatus {
+  draft                // 작성 중 (임시저장)
+  submitted            // 제출 완료 — 이 시점부터 Application 생성
+  approved             // 승인
+  rejected             // 반려
+  revision_requested   // 보완 요청
+}
+
+enum MatchStatus {
+  suggested   // AI 추천 결과
+  draft       // 관리자 수동 수정 중
+  finalized   // 최종 확정
+  cancelled   // 취소
+}
+
+// ================================================================
+// TABLES
+// ================================================================
+
+// ----------------------------------------------------------------
+// 1. users
+//    - 사람 자체를 나타내는 테이블
+//    - 탈퇴 시 Soft Delete + 개인 식별 정보 익명화
+// ----------------------------------------------------------------
+model User {
+  user_id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String          @db.VarChar(50)
+  birth_year      Int?
+  gender          Gender?
+  phone           String?         @db.VarChar(20)
+  email           String          @unique @db.VarChar(100)
+  student_id      String?         @db.VarChar(20)
+  first_major     String?         @db.VarChar(100)
+  second_major    String?         @db.VarChar(100)
+  school_name     String?         @db.VarChar(100)
+  academic_status AcademicStatus?
+  account_status  AccountStatus   @default(active)
+  current_role    CurrentRole     @default(none)
+
+  // Soft Delete
+  // 탈퇴 시: is_deleted=true, deleted_at=now()
+  //          name="탈퇴한 사용자", phone/student_id=null
+  //          email="deleted_{user_id}@removed.com" (unique 제약 유지)
+  is_deleted      Boolean         @default(false)
+  deleted_at      DateTime?
+
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  // relations
+  mentee_records        MenteeRecord[]
+  mentor_records        MentorRecord[]
+  applications          Application[]
+  created_match_results MatchResult[] @relation("MatchCreatedBy")
+  admin_memos           AdminMemo[]
+
+  @@map("users")
+}
+
+// ----------------------------------------------------------------
+// 2. mentee_records
+//    - 멘티 신청서 작성 내용 (무엇을 썼는가)
+//    - record_status: draft(임시저장) / submitted(제출) 만 사용
+//    - submitted_at 제거 → Application.submitted_at 으로 통일
+// ----------------------------------------------------------------
+model MenteeRecord {
+  record_id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id               String            @db.Uuid
+  process_year          Int
+
+  // 1단계: 기본정보
+  birth_date            DateTime?         @db.Date
+  major                 String?           @db.VarChar(100)  // 신청 당시 전공 (users.first_major와 별도)
+  graduation_year       Int?
+  university_entry_year Int?
+  first_leet_year       Int?
+  has_leet_experience   Boolean           @default(false)
+  leet_exam_years       Json?             // [2023, 2024] — 표시용, 검색 안 함
+  has_law_class         Boolean           @default(false)
+  law_class_subjects    Json?             // ["민법", "형법"] — 표시용, 검색 안 함
+
+  // 2단계: 정량
+  gpa                   Decimal?          @db.Decimal(3, 2)
+  leet_score            Decimal?          @db.Decimal(5, 2)
+  language_score        String?           @db.VarChar(50)
+  target_school_ga      String?           @db.VarChar(100)  // 가군 희망 학교
+  target_school_na      String?           @db.VarChar(100)  // 나군 희망 학교
+  is_special_admission  Boolean           @default(false)
+
+  // 3단계: 자소서·정성
+  qualitative_activities Json?            // { volunteer, conference, thesis, club, external }
+  core_keywords          String?          @db.VarChar(500)
+  story_summary          String?          @db.Text
+
+  // 4단계: 기타 고민
+  strengths_weaknesses  String?           @db.Text
+  desired_mentor        String?           @db.Text
+
+  // 작성 상태 (draft ↔ submitted 만 사용)
+  record_status         ApplicationStatus @default(draft)
+  current_step          Int               @default(1) @db.SmallInt  // 1~4
+
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  // relations
+  user        User         @relation(fields: [user_id], references: [user_id])
+  application Application?
+
+  // 같은 사람이 같은 연도에 멘티 레코드를 하나만 가질 수 있음
+  @@unique([user_id, process_year])
+  @@map("mentee_records")
+}
+
+// ----------------------------------------------------------------
+// 3. mentor_records
+//    - 멘토 신청서 작성 내용 (무엇을 썼는가)
+//    - applied_schools → MentorAppliedSchool 테이블로 분리
+//    - mentoring_fields → MentorField 테이블로 분리
+// ----------------------------------------------------------------
+model MentorRecord {
+  record_id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                    String            @db.Uuid
+  process_year               Int
+
+  current_lawschool          String?           @db.VarChar(100)
+  graduated_lawschool        String?           @db.VarChar(100)
+  leet_score                 Decimal?          @db.Decimal(5, 2)
+  gpa                        Decimal?          @db.Decimal(3, 2)
+  graduation_year            Int?
+  leet_exam_year             Int?
+  has_law_class              Boolean           @default(false)
+  law_class_subjects         Json?             // 표시용, 검색 안 함
+  personal_statement_summary String?           @db.Text
+  strengths_weaknesses       String?           @db.Text
+  career_goal                String?           @db.Text
+  is_special_admission       Boolean           @default(false)
+
+  // 작성 상태
+  record_status              ApplicationStatus @default(draft)
+
+  created_at                 DateTime          @default(now())
+  updated_at                 DateTime          @updatedAt
+
+  // relations
+  user            User                  @relation(fields: [user_id], references: [user_id])
+  applied_schools MentorAppliedSchool[]  // 분리된 테이블
+  mentoring_fields MentorField[]         // 분리된 테이블
+  application     Application?
+
+  @@unique([user_id, process_year])
+  @@map("mentor_records")
+}
+
+// ----------------------------------------------------------------
+// 3-1. mentor_applied_schools
+//      MentorRecord.applied_schools Json에서 분리
+//      매칭 알고리즘에서 "멘티 희망학교 = 멘토 지원학교" 비교 시 사용
+// ----------------------------------------------------------------
+model MentorAppliedSchool {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  record_id   String      @db.Uuid
+  school_name String      @db.VarChar(100)
+  group_type  String      @db.VarChar(10)   // "가군" | "나군"
+  is_admitted Boolean     @default(false)   // 합격 여부
+
+  mentor_record MentorRecord @relation(fields: [record_id], references: [record_id])
+
+  @@map("mentor_applied_schools")
+}
+
+// ----------------------------------------------------------------
+// 3-2. mentor_fields
+//      MentorRecord.mentoring_fields Json에서 분리
+//      매칭 필터 조건으로 사용 ("자소서 멘토 원해요" 등)
+// ----------------------------------------------------------------
+model MentorField {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  record_id String @db.Uuid
+  field     String @db.VarChar(50)  // "자소서" | "면접" | "학교선택" | "스펙관리" 등
+
+  mentor_record MentorRecord @relation(fields: [record_id], references: [record_id])
+
+  @@map("mentor_fields")
+}
+
+// ----------------------------------------------------------------
+// 4. applications
+//    - 심사 흐름을 추적하는 테이블 (어떤 상태로 처리되었는가)
+//    - record 테이블이 submitted 되는 시점에 생성
+//    - submitted_at: 제출 시각의 단일 source of truth
+//    - application_status: submitted 이후 상태만 사용
+// ----------------------------------------------------------------
+model Application {
+  application_id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id               String            @db.Uuid
+  process_year          Int
+  role                  ApplicationRole
+  application_status    ApplicationStatus @default(submitted)
+
+  // role에 따라 하나만 채워짐
+  // CHECK 제약조건은 migration.sql에 수동 추가 필요 (아래 주석 참고)
+  mentee_record_id      String?           @unique @db.Uuid
+  mentor_record_id      String?           @unique @db.Uuid
+
+  // 타임스탬프 — 심사 흐름별 시각 기록
+  submitted_at          DateTime?         // 제출 시각 (MenteeRecord에서 제거하고 여기서만 관리)
+  approved_at           DateTime?
+  rejected_at           DateTime?
+  revision_requested_at DateTime?
+
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  // relations
+  user          User          @relation(fields: [user_id], references: [user_id])
+  mentee_record MenteeRecord? @relation(fields: [mentee_record_id], references: [record_id])
+  mentor_record MentorRecord? @relation(fields: [mentor_record_id], references: [record_id])
+  admin_memos   AdminMemo[]
+  mentee_match_results MatchResult[] @relation("MenteeApplication")
+  mentor_match_results MatchResult[] @relation("MentorApplication")
+
+  // 같은 사람이 같은 연도에 같은 역할로 하나의 신청만 가능
+  @@unique([user_id, process_year, role])
+  @@map("applications")
+}
+
+// ----------------------------------------------------------------
+// 5. match_results
+//    - 매칭 결과 테이블
+//    - Partial Unique Index (취소 제외 멘티당 1개)는
+//      migration.sql에 수동 추가 필요 (아래 주석 참고)
+// ----------------------------------------------------------------
+model MatchResult {
+  match_id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  process_year          Int
+  mentee_application_id String      @db.Uuid
+  mentor_application_id String      @db.Uuid
+  ai_score              Decimal?    @db.Decimal(5, 2)
+  ai_reason             String?     @db.Text
+  match_status          MatchStatus @default(suggested)
+  is_finalized          Boolean     @default(false)
+  created_by            String?     @db.Uuid   // 생성한 관리자 ID
+
+  created_at            DateTime    @default(now())
+  updated_at            DateTime    @updatedAt
+
+  // relations
+  mentee_application Application @relation("MenteeApplication", fields: [mentee_application_id], references: [application_id])
+  mentor_application Application @relation("MentorApplication", fields: [mentor_application_id], references: [application_id])
+  creator            User?       @relation("MatchCreatedBy", fields: [created_by], references: [user_id])
+
+  @@map("match_results")
+}
+
+// ----------------------------------------------------------------
+// 6. admin_memos
+//    - 신청 건에 대한 관리자 메모
+// ----------------------------------------------------------------
+model AdminMemo {
+  memo_id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id String      @db.Uuid
+  admin_user_id  String      @db.Uuid
+  memo_content   String      @db.Text
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+
+  // relations
+  application Application @relation(fields: [application_id], references: [application_id])
+  admin       User        @relation(fields: [admin_user_id], references: [user_id])
+
+  @@map("admin_memos")
+}
+
+// ================================================================
+// migration.sql에 수동으로 추가해야 할 SQL
+// (Prisma가 자동 생성하지 않는 PostgreSQL 전용 기능)
+// ================================================================
+//
+// [1] applications — role에 따라 올바른 record_id만 채워지도록 강제
+//
+// ALTER TABLE applications
+//   ADD CONSTRAINT check_record_by_role CHECK (
+//     (role = 'mentee' AND mentee_record_id IS NOT NULL AND mentor_record_id IS NULL)
+//     OR
+//     (role = 'mentor' AND mentor_record_id IS NOT NULL AND mentee_record_id IS NULL)
+//   );
+//
+// ----------------------------------------------------------------
+//
+// [2] match_results — 취소되지 않은 매칭은 멘티당 하나만 허용
+//
+// CREATE UNIQUE INDEX uq_active_mentee_match
+//   ON match_results (mentee_application_id)
+//   WHERE match_status != 'cancelled';
+//
+// ================================================================
