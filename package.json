@@ -1,0 +1,14 @@
+{
+  "name": "plawcess",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "dev": "pnpm --filter web dev & pnpm --filter api dev",
+    "build:web": "pnpm --filter web build",
+    "build:api": "pnpm --filter api build",
+    "db:generate": "pnpm --filter @plawcess/database generate",
+    "db:push": "pnpm --filter @plawcess/database push",
+    "db:migrate": "pnpm --filter @plawcess/database migrate"
+  }
+}
