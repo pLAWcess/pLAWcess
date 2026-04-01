@@ -1,0 +1,23 @@
+{
+  "name": "@plawcess/database",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "generate": "prisma generate --schema=prisma/schema.prisma",
+    "push": "prisma db push --schema=prisma/schema.prisma",
+    "migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "studio": "prisma studio --schema=prisma/schema.prisma",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.6.0"
+  },
+  "devDependencies": {
+    "@prisma/config": "^7.6.0",
+    "dotenv": "^17.3.1",
+    "prisma": "^7.6.0",
+    "typescript": "^5"
+  }
+}

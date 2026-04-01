@@ -1,2 +1,19 @@
 .DS_Store
 CLAUDE.md
+AGENTS.md
+
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+*.tsbuildinfo
