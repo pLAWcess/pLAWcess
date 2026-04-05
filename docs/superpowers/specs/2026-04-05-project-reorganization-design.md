@@ -21,23 +21,32 @@
 - **`docs/conventions/`**: (기존 유지) 개발 가이드 및 규칙
 
 ### 2.2. 비즈니스 로직 이동
-`docs` 폴더에 위치하던 유저 탈퇴 처리 로직을 실제 API 서비스 코드로 이동합니다.
+`docs` 폴더에 위치하던 유저 탈퇴 처리 로직을 실제 API 서비스 코드로 이동하며, 필요한 의존성을 설정합니다.
 
 - **대상:** `docs/withdraw.ts`
 - **목적지:** `apps/api/src/features/user/withdraw.ts`
 - **사유:** 실제 동작하는 코드는 문서 폴더가 아닌 서비스 로직 폴더(`features`)에서 관리되어야 함.
+- **의존성 업데이트:**
+  - `apps/api/package.json`에 `@plawcess/database` 패키지 의존성 추가.
+  - `withdraw.ts` 내의 임포트 경로를 `@/lib/prisma`에서 `@plawcess/database`로 변경.
 
-### 2.3. 스크립트 도구 폴더명 변경 (옵션)
+### 2.3. `docs/superpowers/` 폴더 유지
+- **상태:** 현재 위치(`docs/superpowers/`)를 유지합니다.
+- **사유:** 해당 폴더는 Gemini CLI(Superpowers)의 설계 문서 관리용 표준 위치이므로, 구조 정리에 포함하지 않고 보존합니다.
+
+### 2.4. 스크립트 도구 폴더명 변경 (옵션)
 - **변경:** `tools/` -> `scripts/`
 - **대상 파일:** `tools/scrape_grades.py` -> `scripts/scrape_grades.py`
 - **사유:** 프로젝트 전반에서 사용하는 실행 스크립트임을 명확히 하기 위함.
 
 ## 3. 작업 순서
 1. `docs` 하위 폴더(`db`, `api`, `architecture`) 생성
-2. `docs` 내 파일들을 해당 폴더로 이동
-3. `apps/api/src/features/user` 폴더 생성 및 `withdraw.ts` 이동
-4. `tools` 폴더명을 `scripts`로 변경
-5. 이동된 파일들에 대한 경로 참조가 있다면 (예: `README.md`, `package.json` 등) 업데이트
+2. `docs` 내 파일들을 해당 폴더로 이동 (단, `docs/superpowers/`, `docs/conventions/` 제외)
+3. `apps/api/package.json`에 `@plawcess/database` 의존성 추가
+4. `apps/api/src/features/user` 폴더 생성 및 `withdraw.ts` 이동
+5. `withdraw.ts` 내의 임포트 구문을 수정하여 `@plawcess/database`의 `prisma`를 사용하도록 변경
+6. `tools` 폴더명을 `scripts`로 변경
+7. 이동된 파일들에 대한 경로 참조가 있다면 (예: `README.md`, `package.json` 등) 업데이트
 
 ## 4. 검증 계획
 - 모든 파일이 의도한 위치로 이동되었는지 확인
