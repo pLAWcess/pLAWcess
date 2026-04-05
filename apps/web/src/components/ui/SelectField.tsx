@@ -6,11 +6,15 @@ interface Props {
   value: string;
   options: string[];
   onChange: (value: string) => void;
+  placeholder?: string;
 }
 
-export default function SelectField({ value, options, onChange }: Props) {
+export default function SelectField({ value, options, onChange, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const isEmpty = value === '-' || value === '';
+  const displayValue = isEmpty && placeholder ? placeholder : value;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -27,13 +31,15 @@ export default function SelectField({ value, options, onChange }: Props) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between border-b border-[#D1D5DB] py-1 text-base text-[#111827] focus:outline-none focus:border-[#3B82F6]"
+        className="w-full flex items-center justify-between border-b border-[#D1D5DB] py-1 text-base focus:outline-none focus:border-[#3B82F6]"
       >
-        <span>{value}</span>
+        <span className={isEmpty && placeholder ? 'text-[#9CA3AF]' : 'text-[#111827]'}>
+          {displayValue}
+        </span>
         <svg
           width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className={`text-[#9CA3AF] transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`text-[#9CA3AF] transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
