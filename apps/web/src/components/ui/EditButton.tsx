@@ -1,3 +1,7 @@
+interface Props {
+  onClick?: () => void;
+}
+
 function PencilIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -7,9 +11,9 @@ function PencilIcon() {
   );
 }
 
-export default function EditButton() {
+export default function EditButton({ onClick }: Props) {
   return (
-    <button className="flex items-center gap-1 text-xs text-[#6B7280] border border-[#E5E7EB] px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors">
+    <button onClick={onClick} className="flex items-center gap-1 text-xs text-[#6B7280] border border-[#E5E7EB] px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors">
       <PencilIcon />
       수정
     </button>
