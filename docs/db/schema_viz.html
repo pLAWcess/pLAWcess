@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pLAWcess DB 스키마 시각화</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f4f6; color: #1a1a1a; }
+.page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 0.2rem; }
+.subtitle { font-size: 13px; color: #888; margin-bottom: 1.75rem; }
+
+/* tab */
+.tab-bar { display: flex; gap: 3px; border-bottom: 1.5px solid #e0e0e0; margin-bottom: 1.5rem; }
+.tab { padding: 8px 20px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none; color: #999; border-bottom: 2px solid transparent; margin-bottom: -1.5px; border-radius: 6px 6px 0 0; }
+.tab:hover { color: #333; }
+.tab.active { color: #4f46e5; border-bottom-color: #4f46e5; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ---- ERD ---- */
+.erd-canvas { position: relative; width: 100%; min-height: 680px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; }
+.erd-canvas svg { width: 100%; height: 100%; }
+
+/* ---- flow panels ---- */
+.flow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media(max-width:700px){ .flow-grid { grid-template-columns: 1fr; } }
+.flow-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; overflow: hidden; }
+.flow-card-head { padding: 0.75rem 1rem; font-size: 14px; font-weight: 700; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 8px; }
+.flow-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.flow-body { padding: 0; }
+.flow-step { display: flex; gap: 0; border-bottom: 1px solid #f5f5f5; }
+.flow-step:last-child { border-bottom: none; }
+.flow-num { width: 36px; flex-shrink: 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 12px; font-size: 11px; font-weight: 700; color: #bbb; }
+.flow-content { flex: 1; padding: 10px 12px 10px 0; }
+.flow-action { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 3px; }
+.flow-detail { font-size: 12px; color: #666; line-height: 1.6; }
+.flow-detail code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 11px; color: #374151; }
+.flow-detail .tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px; margin: 1px 2px; font-weight: 600; }
+.tag-draft     { background: #f3f4f6; color: #6b7280; }
+.tag-submitted { background: #dbeafe; color: #1d4ed8; }
+.tag-approved  { background: #dcfce7; color: #166534; }
+.tag-rejected  { background: #fee2e2; color: #991b1b; }
+.tag-revision  { background: #fef3c7; color: #92400e; }
+.tag-suggested { background: #ede9fe; color: #6d28d9; }
+.tag-finalized { background: #dcfce7; color: #166534; }
+.tip { margin: 0.75rem 1rem 1rem; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 12px; border-left: 3px solid; line-height: 1.6; }
+.tip-purple { background: #f5f3ff; border-color: #7c3aed; color: #5b21b6; }
+.tip-blue   { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+.tip-red    { background: #fff1f2; border-color: #f43f5e; color: #9f1239; }
+.tip-green  { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+
+/* constraint section */
+.constraint-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0; }
+.constraint-item { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 0.85rem 1rem; }
+.constraint-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.constraint-body { font-size: 12px; color: #666; line-height: 1.6; }
+.constraint-body code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 11px; color: #374151; display: inline-block; margin: 2px 0; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+.badge-prisma { background: #ede9fe; color: #6d28d9; }
+.badge-sql    { background: #fef3c7; color: #92400e; }
+.badge-app    { background: #dbeafe; color: #1d4ed8; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>pLAWcess DB 스키마</h1>
+  <p class="subtitle">테이블 구조 시각화 · 동작 흐름 · 제약조건 설명</p>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('erd')">ERD 시각화</button>
+    <button class="tab" onclick="switchTab('flow')">동작 흐름</button>
+    <button class="tab" onclick="switchTab('constraints')">제약조건</button>
+  </div>
+
+  <!-- ===== ERD ===== -->
+  <div id="tab-erd" class="panel active">
+    <div class="erd-canvas">
+      <svg viewBox="0 0 1060 700" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,sans-serif">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M1 1L9 5L1 9" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+          <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M1 1L9 5L1 9" fill="none" stroke="#f87171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <!-- ── users ── -->
+        <g>
+          <rect x="390" y="20" width="210" height="240" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="390" y="20" width="210" height="32" rx="8" fill="#4f46e5"/>
+          <rect x="390" y="40" width="210" height="12" rx="0" fill="#4f46e5"/>
+          <text x="495" y="41" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">users</text>
+          <!-- fields -->
+          <text x="404" y="68"  font-size="11" fill="#7c3aed" font-weight="700">user_id</text><text x="540" y="68"  font-size="10" fill="#94a3b8">uuid PK</text>
+          <text x="404" y="84"  font-size="11" fill="#374151">name</text>         <text x="540" y="84"  font-size="10" fill="#94a3b8">varchar(50)</text>
+          <text x="404" y="100" font-size="11" fill="#374151">email</text>        <text x="540" y="100" font-size="10" fill="#94a3b8">varchar UNIQUE</text>
+          <text x="404" y="116" font-size="11" fill="#374151">birth_year</text>   <text x="540" y="116" font-size="10" fill="#94a3b8">int?</text>
+          <text x="404" y="132" font-size="11" fill="#374151">gender</text>       <text x="540" y="132" font-size="10" fill="#94a3b8">Gender?</text>
+          <text x="404" y="148" font-size="11" fill="#374151">student_id</text>   <text x="540" y="148" font-size="10" fill="#94a3b8">varchar?</text>
+          <text x="404" y="164" font-size="11" fill="#374151">first_major</text>  <text x="540" y="164" font-size="10" fill="#94a3b8">varchar?</text>
+          <text x="404" y="180" font-size="11" fill="#374151">academic_status</text><text x="540" y="180" font-size="10" fill="#94a3b8">enum?</text>
+          <text x="404" y="196" font-size="11" fill="#374151">account_status</text><text x="540" y="196" font-size="10" fill="#94a3b8">enum</text>
+          <text x="404" y="212" font-size="11" fill="#374151">current_role</text> <text x="540" y="212" font-size="10" fill="#94a3b8">enum</text>
+          <text x="404" y="228" font-size="11" fill="#e11d48">is_deleted</text>   <text x="540" y="228" font-size="10" fill="#94a3b8">boolean</text>
+          <text x="404" y="244" font-size="11" fill="#e11d48">deleted_at</text>   <text x="540" y="244" font-size="10" fill="#94a3b8">datetime?</text>
+        </g>
+
+        <!-- ── mentee_records ── -->
+        <g>
+          <rect x="30" y="280" width="220" height="268" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="30" y="280" width="220" height="32" rx="8" fill="#0ea5e9"/>
+          <rect x="30" y="300" width="220" height="12" rx="0" fill="#0ea5e9"/>
+          <text x="140" y="301" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">mentee_records</text>
+          <text x="44" y="328" font-size="11" fill="#7c3aed" font-weight="700">record_id</text>      <text x="180" y="328" font-size="10" fill="#94a3b8">uuid PK</text>
+          <text x="44" y="344" font-size="11" fill="#0369a1" font-weight="600">user_id</text>        <text x="180" y="344" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="44" y="360" font-size="11" fill="#374151">process_year</text>  <text x="180" y="360" font-size="10" fill="#94a3b8">int</text>
+          <text x="44" y="376" font-size="11" fill="#374151">birth_date</text>    <text x="180" y="376" font-size="10" fill="#94a3b8">date?</text>
+          <text x="44" y="392" font-size="11" fill="#374151">gpa</text>           <text x="180" y="392" font-size="10" fill="#94a3b8">decimal?</text>
+          <text x="44" y="408" font-size="11" fill="#374151">leet_score</text>    <text x="180" y="408" font-size="10" fill="#94a3b8">decimal?</text>
+          <text x="44" y="424" font-size="11" fill="#374151">target_school_ga</text><text x="180" y="424" font-size="10" fill="#94a3b8">varchar?</text>
+          <text x="44" y="440" font-size="11" fill="#374151">target_school_na</text><text x="180" y="440" font-size="10" fill="#94a3b8">varchar?</text>
+          <text x="44" y="456" font-size="11" fill="#374151">leet_exam_years</text><text x="180" y="456" font-size="10" fill="#94a3b8">json?</text>
+          <text x="44" y="472" font-size="11" fill="#374151">law_class_subjects</text><text x="180" y="472" font-size="10" fill="#94a3b8">json?</text>
+          <text x="44" y="488" font-size="11" fill="#374151">qualitative_activities</text><text x="180" y="488" font-size="10" fill="#94a3b8">json?</text>
+          <text x="44" y="504" font-size="11" fill="#374151">story_summary</text> <text x="180" y="504" font-size="10" fill="#94a3b8">text?</text>
+          <text x="44" y="520" font-size="11" fill="#374151">desired_mentor</text><text x="180" y="520" font-size="10" fill="#94a3b8">text?</text>
+          <text x="44" y="536" font-size="11" fill="#6d28d9">record_status</text> <text x="180" y="536" font-size="10" fill="#94a3b8">enum</text>
+          <text x="44" y="552" font-size="11" fill="#374151">current_step</text>  <text x="180" y="552" font-size="10" fill="#94a3b8">smallint</text>
+          <!-- unique badge -->
+          <rect x="44" y="558" width="150" height="14" rx="3" fill="#f0fdf4"/>
+          <text x="119" y="568" text-anchor="middle" font-size="9" fill="#166534" font-weight="600">UNIQUE (user_id, process_year)</text>
+        </g>
+
+        <!-- ── mentor_records ── -->
+        <g>
+          <rect x="730" y="280" width="210" height="252" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="730" y="280" width="210" height="32" rx="8" fill="#10b981"/>
+          <rect x="730" y="300" width="210" height="12" rx="0" fill="#10b981"/>
+          <text x="835" y="301" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">mentor_records</text>
+          <text x="744" y="328" font-size="11" fill="#7c3aed" font-weight="700">record_id</text>         <text x="880" y="328" font-size="10" fill="#94a3b8">uuid PK</text>
+          <text x="744" y="344" font-size="11" fill="#0369a1" font-weight="600">user_id</text>           <text x="880" y="344" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="744" y="360" font-size="11" fill="#374151">process_year</text>     <text x="880" y="360" font-size="10" fill="#94a3b8">int</text>
+          <text x="744" y="376" font-size="11" fill="#374151">current_lawschool</text><text x="880" y="376" font-size="10" fill="#94a3b8">varchar?</text>
+          <text x="744" y="392" font-size="11" fill="#374151">leet_score</text>       <text x="880" y="392" font-size="10" fill="#94a3b8">decimal?</text>
+          <text x="744" y="408" font-size="11" fill="#374151">gpa</text>              <text x="880" y="408" font-size="10" fill="#94a3b8">decimal?</text>
+          <text x="744" y="424" font-size="11" fill="#374151">personal_statement_summary</text>
+          <text x="744" y="440" font-size="11" fill="#374151">strengths_weaknesses</text><text x="880" y="440" font-size="10" fill="#94a3b8">text?</text>
+          <text x="744" y="456" font-size="11" fill="#374151">career_goal</text>      <text x="880" y="456" font-size="10" fill="#94a3b8">text?</text>
+          <text x="744" y="472" font-size="11" fill="#374151">law_class_subjects</text><text x="880" y="472" font-size="10" fill="#94a3b8">json?</text>
+          <text x="744" y="488" font-size="11" fill="#6d28d9">record_status</text>    <text x="880" y="488" font-size="10" fill="#94a3b8">enum</text>
+          <text x="744" y="504" font-size="11" fill="#374151">is_special_admission</text><text x="880" y="504" font-size="10" fill="#94a3b8">bool</text>
+          <rect x="744" y="510" width="150" height="14" rx="3" fill="#f0fdf4"/>
+          <text x="819" y="520" text-anchor="middle" font-size="9" fill="#166534" font-weight="600">UNIQUE (user_id, process_year)</text>
+        </g>
+
+        <!-- ── mentor_applied_schools ── -->
+        <g>
+          <rect x="730" y="560" width="210" height="110" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="730" y="560" width="210" height="28" rx="8" fill="#059669"/>
+          <rect x="730" y="576" width="210" height="12" rx="0" fill="#059669"/>
+          <text x="835" y="578" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">mentor_applied_schools</text>
+          <text x="744" y="604" font-size="11" fill="#7c3aed" font-weight="700">id</text>              <text x="860" y="604" font-size="10" fill="#94a3b8">uuid PK</text>
+          <text x="744" y="620" font-size="11" fill="#0369a1" font-weight="600">record_id</text>      <text x="860" y="620" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="744" y="636" font-size="11" fill="#374151">school_name</text>   <text x="860" y="636" font-size="10" fill="#94a3b8">varchar</text>
+          <text x="744" y="652" font-size="11" fill="#374151">group_type</text>    <text x="860" y="652" font-size="10" fill="#94a3b8">varchar</text>
+          <text x="744" y="668" font-size="11" fill="#374151">is_admitted</text>   <text x="860" y="668" font-size="10" fill="#94a3b8">boolean</text>
+        </g>
+
+        <!-- ── mentor_fields ── -->
+        <g>
+          <rect x="960" y="420" width="90" height="90" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="960" y="420" width="90" height="28" rx="8" fill="#059669"/>
+          <rect x="960" y="436" width="90" height="12" rx="0" fill="#059669"/>
+          <text x="1005" y="438" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">mentor_fields</text>
+          <text x="968" y="460" font-size="10" fill="#7c3aed" font-weight="700">id</text>         <text x="1010" y="460" font-size="9" fill="#94a3b8">uuid PK</text>
+          <text x="968" y="474" font-size="10" fill="#0369a1" font-weight="600">record_id</text>  <text x="1010" y="474" font-size="9" fill="#94a3b8">uuid FK</text>
+          <text x="968" y="488" font-size="10" fill="#374151">field</text>         <text x="1010" y="488" font-size="9" fill="#94a3b8">varchar</text>
+          <text x="968" y="502" font-size="9" fill="#94a3b8">예) "자소서", "면접"</text>
+        </g>
+
+        <!-- ── applications ── -->
+        <g>
+          <rect x="380" y="290" width="230" height="248" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="380" y="290" width="230" height="32" rx="8" fill="#f59e0b"/>
+          <rect x="380" y="310" width="230" height="12" rx="0" fill="#f59e0b"/>
+          <text x="495" y="311" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">applications</text>
+          <text x="394" y="338" font-size="11" fill="#7c3aed" font-weight="700">application_id</text>  <text x="560" y="338" font-size="10" fill="#94a3b8">uuid PK</text>
+          <text x="394" y="354" font-size="11" fill="#0369a1" font-weight="600">user_id</text>         <text x="560" y="354" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="394" y="370" font-size="11" fill="#374151">process_year</text>  <text x="560" y="370" font-size="10" fill="#94a3b8">int</text>
+          <text x="394" y="386" font-size="11" fill="#374151">role</text>           <text x="560" y="386" font-size="10" fill="#94a3b8">ApplicationRole</text>
+          <text x="394" y="402" font-size="11" fill="#6d28d9">application_status</text><text x="560" y="402" font-size="10" fill="#94a3b8">enum</text>
+          <text x="394" y="418" font-size="11" fill="#0369a1" font-weight="600">mentee_record_id</text><text x="560" y="418" font-size="10" fill="#94a3b8">uuid? FK</text>
+          <text x="394" y="434" font-size="11" fill="#0369a1" font-weight="600">mentor_record_id</text><text x="560" y="434" font-size="10" fill="#94a3b8">uuid? FK</text>
+          <text x="394" y="450" font-size="11" fill="#374151">submitted_at</text>  <text x="560" y="450" font-size="10" fill="#94a3b8">datetime?</text>
+          <text x="394" y="466" font-size="11" fill="#374151">approved_at</text>   <text x="560" y="466" font-size="10" fill="#94a3b8">datetime?</text>
+          <text x="394" y="482" font-size="11" fill="#374151">rejected_at</text>   <text x="560" y="482" font-size="10" fill="#94a3b8">datetime?</text>
+          <text x="394" y="498" font-size="11" fill="#374151">revision_requested_at</text><text x="560" y="498" font-size="10" fill="#94a3b8">datetime?</text>
+          <rect x="394" y="506" width="200" height="14" rx="3" fill="#fef3c7"/>
+          <text x="494" y="516" text-anchor="middle" font-size="9" fill="#92400e" font-weight="600">UNIQUE (user_id, process_year, role)</text>
+          <rect x="394" y="522" width="200" height="14" rx="3" fill="#fef3c7"/>
+          <text x="494" y="532" text-anchor="middle" font-size="9" fill="#92400e" font-weight="600">CHECK: role별 record_id 무결성</text>
+        </g>
+
+        <!-- ── match_results ── -->
+        <g>
+          <rect x="330" y="580" width="230" height="100" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="330" y="580" width="230" height="28" rx="8" fill="#8b5cf6"/>
+          <rect x="330" y="596" width="230" height="12" rx="0" fill="#8b5cf6"/>
+          <text x="445" y="598" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">match_results</text>
+          <text x="344" y="622" font-size="11" fill="#7c3aed" font-weight="700">match_id</text>              <text x="510" y="622" font-size="10" fill="#94a3b8">uuid PK</text>
+          <text x="344" y="638" font-size="11" fill="#0369a1" font-weight="600">mentee_application_id</text> <text x="510" y="638" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="344" y="654" font-size="11" fill="#0369a1" font-weight="600">mentor_application_id</text> <text x="510" y="654" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="344" y="670" font-size="11" fill="#374151">ai_score</text>                <text x="510" y="670" font-size="10" fill="#94a3b8">decimal?</text>
+          <text x="344" y="686" font-size="11" fill="#6d28d9">match_status</text>            <text x="510" y="686" font-size="10" fill="#94a3b8">enum</text>
+        </g>
+
+        <!-- ── admin_memos ── -->
+        <g>
+          <rect x="40" y="600" width="190" height="84" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="40" y="600" width="190" height="28" rx="8" fill="#ef4444"/>
+          <rect x="40" y="616" width="190" height="12" rx="0" fill="#ef4444"/>
+          <text x="135" y="618" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">admin_memos</text>
+          <text x="54" y="642" font-size="11" fill="#7c3aed" font-weight="700">memo_id</text>        <text x="190" y="642" font-size="10" fill="#94a3b8">uuid PK</text>
+          <text x="54" y="658" font-size="11" fill="#0369a1" font-weight="600">application_id</text> <text x="190" y="658" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="54" y="674" font-size="11" fill="#0369a1" font-weight="600">admin_user_id</text>  <text x="190" y="674" font-size="10" fill="#94a3b8">uuid FK</text>
+          <text x="54" y="690" font-size="11" fill="#374151">memo_content</text>  <text x="190" y="690" font-size="10" fill="#94a3b8">text</text>
+        </g>
+
+        <!-- ── relations ── -->
+        <!-- users → mentee_records -->
+        <path d="M390 160 L280 160 L280 284" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <!-- users → mentor_records -->
+        <path d="M600 160 L730 160 L730 284" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <!-- users → applications -->
+        <path d="M495 260 L495 290" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <!-- mentee_records → applications -->
+        <path d="M250 414 L380 418" fill="none" stroke="#0ea5e9" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- mentor_records → applications -->
+        <path d="M730 434 L610 434" fill="none" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- applications → match_results (mentee) -->
+        <path d="M460 538 L430 580" fill="none" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- applications → match_results (mentor) -->
+        <path d="M530 538 L490 580" fill="none" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- applications → admin_memos -->
+        <path d="M380 510 L200 510 L200 600" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <!-- mentor_records → mentor_applied_schools -->
+        <path d="M835 532 L835 560" fill="none" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- mentor_records → mentor_fields -->
+        <path d="M940 420 L1005 420 L1005 420" fill="none" stroke="#059669" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- legend -->
+        <rect x="20" y="20" width="180" height="70" rx="6" fill="#fff" stroke="#e5e5e5" stroke-width="1"/>
+        <text x="30" y="38" font-size="11" font-weight="700" fill="#374151">범례</text>
+        <line x1="30" y1="48" x2="60" y2="48" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="66" y="52" font-size="10" fill="#666">1:N 참조 (FK)</text>
+        <line x1="30" y1="64" x2="60" y2="64" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="66" y="68" font-size="10" fill="#666">1:1 참조</text>
+        <circle cx="38" cy="80" r="4" fill="#7c3aed"/>
+        <text x="48" y="84" font-size="10" fill="#666">PK 컬럼</text>
+        <circle cx="105" cy="80" r="4" fill="#0369a1"/>
+        <text x="115" y="84" font-size="10" fill="#666">FK 컬럼</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ===== FLOW ===== -->
+  <div id="tab-flow" class="panel">
+    <div class="flow-grid">
+
+      <!-- 멘티 신청 흐름 -->
+      <div class="flow-card">
+        <div class="flow-card-head">
+          <div class="flow-dot" style="background:#0ea5e9"></div>
+          멘티 신청 → 제출 흐름
+        </div>
+        <div class="flow-body">
+          <div class="flow-step">
+            <div class="flow-num">1</div>
+            <div class="flow-content">
+              <div class="flow-action">회원가입 / 로그인</div>
+              <div class="flow-detail"><code>users</code> 레코드 생성<br><code>current_role = none</code>, <code>account_status = active</code></div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">2</div>
+            <div class="flow-content">
+              <div class="flow-action">신청서 작성 시작 (임시저장)</div>
+              <div class="flow-detail"><code>mentee_records</code> 생성<br><code>record_status = </code><span class="tag tag-draft">draft</span><br><code>current_step = 1</code> → 저장할 때마다 UPDATE<br>4단계 중 언제든 저장 가능, Application은 아직 미생성</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">3</div>
+            <div class="flow-content">
+              <div class="flow-action">최종 제출 버튼 클릭</div>
+              <div class="flow-detail">
+                <code>mentee_records.record_status = </code><span class="tag tag-submitted">submitted</span><br>
+                <code>applications</code> 레코드 신규 생성<br>
+                <code>application_status = </code><span class="tag tag-submitted">submitted</span><br>
+                <code>applications.submitted_at = now()</code> 기록<br>
+                <code>applications.mentee_record_id</code> 연결
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">4</div>
+            <div class="flow-content">
+              <div class="flow-action">보완 요청 받은 경우</div>
+              <div class="flow-detail">
+                <code>application_status = </code><span class="tag tag-revision">revision_requested</span><br>
+                멘티가 <code>mentee_records</code> 수정 후 재제출<br>
+                → <code>application_status</code> 다시 <span class="tag tag-submitted">submitted</span><br>
+                → <code>submitted_at</code> 갱신, Application은 재생성하지 않고 UPDATE
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tip tip-blue">보완 요청 시 Application을 새로 만들지 않아요. 기존 레코드를 UPDATE해서 이력이 하나로 유지돼요.</div>
+      </div>
+
+      <!-- 관리자 심사 흐름 -->
+      <div class="flow-card">
+        <div class="flow-card-head">
+          <div class="flow-dot" style="background:#f59e0b"></div>
+          관리자 심사 흐름
+        </div>
+        <div class="flow-body">
+          <div class="flow-step">
+            <div class="flow-num">1</div>
+            <div class="flow-content">
+              <div class="flow-action">신청 목록 조회</div>
+              <div class="flow-detail"><code>applications</code> WHERE <code>application_status = submitted</code><br>연도·역할 필터로 멘티/멘토 목록 분리 조회</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">2</div>
+            <div class="flow-content">
+              <div class="flow-action">승인 처리</div>
+              <div class="flow-detail">
+                <code>application_status = </code><span class="tag tag-approved">approved</span><br>
+                <code>approved_at = now()</code><br>
+                <code>users.current_role = mentee</code> (또는 mentor) 동시 업데이트<br>
+                → 이 시점부터 매칭 대상에 포함됨
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">3</div>
+            <div class="flow-content">
+              <div class="flow-action">반려 처리</div>
+              <div class="flow-detail">
+                <code>application_status = </code><span class="tag tag-rejected">rejected</span><br>
+                <code>rejected_at = now()</code><br>
+                <code>admin_memos</code>에 반려 사유 메모 저장
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">4</div>
+            <div class="flow-content">
+              <div class="flow-action">메모 작성</div>
+              <div class="flow-detail">
+                <code>admin_memos</code> INSERT<br>
+                <code>application_id</code> + <code>admin_user_id</code> + <code>memo_content</code><br>
+                하나의 신청에 메모 여러 개 가능 (1:N)
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tip tip-purple">승인 시 <code>users.current_role</code>을 반드시 같이 업데이트해야 해요. 안 하면 매칭 대상 조회 시 해당 유저가 빠져요.</div>
+      </div>
+
+      <!-- AI 매칭 흐름 -->
+      <div class="flow-card">
+        <div class="flow-card-head">
+          <div class="flow-dot" style="background:#8b5cf6"></div>
+          AI 매칭 실행 흐름
+        </div>
+        <div class="flow-body">
+          <div class="flow-step">
+            <div class="flow-num">1</div>
+            <div class="flow-content">
+              <div class="flow-action">매칭 대상 수집</div>
+              <div class="flow-detail">
+                <code>applications</code> WHERE <code>application_status = approved</code><br>
+                멘티 신청 목록 + 멘토 신청 목록 JOIN해서 수집<br>
+                각자의 <code>mentee_records</code> / <code>mentor_records</code> 데이터 포함
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">2</div>
+            <div class="flow-content">
+              <div class="flow-action">재실행 시 기존 결과 취소</div>
+              <div class="flow-detail">
+                기존 <code>match_results</code> WHERE <code>process_year = 2025</code><br>
+                AND <code>match_status != cancelled</code> → <code>cancelled</code>로 UPDATE<br>
+                Partial Unique Index 덕분에 취소 후 재생성 가능
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">3</div>
+            <div class="flow-content">
+              <div class="flow-action">LLM API 호출 → 결과 저장</div>
+              <div class="flow-detail">
+                멘티·멘토 정보를 LLM에 전달<br>
+                응답으로 <code>ai_score</code>, <code>ai_reason</code> 수신<br>
+                <code>match_results</code> INSERT<br>
+                <code>match_status = </code><span class="tag tag-suggested">suggested</span>, <code>is_finalized = false</code>
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">4</div>
+            <div class="flow-content">
+              <div class="flow-action">수동 수정 → 임시저장</div>
+              <div class="flow-detail">
+                특정 매칭의 멘토 변경: <code>mentor_application_id</code> UPDATE<br>
+                <code>match_status = draft</code>, <code>ai_score = null</code> (수동 수정 표시)<br>
+                임시저장: <code>is_finalized = false</code> 유지
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">5</div>
+            <div class="flow-content">
+              <div class="flow-action">매칭 확정</div>
+              <div class="flow-detail">
+                전체 <code>match_status = </code><span class="tag tag-finalized">finalized</span><br>
+                <code>is_finalized = true</code> 일괄 UPDATE<br>
+                멘티·멘토에게 알림 발송<br>
+                확정 후 수정 시도 → API에서 에러 반환
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tip tip-green">LLM 호출은 시간이 오래 걸려요. API가 즉시 응답하지 말고 비동기로 처리 후 완료 알림을 보내는 구조를 추천해요.</div>
+      </div>
+
+      <!-- Soft Delete 흐름 -->
+      <div class="flow-card">
+        <div class="flow-card-head">
+          <div class="flow-dot" style="background:#ef4444"></div>
+          회원 탈퇴 (Soft Delete) 흐름
+        </div>
+        <div class="flow-body">
+          <div class="flow-step">
+            <div class="flow-num">1</div>
+            <div class="flow-content">
+              <div class="flow-action">탈퇴 요청 접수</div>
+              <div class="flow-detail"><code>users</code> UPDATE 실행<br><code>is_deleted = true</code>, <code>deleted_at = now()</code></div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">2</div>
+            <div class="flow-content">
+              <div class="flow-action">개인 식별 정보 익명화</div>
+              <div class="flow-detail">
+                <code>name = "탈퇴한 사용자"</code><br>
+                <code>phone = null</code>, <code>student_id = null</code><br>
+                <code>email = "deleted_{user_id}@removed.com"</code><br>
+                <code>account_status = inactive</code>
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">3</div>
+            <div class="flow-content">
+              <div class="flow-action">신청·매칭 이력 보존</div>
+              <div class="flow-detail">
+                <code>mentee_records</code>, <code>applications</code>, <code>match_results</code> 삭제 안 함<br>
+                <code>users</code>의 개인정보만 지워지므로 사실상 식별 불가<br>
+                매칭 품질 개선용 통계 데이터는 유지됨
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">4</div>
+            <div class="flow-content">
+              <div class="flow-action">조회 시 필터링</div>
+              <div class="flow-detail">
+                모든 API에서 <code>WHERE is_deleted = false</code> 조건 추가 필요<br>
+                Prisma middleware로 전역 적용 권장
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tip tip-red">모든 조회 API에 <code>is_deleted = false</code> 필터를 빠뜨리면 탈퇴 회원이 노출돼요. Prisma의 <code>$extends</code> middleware로 전역 처리하면 실수를 방지할 수 있어요.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== CONSTRAINTS ===== -->
+  <div id="tab-constraints" class="panel">
+    <div class="constraint-list">
+
+      <div class="constraint-item">
+        <div class="constraint-title">
+          <span class="badge badge-prisma">Prisma 자동</span>
+          UNIQUE (user_id, process_year) — mentee_records / mentor_records
+        </div>
+        <div class="constraint-body">
+          같은 사람이 같은 연도에 멘티 레코드를 두 개 만들 수 없어요.<br>
+          예) 2025년에 홍길동의 멘티 레코드가 이미 있으면 다시 INSERT 시 DB 에러 발생.<br>
+          <code>prisma migrate dev</code> 실행 시 자동 생성됩니다.
+        </div>
+      </div>
+
+      <div class="constraint-item">
+        <div class="constraint-title">
+          <span class="badge badge-prisma">Prisma 자동</span>
+          UNIQUE (user_id, process_year, role) — applications
+        </div>
+        <div class="constraint-body">
+          같은 사람이 같은 연도에 같은 역할로 신청을 두 개 만들 수 없어요.<br>
+          단, 같은 사람이 같은 연도에 멘티 + 멘토로 각각 신청하는 건 허용돼요 (role이 다르므로).<br>
+          <code>prisma migrate dev</code> 실행 시 자동 생성됩니다.
+        </div>
+      </div>
+
+      <div class="constraint-item">
+        <div class="constraint-title">
+          <span class="badge badge-sql">SQL 수동 추가</span>
+          CHECK (role별 record_id 무결성) — applications
+        </div>
+        <div class="constraint-body">
+          <code>role = 'mentee'</code> → <code>mentee_record_id IS NOT NULL AND mentor_record_id IS NULL</code><br>
+          <code>role = 'mentor'</code> → <code>mentor_record_id IS NOT NULL AND mentee_record_id IS NULL</code><br><br>
+          Prisma가 자동 생성하지 않으므로 <code>migration.sql</code> 맨 아래에 직접 추가해야 해요:<br>
+          <code>ALTER TABLE applications ADD CONSTRAINT check_record_by_role CHECK (...);</code>
+        </div>
+      </div>
+
+      <div class="constraint-item">
+        <div class="constraint-title">
+          <span class="badge badge-sql">SQL 수동 추가</span>
+          Partial Unique Index — match_results
+        </div>
+        <div class="constraint-body">
+          취소(cancelled)되지 않은 매칭 중 같은 멘티는 하나의 매칭만 가질 수 있어요.<br>
+          AI 매칭을 재실행하면 기존 결과를 cancelled 처리하고 새로 생성하는 방식이 가능해지는 근거예요.<br><br>
+          <code>CREATE UNIQUE INDEX uq_active_mentee_match ON match_results (mentee_application_id) WHERE match_status != 'cancelled';</code><br><br>
+          PostgreSQL 전용 기능이라 Prisma <code>@@unique</code>로는 불가능해요.
+        </div>
+      </div>
+
+      <div class="constraint-item">
+        <div class="constraint-title">
+          <span class="badge badge-app">API 레벨</span>
+          매칭 확정 후 수정 불가
+        </div>
+        <div class="constraint-body">
+          <code>is_finalized = true</code>인 매칭에 대한 수정 요청 시 API에서 400 에러를 반환해야 해요.<br>
+          DB 제약조건이 아니라 API 로직에서 체크하는 부분이에요.<br>
+          <code>if (match.is_finalized) throw new Error('확정된 매칭은 수정할 수 없습니다')</code>
+        </div>
+      </div>
+
+      <div class="constraint-item">
+        <div class="constraint-title">
+          <span class="badge badge-app">API 레벨</span>
+          탈퇴 회원 전역 필터링 (is_deleted)
+        </div>
+        <div class="constraint-body">
+          모든 조회 쿼리에 <code>where: { is_deleted: false }</code>를 넣어야 해요.<br>
+          Prisma middleware로 전역 적용하면 실수를 방지할 수 있어요:<br>
+          <code>prisma.$extends({ query: { user: { findMany: ({ args, query }) => query({ ...args, where: { ...args.where, is_deleted: false } }) } } })</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+</body>
+</html>
