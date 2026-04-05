@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 
-type GpaData = { overall: string; major: string; converted: string };
-
-const initial: GpaData = { overall: '3.85 / 4.5', major: '4.12 / 4.5', converted: '96.3' };
+export type GpaData = { overall: string; major: string; converted: string };
 
 const fields: { label: string; key: keyof GpaData }[] = [
   { label: '전체 평점 평균', key: 'overall' },
@@ -13,9 +11,9 @@ const fields: { label: string; key: keyof GpaData }[] = [
   { label: '환산점수', key: 'converted' },
 ];
 
-export default function GpaCard() {
-  const [data, setData] = useState<GpaData>(initial);
-  const [draft, setDraft] = useState<GpaData>(initial);
+export default function GpaCard({ initialData }: { initialData: GpaData }) {
+  const [data, setData] = useState<GpaData>(initialData);
+  const [draft, setDraft] = useState<GpaData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
 
   const [showKupid, setShowKupid] = useState(false);

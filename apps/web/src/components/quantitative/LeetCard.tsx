@@ -3,19 +3,14 @@
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 
-type LeetData = {
+export type LeetData = {
   언어이해: { raw: string; standard: string; percentile: string };
   추리논증: { raw: string; standard: string; percentile: string };
 };
 
-const initial: LeetData = {
-  언어이해: { raw: '35', standard: '130', percentile: '85' },
-  추리논증: { raw: '40', standard: '135', percentile: '90' },
-};
-
-export default function LeetCard() {
-  const [data, setData] = useState<LeetData>(initial);
-  const [draft, setDraft] = useState<LeetData>(initial);
+export default function LeetCard({ initialData }: { initialData: LeetData }) {
+  const [data, setData] = useState<LeetData>(initialData);
+  const [draft, setDraft] = useState<LeetData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
 
   return (

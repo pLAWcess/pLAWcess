@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 
-type LanguageData = { toeic: string; toefl: string; teps: string };
-
-const initial: LanguageData = { toeic: '950', toefl: '-', teps: '-' };
+export type LanguageData = { toeic: string; toefl: string; teps: string };
 
 const fields: { label: string; key: keyof LanguageData }[] = [
   { label: 'TOEIC', key: 'toeic' },
@@ -13,9 +11,9 @@ const fields: { label: string; key: keyof LanguageData }[] = [
   { label: 'TEPS (선택)', key: 'teps' },
 ];
 
-export default function LanguageCard() {
-  const [data, setData] = useState<LanguageData>(initial);
-  const [draft, setDraft] = useState<LanguageData>(initial);
+export default function LanguageCard({ initialData }: { initialData: LanguageData }) {
+  const [data, setData] = useState<LanguageData>(initialData);
+  const [draft, setDraft] = useState<LanguageData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
 
   return (

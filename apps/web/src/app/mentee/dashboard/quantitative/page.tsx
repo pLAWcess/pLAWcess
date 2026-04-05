@@ -2,11 +2,21 @@
 
 import { useState } from 'react';
 import SelectField from '@/components/ui/SelectField';
-import LeetCard from '@/components/quantitative/LeetCard';
-import LanguageCard from '@/components/quantitative/LanguageCard';
-import GpaCard from '@/components/quantitative/GpaCard';
+import LeetCard, { type LeetData } from '@/components/quantitative/LeetCard';
+import LanguageCard, { type LanguageData } from '@/components/quantitative/LanguageCard';
+import GpaCard, { type GpaData } from '@/components/quantitative/GpaCard';
 
 const YEAR_OPTIONS = ['2024학년도', '2025학년도', '2026학년도'];
+
+// TODO: 백엔드 연결 시 API fetch로 교체
+const mockLeet: LeetData = {
+  언어이해: { raw: '35', standard: '130', percentile: '85' },
+  추리논증: { raw: '40', standard: '135', percentile: '90' },
+};
+
+const mockLanguage: LanguageData = { toeic: '950', toefl: '-', teps: '-' };
+
+const mockGpa: GpaData = { overall: '3.85 / 4.5', major: '4.12 / 4.5', converted: '96.3' };
 
 export default function QuantitativePage() {
   const [year, setYear] = useState('2026학년도');
@@ -20,9 +30,9 @@ export default function QuantitativePage() {
         </div>
         <SelectField value={year} options={YEAR_OPTIONS} onChange={setYear} />
       </div>
-      <LeetCard />
-      <LanguageCard />
-      <GpaCard />
+      <LeetCard initialData={mockLeet} />
+      <LanguageCard initialData={mockLanguage} />
+      <GpaCard initialData={mockGpa} />
     </div>
   );
 }
