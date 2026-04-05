@@ -17,3 +17,6 @@ out/
 
 # misc
 *.tsbuildinfo
+
+# superpowers (local design/plan docs)
+docs/superpowers/
