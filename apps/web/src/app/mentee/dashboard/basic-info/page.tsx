@@ -91,9 +91,9 @@ export default function BasicInfoPage() {
       </div>
 
       {/* 개인정보 카드 */}
-      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm">
         {/* 프로필 헤더 */}
-        <div className="flex items-center justify-between px-8 py-6 bg-[#EFF6FF] border-b border-[#E5E7EB]">
+        <div className="flex items-center justify-between px-8 py-6 bg-[#EFF6FF] border-b border-[#E5E7EB] rounded-t-xl">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-[#DBEAFE] flex items-center justify-center text-[#3B82F6]">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
