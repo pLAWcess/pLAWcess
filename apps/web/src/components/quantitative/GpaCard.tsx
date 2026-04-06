@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
+import GradeTable from '@/components/quantitative/GradeTable';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export type GpaData = { overall: string; major: string; converted: string };
 
@@ -19,6 +22,34 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
   const [showKupid, setShowKupid] = useState(false);
   const [kupidId, setKupidId] = useState('');
   const [kupidPw, setKupidPw] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [gradeRows, setGradeRows] = useState<Record<string, string>[] | null>(null);
+
+  async function handleKupidLogin() {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/grades`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: kupidId, pw: kupidPw }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? '오류가 발생했습니다.');
+        return;
+      }
+      setGradeRows(data.rows);
+      setShowKupid(false);
+      setKupidId('');
+      setKupidPw('');
+    } catch {
+      setError('서버에 연결할 수 없습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm px-8 py-6">
@@ -33,16 +64,19 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-[#6B7280]">{label}</span>
-            {isEditing ? (
-              <input
-                type="text"
-                value={draft[key]}
-                onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                className="border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] py-1 focus:outline-none focus:border-[#3B82F6]"
-              />
-            ) : (
-              <span className="text-base font-semibold text-[#111827]">{data[key]}</span>
-            )}
+            <div className="relative">
+              <span className={`text-base font-semibold text-[#111827]${isEditing ? ' invisible' : ''}`}>
+                {data[key]}
+              </span>
+              {isEditing && (
+                <input
+                  type="text"
+                  value={draft[key]}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                  className="absolute inset-0 w-full border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] focus:outline-none focus:border-[#3B82F6]"
+                />
+              )}
+            </div>
           </div>
         ))}
       </div>

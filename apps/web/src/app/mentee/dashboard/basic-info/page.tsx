@@ -157,7 +157,7 @@ export default function BasicInfoPage() {
                         type={type}
                         value={draft[key]}
                         onChange={(e) => handleChange(key, e.target.value)}
-                        className="border-b border-[#D1D5DB] bg-transparent text-base text-[#111827] py-1 focus:outline-none focus:border-[#3B82F6]"
+                        className="border-b border-[#D1D5DB] bg-transparent text-base text-[#111827] h-6 py-0 focus:outline-none focus:border-[#3B82F6]"
                       />
                     )
                   ) : (
@@ -206,7 +206,7 @@ export default function BasicInfoPage() {
                                 placeholder="학교 선택"
                               />
                             ) : (
-                              <span className="text-[#111827] font-medium">{item.school}</span>
+                              <span className="text-[#111827]">{item.school}</span>
                             )}
                           </td>
                           <td className="py-4">
@@ -218,7 +218,7 @@ export default function BasicInfoPage() {
                                 placeholder="전형 선택"
                               />
                             ) : (
-                              <span className="text-[#6B7280]">{item.type}</span>
+                              <span className="text-[#111827]">{item.type}</span>
                             )}
                           </td>
                         </tr>

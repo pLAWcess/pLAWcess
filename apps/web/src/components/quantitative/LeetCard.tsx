@@ -37,17 +37,22 @@ export default function LeetCard({ initialData }: { initialData: LeetData }) {
               <td className="py-4 text-[#6B7280]">{subject}</td>
               {(['raw', 'standard', 'percentile'] as const).map((field) => (
                 <td key={field} className="py-4 font-semibold text-[#111827]">
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={draft[subject][field]}
-                      onChange={(e) => setDraft((prev) => ({
-                        ...prev,
-                        [subject]: { ...prev[subject], [field]: e.target.value },
-                      }))}
-                      className="w-24 border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] py-1 focus:outline-none focus:border-[#3B82F6]"
-                    />
-                  ) : data[subject][field]}
+                  <div className="relative w-24">
+                    <span className={`font-semibold${isEditing ? ' invisible' : ''}`}>
+                      {data[subject][field]}
+                    </span>
+                    {isEditing && (
+                      <input
+                        type="text"
+                        value={draft[subject][field]}
+                        onChange={(e) => setDraft((prev) => ({
+                          ...prev,
+                          [subject]: { ...prev[subject], [field]: e.target.value },
+                        }))}
+                        className="absolute inset-0 w-full border-b border-[#D1D5DB] bg-transparent font-semibold text-[#111827] focus:outline-none focus:border-[#3B82F6]"
+                      />
+                    )}
+                  </div>
                 </td>
               ))}
             </tr>

@@ -29,16 +29,19 @@ export default function LanguageCard({ initialData }: { initialData: LanguageDat
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-[#6B7280]">{label}</span>
-            {isEditing ? (
-              <input
-                type="text"
-                value={draft[key]}
-                onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                className="border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] py-1 focus:outline-none focus:border-[#3B82F6]"
-              />
-            ) : (
-              <span className="text-base font-semibold text-[#111827]">{data[key]}</span>
-            )}
+            <div className="relative">
+              <span className={`text-base font-semibold text-[#111827]${isEditing ? ' invisible' : ''}`}>
+                {data[key]}
+              </span>
+              {isEditing && (
+                <input
+                  type="text"
+                  value={draft[key]}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                  className="absolute inset-0 w-full border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] focus:outline-none focus:border-[#3B82F6]"
+                />
+              )}
+            </div>
           </div>
         ))}
       </div>
