@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import GradeTable from '@/components/quantitative/GradeTable';
+import { useEditState } from '@/hooks/useEditState';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -15,9 +16,7 @@ const fields: { label: string; key: keyof GpaData }[] = [
 ];
 
 export default function GpaCard({ initialData }: { initialData: GpaData }) {
-  const [data, setData] = useState<GpaData>(initialData);
-  const [draft, setDraft] = useState<GpaData>(initialData);
-  const [isEditing, setIsEditing] = useState(false);
+  const { data, draft, setDraft, isEditing, startEdit, cancel, save } = useEditState<GpaData>(initialData);
 
   const [showKupid, setShowKupid] = useState(false);
   const [kupidId, setKupidId] = useState('');
@@ -56,25 +55,24 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-[#111827]">GPA</h2>
         {isEditing
-          ? <EditButtons onCancel={() => setIsEditing(false)} onSave={() => { setData(draft); setIsEditing(false); }} />
-          : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
+          ? <EditButtons onCancel={cancel} onSave={save} />
+          : <EditButton onClick={startEdit} />
         }
       </div>
       <div className="grid grid-cols-3 gap-8">
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-[#6B7280]">{label}</span>
-            <div className="relative">
-              <span className={`text-base font-semibold text-[#111827]${isEditing ? ' invisible' : ''}`}>
-                {data[key]}
-              </span>
-              {isEditing && (
+            <div className="h-7 flex items-center">
+              {isEditing ? (
                 <input
                   type="text"
                   value={draft[key]}
                   onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="absolute inset-0 w-full border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] focus:outline-none focus:border-[#3B82F6]"
+                  className="w-full h-7 border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] focus:outline-none focus:border-[#3B82F6]"
                 />
+              ) : (
+                <span className="text-base font-semibold text-[#111827]">{data[key]}</span>
               )}
             </div>
           </div>

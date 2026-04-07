@@ -26,7 +26,7 @@ type AdmissionInfo = {
 const initialPersonalInfo: PersonalInfo = {
   name: '김단추',
   affiliation: '고려대학교 자유전공학부',
-  birthDate: '2000-03-15',
+  birthDate: '2000.03.15.',
   gender: '남성',
   major1: '컴퓨터학과',
   major2: '공공거버넌스와리더십',
@@ -55,13 +55,12 @@ const SCHOOL_OPTIONS = [
 const TYPE_OPTIONS = ['일반전형', '특별전형'];
 
 function formatBirthDate(value: string) {
-  // YYYY-MM-DD → YYYY.MM.DD.
-  return value.replace(/-/g, '.') + '.';
+  return value;
 }
 
-const fieldRows: { label: string; key: keyof Omit<PersonalInfo, 'name' | 'affiliation'>; type: 'date' | 'text' | 'select'; options?: string[] }[][] = [
+const fieldRows: { label: string; key: keyof Omit<PersonalInfo, 'name' | 'affiliation'>; type: 'text' | 'select'; options?: string[] }[][] = [
   [
-    { label: '생년월일', key: 'birthDate', type: 'date' },
+    { label: '생년월일', key: 'birthDate', type: 'text' },
     { label: '성별', key: 'gender', type: 'select', options: ['남성', '여성'] },
   ],
   [
@@ -83,13 +82,22 @@ export default function BasicInfoPage() {
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>(initialPersonalInfo);
   const [draft, setDraft] = useState<PersonalInfo>(initialPersonalInfo);
   const [isEditing, setIsEditing] = useState(false);
+  const [birthDateError, setBirthDateError] = useState('');
 
   const [admissionInfo, setAdmissionInfo] = useState<AdmissionInfo>(initialAdmissionInfo);
   const [admissionDraft, setAdmissionDraft] = useState<AdmissionInfo>(initialAdmissionInfo);
   const [isAdmissionEditing, setIsAdmissionEditing] = useState(false);
 
-  function handleSave() { setPersonalInfo(draft); setIsEditing(false); }
-  function handleCancel() { setIsEditing(false); }
+  function handleSave() {
+    if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(draft.birthDate)) {
+      setBirthDateError('YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)');
+      return;
+    }
+    setBirthDateError('');
+    setPersonalInfo(draft);
+    setIsEditing(false);
+  }
+  function handleCancel() { setBirthDateError(''); setIsEditing(false); }
   function handleChange(key: keyof PersonalInfo, value: string) {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
@@ -149,21 +157,27 @@ export default function BasicInfoPage() {
               {row.map(({ label, key, type, options }, colIdx) => (
                 <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
                   <span className="text-sm text-[#6B7280]">{label}</span>
-                  {isEditing ? (
-                    type === 'select' ? (
-                      <SelectField value={draft[key]} options={options!} onChange={(val) => handleChange(key, val)} />
+                  <div className="h-6">
+                    {isEditing ? (
+                      type === 'select' ? (
+                        <SelectField value={draft[key]} options={options!} onChange={(val) => handleChange(key, val)} />
+                      ) : (
+                        <input
+                          type={type}
+                          value={draft[key]}
+                          onChange={(e) => handleChange(key, e.target.value)}
+                          placeholder={key === 'birthDate' ? '예: 2000.03.15.' : undefined}
+                          className="w-full border-b border-[#D1D5DB] bg-transparent text-base text-[#111827] h-6 py-0 focus:outline-none focus:border-[#3B82F6] placeholder:text-[#9CA3AF]"
+                        />
+                      )
                     ) : (
-                      <input
-                        type={type}
-                        value={draft[key]}
-                        onChange={(e) => handleChange(key, e.target.value)}
-                        className="border-b border-[#D1D5DB] bg-transparent text-base text-[#111827] h-6 py-0 focus:outline-none focus:border-[#3B82F6]"
-                      />
-                    )
-                  ) : (
-                    <span className="text-base text-[#111827]">
-                      {key === 'birthDate' ? formatBirthDate(personalInfo[key]) : personalInfo[key]}
-                    </span>
+                      <span className="text-base text-[#111827]">
+                        {key === 'birthDate' ? formatBirthDate(personalInfo[key]) : personalInfo[key]}
+                      </span>
+                    )}
+                  </div>
+                  {key === 'birthDate' && birthDateError && (
+                    <p className="text-xs text-red-500">{birthDateError}</p>
                   )}
                 </div>
               ))}
@@ -199,24 +213,28 @@ export default function BasicInfoPage() {
                           <td className="py-4 text-[#6B7280] w-16">{i === 0 ? '제1지망' : '제2지망'}</td>
                           <td className="py-4 w-36">
                             {isAdmissionEditing ? (
-                              <SelectField
-                                value={item.school}
-                                options={SCHOOL_OPTIONS}
-                                onChange={(val) => handleAdmissionChange(group, rank, 'school', val)}
-                                placeholder="학교 선택"
-                              />
+                              <div className="h-5">
+                                <SelectField
+                                  value={item.school}
+                                  options={SCHOOL_OPTIONS}
+                                  onChange={(val) => handleAdmissionChange(group, rank, 'school', val)}
+                                  placeholder="학교 선택"
+                                />
+                              </div>
                             ) : (
                               <span className="text-[#111827]">{item.school}</span>
                             )}
                           </td>
                           <td className="py-4">
                             {isAdmissionEditing ? (
-                              <SelectField
-                                value={item.type}
-                                options={TYPE_OPTIONS}
-                                onChange={(val) => handleAdmissionChange(group, rank, 'type', val)}
-                                placeholder="전형 선택"
-                              />
+                              <div className="h-5">
+                                <SelectField
+                                  value={item.type}
+                                  options={TYPE_OPTIONS}
+                                  onChange={(val) => handleAdmissionChange(group, rank, 'type', val)}
+                                  placeholder="전형 선택"
+                                />
+                              </div>
                             ) : (
                               <span className="text-[#111827]">{item.type}</span>
                             )}
