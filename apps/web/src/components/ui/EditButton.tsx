@@ -12,7 +12,7 @@ export function EditButtons({ onCancel, onSave }: { onCancel: () => void; onSave
       </button>
       <button
         onClick={onSave}
-        className="flex items-center gap-1.5 text-xs text-white bg-[#3B82F6] px-3 py-1.5 rounded-md hover:bg-[#2563EB] transition-colors"
+        className="flex items-center gap-1.5 text-xs text-white bg-[#3B82F6] border border-transparent px-3 py-1.5 rounded-md hover:bg-[#2563EB] transition-colors"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />

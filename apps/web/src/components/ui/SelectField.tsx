@@ -31,7 +31,7 @@ export default function SelectField({ value, options, onChange, placeholder }: P
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between border-b border-[#D1D5DB] py-1 text-base focus:outline-none focus:border-[#3B82F6]"
+        className="w-full flex items-center justify-between border-b border-[#D1D5DB] py-0 ${textSize} focus:outline-none focus:border-[#3B82F6]"
       >
         <span className={isEmpty && placeholder ? 'text-[#9CA3AF]' : 'text-[#111827]'}>
           {displayValue}
@@ -46,7 +46,7 @@ export default function SelectField({ value, options, onChange, placeholder }: P
       </button>
 
       {open && (
-        <ul className="absolute z-10 left-0 mt-1 w-full bg-white border border-[#E5E7EB] rounded-lg shadow-md py-1 text-sm text-[#111827]">
+        <ul className="absolute z-10 left-0 mt-1 w-full bg-white border border-[#E5E7EB] rounded-lg shadow-md py-1 text-sm text-[#111827] ">
           {options.map((opt) => (
             <li key={opt}>
               <button
