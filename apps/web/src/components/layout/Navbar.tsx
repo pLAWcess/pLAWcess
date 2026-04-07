@@ -2,8 +2,8 @@
 
 export default function Navbar() {
   return (
-    <header className="h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
-      <span className="text-brand font-bold text-lg tracking-tight">pLAWcess</span>
+    <header className="h-20 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
+      <span className="text-brand font-bold text-2xl tracking-tight">pLAWcess</span>
       <div className="flex items-center gap-3 text-sm text-text-secondary">
         <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100" aria-label="알림">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

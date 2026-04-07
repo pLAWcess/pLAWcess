@@ -13,7 +13,7 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="w-44 bg-white border-r border-border flex flex-col py-6 shrink-0">
+    <aside className="w-48 bg-white border-r border-border flex flex-col py-6 shrink-0">
       <nav className="flex flex-col gap-1 px-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -21,7 +21,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-2 rounded-md text-base font-medium transition-colors ${
                 isActive
                   ? 'bg-brand-light text-brand'
                   : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
