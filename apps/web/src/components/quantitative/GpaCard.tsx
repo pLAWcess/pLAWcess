@@ -112,7 +112,7 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
                 value={kupidId}
                 onChange={(e) => setKupidId(e.target.value)}
                 placeholder="ID를 입력하세요"
-                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
+                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -122,7 +122,7 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
                 value={kupidPw}
                 onChange={(e) => setKupidPw(e.target.value)}
                 placeholder="비밀번호를 입력하세요"
-                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
+                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
           </div>
