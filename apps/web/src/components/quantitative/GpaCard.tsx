@@ -2,8 +2,14 @@
 
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
+import type { GpaSection } from '@/lib/api';
 
-export type GpaData = { overall: string; major: string; converted: string };
+export type GpaData = GpaSection;
+
+type Props = {
+  initialData: GpaData;
+  onSave?: (data: GpaData) => Promise<void>;
+};
 
 const fields: { label: string; key: keyof GpaData }[] = [
   { label: '전체 평점 평균', key: 'overall' },
@@ -11,21 +17,37 @@ const fields: { label: string; key: keyof GpaData }[] = [
   { label: '환산점수', key: 'converted' },
 ];
 
-export default function GpaCard({ initialData }: { initialData: GpaData }) {
+function toDisplay(val: number | null): string {
+  return val == null ? '-' : String(val);
+}
+
+export default function GpaCard({ initialData, onSave }: Props) {
   const [data, setData] = useState<GpaData>(initialData);
   const [draft, setDraft] = useState<GpaData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [showKupid, setShowKupid] = useState(false);
   const [kupidId, setKupidId] = useState('');
   const [kupidPw, setKupidPw] = useState('');
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      if (onSave) await onSave(draft);
+      setData(draft);
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-[#111827]">GPA</h2>
         {isEditing
-          ? <EditButtons onCancel={() => setIsEditing(false)} onSave={() => { setData(draft); setIsEditing(false); }} />
+          ? <EditButtons onCancel={() => { setDraft(data); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
           : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
         }
       </div>
@@ -35,13 +57,18 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
             <span className="text-sm text-[#6B7280]">{label}</span>
             {isEditing ? (
               <input
-                type="text"
-                value={draft[key]}
-                onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                type="number"
+                value={draft[key] ?? ''}
+                onChange={(e: { target: { value: string } }) =>
+                  setDraft((prev: GpaData) => ({
+                    ...prev,
+                    [key]: e.target.value === '' ? null : Number(e.target.value),
+                  }))
+                }
                 className="border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] py-1 focus:outline-none focus:border-[#3B82F6]"
               />
             ) : (
-              <span className="text-base font-semibold text-[#111827]">{data[key]}</span>
+              <span className="text-base font-semibold text-[#111827]">{toDisplay(data[key])}</span>
             )}
           </div>
         ))}
@@ -78,7 +105,7 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
               <input
                 type="text"
                 value={kupidId}
-                onChange={(e) => setKupidId(e.target.value)}
+                onChange={(e: { target: { value: string } }) => setKupidId(e.target.value)}
                 placeholder="ID를 입력하세요"
                 className="border border-[#E5E7EB] rounded-md px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
@@ -88,7 +115,7 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
               <input
                 type="password"
                 value={kupidPw}
-                onChange={(e) => setKupidPw(e.target.value)}
+                onChange={(e: { target: { value: string } }) => setKupidPw(e.target.value)}
                 placeholder="비밀번호를 입력하세요"
                 className="border border-[#E5E7EB] rounded-md px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               />
