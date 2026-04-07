@@ -51,9 +51,9 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-base font-semibold text-[#111827]">GPA</h2>
+        <h2 className="text-base font-semibold text-text-primary">GPA</h2>
         {isEditing
           ? <EditButtons onCancel={cancel} onSave={save} />
           : <EditButton onClick={startEdit} />
@@ -62,17 +62,17 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
       <div className="grid grid-cols-3 gap-8">
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
-            <span className="text-sm text-[#6B7280]">{label}</span>
+            <span className="text-sm text-text-secondary">{label}</span>
             <div className="h-7 flex items-center">
               {isEditing ? (
                 <input
                   type="text"
                   value={draft[key]}
                   onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full h-7 border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] focus:outline-none focus:border-[#3B82F6]"
+                  className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
                 />
               ) : (
-                <span className="text-base font-semibold text-[#111827]">{data[key]}</span>
+                <span className="text-base font-semibold text-text-primary">{data[key]}</span>
               )}
             </div>
           </div>
@@ -83,7 +83,7 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
         <div className="flex justify-center mt-8">
           <button
             onClick={() => setShowKupid(true)}
-            className="flex items-center gap-2 text-sm text-[#6B7280] border border-[#E5E7EB] px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 text-sm text-text-secondary border border-border px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
@@ -94,46 +94,46 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
       )}
 
       {showKupid && (
-        <div className="mt-6 border-t border-[#E5E7EB] pt-6">
+        <div className="mt-6 border-t border-border pt-6">
           <div className="flex flex-col gap-1.5 mb-4">
             <div className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
               </svg>
-              <span className="text-sm font-semibold text-[#111827]">KUPID 로그인</span>
+              <span className="text-sm font-semibold text-text-primary">KUPID 로그인</span>
             </div>
-            <p className="text-xs text-[#6B7280]">학업 성적표를 불러오기 위해 KUPID 계정으로 로그인해주세요.</p>
+            <p className="text-xs text-text-secondary">학업 성적표를 불러오기 위해 KUPID 계정으로 로그인해주세요.</p>
           </div>
           <div className="grid grid-cols-2 gap-6 mb-6">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm text-[#6B7280]">ID</label>
+              <label className="text-sm text-text-secondary">ID</label>
               <input
                 type="text"
                 value={kupidId}
                 onChange={(e) => setKupidId(e.target.value)}
                 placeholder="ID를 입력하세요"
-                className="border border-[#E5E7EB] rounded-md px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm text-[#6B7280]">비밀번호</label>
+              <label className="text-sm text-text-secondary">비밀번호</label>
               <input
                 type="password"
                 value={kupidPw}
                 onChange={(e) => setKupidPw(e.target.value)}
                 placeholder="비밀번호를 입력하세요"
-                className="border border-[#E5E7EB] rounded-md px-3 py-2 text-sm text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
           </div>
           <div className="flex justify-end gap-2">
             <button
               onClick={() => { setShowKupid(false); setKupidId(''); setKupidPw(''); }}
-              className="px-4 py-2 text-sm text-[#6B7280] border border-[#E5E7EB] rounded-md hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
             >
               취소
             </button>
-            <button className="px-4 py-2 text-sm text-white bg-[#3B82F6] rounded-md hover:bg-[#2563EB] transition-colors">
+            <button className="px-4 py-2 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
               로그인
             </button>
           </div>

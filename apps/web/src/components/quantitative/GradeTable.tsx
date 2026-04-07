@@ -26,31 +26,31 @@ function Badge({ text, style }: { text: string; style: string }) {
 
 export default function GradeTable({ rows }: { rows: GradeRow[] }) {
   return (
-    <div className="mt-6 border-t border-[#E5E7EB] pt-6">
-      <h3 className="text-sm font-semibold text-[#111827] mb-4">학업 성적표</h3>
-      <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+    <div className="mt-6 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-text-primary mb-4">학업 성적표</h3>
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+            <tr className="bg-table-bg border-b border-border">
               {['년도', '학기', '학수번호', '과목명', '이수구분', '학점', '등급', '평점', '재수강 여부'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280]">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-text-secondary">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i} className="border-b border-[#E5E7EB] last:border-0 hover:bg-[#F9FAFB]">
-                <td className="px-4 py-3 text-[#374151]">{row['년도']}</td>
-                <td className="px-4 py-3 text-[#374151]">{row['학기']}</td>
-                <td className="px-4 py-3 text-[#3B82F6] font-medium">{row['학수번호']}</td>
-                <td className="px-4 py-3 text-[#111827]">{row['과목명']}</td>
+              <tr key={i} className="border-b border-border last:border-0 hover:bg-table-bg">
+                <td className="px-4 py-3 text-text-body">{row['년도']}</td>
+                <td className="px-4 py-3 text-text-body">{row['학기']}</td>
+                <td className="px-4 py-3 text-brand font-medium">{row['학수번호']}</td>
+                <td className="px-4 py-3 text-text-primary">{row['과목명']}</td>
                 <td className="px-4 py-3">
                   <Badge
                     text={row['이수구분']}
                     style={CATEGORY_STYLE[row['이수구분']] ?? 'bg-gray-100 text-gray-500'}
                   />
                 </td>
-                <td className="px-4 py-3 text-[#374151]">{row['학점']}</td>
+                <td className="px-4 py-3 text-text-body">{row['학점']}</td>
                 <td className="px-4 py-3">
                   {row['등급'] ? (
                     <Badge
@@ -59,8 +59,8 @@ export default function GradeTable({ rows }: { rows: GradeRow[] }) {
                     />
                   ) : '-'}
                 </td>
-                <td className="px-4 py-3 text-[#374151]">{row['평점']}</td>
-                <td className="px-4 py-3 text-[#374151]">
+                <td className="px-4 py-3 text-text-body">{row['평점']}</td>
+                <td className="px-4 py-3 text-text-body">
                   {row['재수강과목'] ? '재수강' : '-'}
                 </td>
               </tr>
