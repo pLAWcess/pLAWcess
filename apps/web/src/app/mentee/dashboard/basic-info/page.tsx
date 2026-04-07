@@ -123,23 +123,23 @@ export default function BasicInfoPage() {
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
       {/* 페이지 타이틀 */}
       <div>
-        <h1 className="text-2xl font-bold text-[#111827]">개인정보</h1>
-        <p className="text-sm text-[#6B7280] mt-1">기본 프로필과 희망 학교 정보를 입력해주세요</p>
+        <h1 className="text-2xl font-bold text-text-primary">개인정보</h1>
+        <p className="text-sm text-text-secondary mt-1">기본 프로필과 희망 학교 정보를 입력해주세요</p>
       </div>
 
       {/* 개인정보 카드 */}
-      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm">
-        <div className="flex items-center justify-between px-8 py-6 bg-[#EFF6FF] border-b border-[#E5E7EB] rounded-t-xl">
+      <div className="bg-white rounded-xl border border-border shadow-sm">
+        <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-[#DBEAFE] flex items-center justify-center text-[#3B82F6]">
+            <div className="w-14 h-14 rounded-full bg-brand-muted flex items-center justify-center text-brand">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </div>
             <div>
-              <p className="text-xl font-bold text-[#111827]">{personalInfo.name}</p>
-              <p className="text-sm text-[#6B7280] mt-0.5">{personalInfo.affiliation}</p>
+              <p className="text-xl font-bold text-text-primary">{personalInfo.name}</p>
+              <p className="text-sm text-text-secondary mt-0.5">{personalInfo.affiliation}</p>
             </div>
           </div>
           {isEditing
@@ -152,11 +152,11 @@ export default function BasicInfoPage() {
           {fieldRows.map((row, rowIdx) => (
             <div
               key={rowIdx}
-              className={`grid grid-cols-2 divide-x divide-[#E5E7EB] py-5 ${rowIdx < fieldRows.length - 1 ? 'border-b border-[#E5E7EB]' : ''}`}
+              className={`grid grid-cols-2 divide-x divide-border py-5 ${rowIdx < fieldRows.length - 1 ? 'border-b border-border' : ''}`}
             >
               {row.map(({ label, key, type, options }, colIdx) => (
                 <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
-                  <span className="text-sm text-[#6B7280]">{label}</span>
+                  <span className="text-sm text-text-secondary">{label}</span>
                   <div className="h-6">
                     {isEditing ? (
                       type === 'select' ? (
@@ -167,11 +167,11 @@ export default function BasicInfoPage() {
                           value={draft[key]}
                           onChange={(e) => handleChange(key, e.target.value)}
                           placeholder={key === 'birthDate' ? '예: 2000.03.15.' : undefined}
-                          className="w-full border-b border-[#D1D5DB] bg-transparent text-base text-[#111827] h-6 py-0 focus:outline-none focus:border-[#3B82F6] placeholder:text-[#9CA3AF]"
+                          className="w-full border-b border-border-input bg-transparent text-base text-text-primary h-6 py-0 focus:outline-none focus:border-brand placeholder:text-text-placeholder"
                         />
                       )
                     ) : (
-                      <span className="text-base text-[#111827]">
+                      <span className="text-base text-text-primary">
                         {key === 'birthDate' ? formatBirthDate(personalInfo[key]) : personalInfo[key]}
                       </span>
                     )}
@@ -187,21 +187,21 @@ export default function BasicInfoPage() {
       </div>
 
       {/* 희망 학교 및 전형 카드 */}
-      <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-base font-semibold text-[#111827]">희망 학교 및 전형</h2>
+          <h2 className="text-base font-semibold text-text-primary">희망 학교 및 전형</h2>
           {isAdmissionEditing
             ? <EditButtons onCancel={handleAdmissionCancel} onSave={handleAdmissionSave} />
             : <EditButton onClick={() => { setAdmissionDraft(admissionInfo); setIsAdmissionEditing(true); }} />
           }
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-[#E5E7EB]">
+        <div className="grid grid-cols-2 divide-x divide-border">
           {(['가', '나'] as const).map((group) => {
             const data = isAdmissionEditing ? admissionDraft[group] : admissionInfo[group];
             return (
               <div key={group} className={group === '나' ? 'pl-8' : 'pr-8'}>
-                <span className="inline-block text-sm font-semibold text-[#3B82F6] bg-[#EFF6FF] px-3 py-1 rounded mb-5">
+                <span className="inline-block text-sm font-semibold text-brand bg-brand-light px-3 py-1 rounded mb-5">
                   {group}군
                 </span>
                 <table className="w-full text-sm">
@@ -209,8 +209,8 @@ export default function BasicInfoPage() {
                     {(['first', 'second'] as const).map((rank, i) => {
                       const item = data[rank];
                       return (
-                        <tr key={rank} className="border-b border-[#E5E7EB] last:border-0">
-                          <td className="py-4 text-[#6B7280] w-16">{i === 0 ? '제1지망' : '제2지망'}</td>
+                        <tr key={rank} className="border-b border-border last:border-0">
+                          <td className="py-4 text-text-secondary w-16">{i === 0 ? '제1지망' : '제2지망'}</td>
                           <td className="py-4 w-36">
                             {isAdmissionEditing ? (
                               <div className="h-5">
@@ -222,7 +222,7 @@ export default function BasicInfoPage() {
                                 />
                               </div>
                             ) : (
-                              <span className="text-[#111827]">{item.school}</span>
+                              <span className="text-text-primary">{item.school}</span>
                             )}
                           </td>
                           <td className="py-4">
@@ -236,7 +236,7 @@ export default function BasicInfoPage() {
                                 />
                               </div>
                             ) : (
-                              <span className="text-[#111827]">{item.type}</span>
+                              <span className="text-text-primary">{item.type}</span>
                             )}
                           </td>
                         </tr>
