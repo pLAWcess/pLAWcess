@@ -5,6 +5,153 @@ import { useState } from 'react';
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
 type Tab = typeof TABS[number];
 
+type ActivityForm = {
+  name: string;
+  organization: string;
+  startDate: string;
+  endDate: string;
+  ongoing: boolean;
+  content: string;
+};
+
+const EMPTY_FORM: ActivityForm = {
+  name: '',
+  organization: '',
+  startDate: '',
+  endDate: '',
+  ongoing: false,
+  content: '',
+};
+
+function ActivityFormCard({
+  form,
+  onChange,
+  onCancel,
+}: {
+  form: ActivityForm;
+  onChange: (form: ActivityForm) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="border border-border rounded-xl px-8 py-6">
+      <h3 className="text-lg font-semibold text-text-primary mb-6">활동 정보 입력</h3>
+      <hr className="border-border mb-6" />
+
+      {/* 활동명 / 기관명 */}
+      <div className="grid grid-cols-2 gap-8 mb-6">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-text-primary">활동명 <span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={(e) => onChange({ ...form, name: e.target.value })}
+            placeholder="활동명을 입력하세요"
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-text-primary">기관명 <span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            value={form.organization}
+            onChange={(e) => onChange({ ...form, organization: e.target.value })}
+            placeholder="기관명을 입력하세요"
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand"
+          />
+        </div>
+      </div>
+
+      {/* 시작일 / 종료일 / 진행중 */}
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-8 items-end mb-6">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-text-primary">시작일 <span className="text-red-500">*</span></label>
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={(e) => onChange({ ...form, startDate: e.target.value })}
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-text-primary">종료일</label>
+          <input
+            type="date"
+            value={form.endDate}
+            onChange={(e) => onChange({ ...form, endDate: e.target.value })}
+            disabled={form.ongoing}
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand disabled:text-text-placeholder"
+          />
+        </div>
+        <label className="flex items-center gap-2 pb-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.ongoing}
+            onChange={(e) => onChange({ ...form, ongoing: e.target.checked, endDate: e.target.checked ? '' : form.endDate })}
+            className="w-4 h-4 rounded border-border-input accent-brand"
+          />
+          <span className="text-sm text-text-secondary">진행중</span>
+        </label>
+      </div>
+
+      {/* 작성 내용 */}
+      <div className="flex flex-col gap-2 mb-6">
+        <label className="text-sm font-medium text-text-primary">작성 내용 <span className="text-red-500">*</span></label>
+        <textarea
+          value={form.content}
+          onChange={(e) => onChange({ ...form, content: e.target.value })}
+          placeholder="활동 내용을 상세히 작성해주세요"
+          rows={4}
+          className="border border-border rounded-lg bg-transparent text-sm text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none"
+        />
+        <p className="text-xs text-text-secondary">구체적인 역할, 성과, 배운 점 등을 포함하여 작성하면 더 정확한 분석이 가능합니다.</p>
+      </div>
+
+      {/* 파일 첨부 */}
+      <div className="flex flex-col gap-2 mb-6">
+        <label className="text-sm font-medium text-text-primary">파일 첨부</label>
+        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-placeholder mb-2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span className="text-sm text-text-secondary">클릭하거나 파일을 드래그하여 업로드</span>
+          <span className="text-xs text-text-placeholder mt-1">PDF, DOC, DOCX, JPG, PNG (최대 10MB)</span>
+        </div>
+      </div>
+
+      {/* 버튼 */}
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          onClick={onCancel}
+          className="py-3 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          취소
+        </button>
+        <button className="py-3 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors">
+          저장 및 분석
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AddItemPlaceholder({ onClick }: { onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
+    >
+      <div className="w-12 h-12 rounded-full bg-brand-light flex items-center justify-center hover:bg-brand-muted transition-colors">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </div>
+      <span className="mt-3 text-sm font-medium text-text-secondary">항목 추가</span>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -21,6 +168,38 @@ function EmptyState() {
       <button className="mt-2 px-5 py-2.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
         샘플 데이터 불러오기
       </button>
+    </div>
+  );
+}
+
+function TabContent({ tab }: { tab: Tab }) {
+  const [forms, setForms] = useState<ActivityForm[]>([]);
+
+  function addForm() {
+    setForms([...forms, { ...EMPTY_FORM }]);
+  }
+
+  function updateForm(index: number, updated: ActivityForm) {
+    setForms(forms.map((f, i) => (i === index ? updated : f)));
+  }
+
+  function removeForm(index: number) {
+    setForms(forms.filter((_, i) => i !== index));
+  }
+
+  if (tab === '대시보드') return <EmptyState />;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {forms.map((form, i) => (
+        <ActivityFormCard
+          key={i}
+          form={form}
+          onChange={(updated) => updateForm(i, updated)}
+          onCancel={() => removeForm(i)}
+        />
+      ))}
+      <AddItemPlaceholder onClick={addForm} />
     </div>
   );
 }
@@ -55,8 +234,8 @@ export default function QualitativePage() {
         </div>
 
         {/* 탭 콘텐츠 */}
-        <div className="px-8 py-4">
-          <EmptyState />
+        <div className="px-8 py-6">
+          <TabContent tab={activeTab} />
         </div>
       </div>
     </div>
