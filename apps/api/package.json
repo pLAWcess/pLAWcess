@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
-    "build": "npx prisma generate --schema ../../packages/database/prisma/schema.prisma && next build",
+    "build": "prisma generate --schema ../../packages/database/prisma/schema.prisma && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -20,6 +20,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "prisma": "^7.6.0",
     "typescript": "^5"
   }
 }
