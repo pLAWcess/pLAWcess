@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import LeetCard from '@/components/quantitative/LeetCard';
 import LanguageCard from '@/components/quantitative/LanguageCard';
 import GpaCard from '@/components/quantitative/GpaCard';
-import { getQuantitative, patchQuantitative } from '@/lib/api';
+import { getQuantitative, getCachedQuantitative, patchQuantitative } from '@/lib/api';
 import type { QuantitativeData, LeetSection, GpaSection, LanguageSection } from '@/lib/api';
 
 const YEAR_OPTIONS = ['2024학년도', '2025학년도', '2026학년도'];
@@ -25,11 +25,17 @@ export default function QuantitativePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
     setError(null);
+    const cached = getCachedQuantitative(year);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     getQuantitative(year)
       .then(setData)
-      .catch(() => setError('데이터를 불러오지 못했습니다.'))
+      .catch(() => { if (!cached) setError('데이터를 불러오지 못했습니다.'); })
       .finally(() => setLoading(false));
   }, [year]);
 
