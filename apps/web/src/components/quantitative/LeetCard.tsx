@@ -81,19 +81,23 @@ export default function LeetCard({ initialData, onSave, year, yearOptions, onYea
               <td className="py-4 text-text-secondary">{s.label}</td>
               {fields.map((f) => (
                 <td key={f.key} className="py-4 font-semibold text-text-primary">
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      value={draft[s.key][f.key] ?? ''}
-                      onChange={(e: { target: { value: string } }) =>
-                        setDraft((prev: LeetData) => ({
-                          ...prev,
-                          [s.key]: { ...prev[s.key], [f.key]: fromInput(e.target.value) },
-                        }))
-                      }
-                      className="w-24 border-b border-border-input bg-transparent text-base font-semibold text-text-primary py-1 focus:outline-none focus:border-brand"
-                    />
-                  ) : toDisplay(data[s.key][f.key])}
+                  <div className="h-5">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={draft[s.key][f.key] ?? ''}
+                        onChange={(e: { target: { value: string } }) =>
+                          setDraft((prev: LeetData) => ({
+                            ...prev,
+                            [s.key]: { ...prev[s.key], [f.key]: fromInput(e.target.value) },
+                          }))
+                        }
+                        className="w-24 border-b border-border-input bg-transparent font-semibold text-text-primary focus:outline-none focus:border-brand py-0 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    ) : (
+                      <span>{toDisplay(data[s.key][f.key])}</span>
+                    )}
+                  </div>
                 </td>
               ))}
             </tr>

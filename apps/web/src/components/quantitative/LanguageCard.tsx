@@ -51,21 +51,23 @@ export default function LanguageCard({ initialData, onSave }: Props) {
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-text-secondary">{label}</span>
-            {isEditing ? (
-              <input
-                type="number"
-                value={draft[key] ?? ''}
-                onChange={(e: { target: { value: string } }) =>
-                  setDraft((prev: LanguageData) => ({
-                    ...prev,
-                    [key]: e.target.value === '' ? null : Number(e.target.value),
-                  }))
-                }
-                className="border-b border-border-input bg-transparent text-base font-semibold text-text-primary py-1 focus:outline-none focus:border-brand"
-              />
-            ) : (
-              <span className="text-base font-semibold text-text-primary">{toDisplay(data[key])}</span>
-            )}
+            <div className="h-7 flex items-center">
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={draft[key] ?? ''}
+                  onChange={(e: { target: { value: string } }) =>
+                    setDraft((prev: LanguageData) => ({
+                      ...prev,
+                      [key]: e.target.value === '' ? null : Number(e.target.value),
+                    }))
+                  }
+                  className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
+                />
+              ) : (
+                <span className="text-base font-semibold text-text-primary">{toDisplay(data[key])}</span>
+              )}
+            </div>
           </div>
         ))}
       </div>
