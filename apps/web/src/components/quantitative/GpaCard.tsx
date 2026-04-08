@@ -58,8 +58,7 @@ export default function GpaCard({ initialData, onSave }: Props) {
             <div className="h-7 flex items-center">
               {isEditing ? (
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
                   value={draft[key] ?? ''}
                   onChange={(e: { target: { value: string } }) =>
                     setDraft((prev: GpaData) => ({
@@ -67,7 +66,7 @@ export default function GpaCard({ initialData, onSave }: Props) {
                       [key]: e.target.value === '' ? null : Number(e.target.value),
                     }))
                   }
-                  className="w-24 h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
                 />
               ) : (
                 <span className="text-base font-semibold text-text-primary">{toDisplay(data[key])}</span>
