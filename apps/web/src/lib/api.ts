@@ -33,8 +33,10 @@ function headers() {
   };
 }
 
+const LS_PREFIX = "plawcess:";
+
 function lsKey(year: string) {
-  return `quantitative:${TEMP_USER_ID}:${year}`;
+  return `${LS_PREFIX}quantitative:${TEMP_USER_ID}:${year}`;
 }
 
 function readLocalCache(year: string): QuantitativeData | null {
@@ -67,11 +69,11 @@ export function getCachedQuantitative(year: string): QuantitativeData | null {
   return readLocalCache(year);
 }
 
-// TODO: 로그아웃 핸들러에서 호출 — clearQuantitativeCache(userId)
-export function clearQuantitativeCache(userId: string) {
+// TODO: 로그아웃 핸들러에서 호출
+export function clearAllCache() {
   try {
     Object.keys(localStorage)
-      .filter((key) => key.startsWith(`quantitative:${userId}:`))
+      .filter((key) => key.startsWith(LS_PREFIX))
       .forEach((key) => localStorage.removeItem(key));
   } catch {}
 }
