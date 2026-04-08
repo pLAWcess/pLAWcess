@@ -5,6 +5,22 @@ import { useState } from 'react';
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
 type Tab = typeof TABS[number];
 
+function AddItemPlaceholder() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-border rounded-xl relative">
+      <span className="absolute top-3 left-4 text-xs font-medium text-text-secondary bg-page-bg px-2 py-0.5 rounded">
+        미리보기
+      </span>
+      <button className="w-12 h-12 rounded-full bg-brand-light flex items-center justify-center hover:bg-brand-muted transition-colors">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+      <span className="mt-3 text-sm font-medium text-text-secondary">항목 추가</span>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -55,8 +71,8 @@ export default function QualitativePage() {
         </div>
 
         {/* 탭 콘텐츠 */}
-        <div className="px-8 py-4">
-          <EmptyState />
+        <div className="px-8 py-6">
+          {activeTab === '대시보드' ? <EmptyState /> : <AddItemPlaceholder />}
         </div>
       </div>
     </div>
