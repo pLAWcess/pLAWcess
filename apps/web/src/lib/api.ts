@@ -33,13 +33,51 @@ function headers() {
   };
 }
 
-export async function getQuantitative(year: string): Promise<QuantitativeData> {
+function lsKey(year: string) {
+  return `quantitative:${TEMP_USER_ID}:${year}`;
+}
+
+function readLocalCache(year: string): QuantitativeData | null {
+  try {
+    const raw = localStorage.getItem(lsKey(year));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalCache(year: string, data: QuantitativeData) {
+  try {
+    localStorage.setItem(lsKey(year), JSON.stringify(data));
+  } catch {}
+}
+
+async function fetchQuantitative(year: string): Promise<QuantitativeData> {
   const res = await fetch(
     `${API_BASE}/api/mentee/quantitative?year=${encodeURIComponent(year)}`,
     { headers: headers() }
   );
   if (!res.ok) throw new Error("정량 데이터 조회 실패");
-  return res.json();
+  const data = await res.json();
+  writeLocalCache(year, data);
+  return data;
+}
+
+export function getCachedQuantitative(year: string): QuantitativeData | null {
+  return readLocalCache(year);
+}
+
+// TODO: 로그아웃 핸들러에서 호출 — clearQuantitativeCache(userId)
+export function clearQuantitativeCache(userId: string) {
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(`quantitative:${userId}:`))
+      .forEach((key) => localStorage.removeItem(key));
+  } catch {}
+}
+
+export async function getQuantitative(year: string): Promise<QuantitativeData> {
+  return fetchQuantitative(year);
 }
 
 export async function patchQuantitative(
@@ -51,5 +89,7 @@ export async function patchQuantitative(
     { method: "PATCH", headers: headers(), body: JSON.stringify(body) }
   );
   if (!res.ok) throw new Error("정량 데이터 저장 실패");
-  return res.json();
+  const data = await res.json();
+  writeLocalCache(year, data);
+  return data;
 }
