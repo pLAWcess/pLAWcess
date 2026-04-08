@@ -80,7 +80,7 @@ export default function LeetCard({ initialData, onSave, year, yearOptions, onYea
             <tr key={s.key} className="border-b border-border last:border-0">
               <td className="py-4 text-text-secondary">{s.label}</td>
               {fields.map((f) => (
-                <td key={f.key} className="py-4 font-semibold text-text-primary">
+                <td key={f.key} className="py-4 text-base font-semibold text-text-primary">
                   <div className="h-5">
                     {isEditing ? (
                       <input
