@@ -1,25 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SelectField from '@/components/ui/SelectField';
-import LeetCard, { type LeetData } from '@/components/quantitative/LeetCard';
-import LanguageCard, { type LanguageData } from '@/components/quantitative/LanguageCard';
-import GpaCard, { type GpaData } from '@/components/quantitative/GpaCard';
+import LeetCard from '@/components/quantitative/LeetCard';
+import LanguageCard from '@/components/quantitative/LanguageCard';
+import GpaCard from '@/components/quantitative/GpaCard';
+import { getQuantitative, patchQuantitative } from '@/lib/api';
+import type { QuantitativeData, LeetSection, GpaSection, LanguageSection } from '@/lib/api';
 
 const YEAR_OPTIONS = ['2024학년도', '2025학년도', '2026학년도'];
 
-// TODO: 백엔드 연결 시 API fetch로 교체
-const mockLeet: LeetData = {
-  언어이해: { raw: '35', standard: '130', percentile: '85' },
-  추리논증: { raw: '40', standard: '135', percentile: '90' },
+const EMPTY: QuantitativeData = {
+  leet: {
+    verbal: { raw: null, standard: null, percentile: null },
+    reasoning: { raw: null, standard: null, percentile: null },
+  },
+  gpa: { overall: null, major: null, converted: null },
+  language: { toeic: null, toefl: null, teps: null },
 };
-
-const mockLanguage: LanguageData = { toeic: '950', toefl: '-', teps: '-' };
-
-const mockGpa: GpaData = { overall: '3.85 / 4.5', major: '4.12 / 4.5', converted: '96.3' };
 
 export default function QuantitativePage() {
   const [year, setYear] = useState('2026학년도');
+  const [data, setData] = useState<QuantitativeData>(EMPTY);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getQuantitative(year)
+      .then(setData)
+      .catch(() => setError('데이터를 불러오지 못했습니다.'))
+      .finally(() => setLoading(false));
+  }, [year]);
+
+  async function handleSaveLeet(leet: LeetSection) {
+    const updated = await patchQuantitative(year, { leet });
+    setData(updated);
+  }
+
+  async function handleSaveGpa(gpa: GpaSection) {
+    const updated = await patchQuantitative(year, { gpa });
+    setData(updated);
+  }
+
+  async function handleSaveLanguage(language: LanguageSection) {
+    const updated = await patchQuantitative(year, { language });
+    setData(updated);
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
@@ -32,9 +60,22 @@ export default function QuantitativePage() {
           <SelectField value={year} options={YEAR_OPTIONS} onChange={setYear} />
         </div>
       </div>
-      <LeetCard initialData={mockLeet} />
-      <LanguageCard initialData={mockLanguage} />
-      <GpaCard initialData={mockGpa} />
+
+      {error && (
+        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-sm text-[#6B7280] py-10 text-center">불러오는 중...</div>
+      ) : (
+        <>
+          <LeetCard initialData={data.leet} onSave={handleSaveLeet} />
+          <LanguageCard initialData={data.language} onSave={handleSaveLanguage} />
+          <GpaCard initialData={data.gpa} onSave={handleSaveGpa} />
+        </>
+      )}
     </div>
   );
 }

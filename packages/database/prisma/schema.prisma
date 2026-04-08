@@ -138,9 +138,22 @@ model MenteeRecord {
   law_class_subjects    Json?             // ["민법", "형법"] — 표시용, 검색 안 함
 
   // 2단계: 정량
-  gpa                   Decimal?          @db.Decimal(3, 2)
-  leet_score            Decimal?          @db.Decimal(5, 2)
-  language_score        String?           @db.VarChar(50)
+  gpa                       Decimal?      @db.Decimal(3, 2)  // 전체 평점 (매칭 알고리즘용)
+  gpa_major                 Decimal?      @db.Decimal(3, 2)  // 전공 평점
+  gpa_converted             Decimal?      @db.Decimal(5, 2)  // 환산점수
+
+  leet_score                Decimal?      @db.Decimal(5, 2)  // 표준점수 합계 (매칭 알고리즘용)
+  leet_verbal_raw           Int?                             // 언어이해 원점수
+  leet_verbal_standard      Int?                             // 언어이해 표준점수
+  leet_verbal_percentile    Decimal?      @db.Decimal(5, 2)  // 언어이해 백분위
+  leet_reasoning_raw        Int?                             // 추리논증 원점수
+  leet_reasoning_standard   Int?                             // 추리논증 표준점수
+  leet_reasoning_percentile Decimal?      @db.Decimal(5, 2)  // 추리논증 백분위
+
+  toeic_score               Int?
+  toefl_score               Int?
+  teps_score                Int?
+
   target_school_ga      String?           @db.VarChar(100)  // 가군 희망 학교
   target_school_na      String?           @db.VarChar(100)  // 나군 희망 학교
   is_special_admission  Boolean           @default(false)

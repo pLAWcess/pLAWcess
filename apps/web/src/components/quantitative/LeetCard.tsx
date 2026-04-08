@@ -1,55 +1,90 @@
 'use client';
 
+import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
-import { useEditState } from '@/hooks/useEditState';
+import type { LeetSection } from '@/lib/api';
 
-export type LeetData = {
-  언어이해: { raw: string; standard: string; percentile: string };
-  추리논증: { raw: string; standard: string; percentile: string };
+export type LeetData = LeetSection;
+
+type Props = {
+  initialData: LeetData;
+  onSave?: (data: LeetData) => Promise<void>;
 };
 
-export default function LeetCard({ initialData }: { initialData: LeetData }) {
-  const { data, draft, setDraft, isEditing, startEdit, cancel, save } = useEditState<LeetData>(initialData);
+function toDisplay(val: number | null): string {
+  return val == null ? '-' : String(val);
+}
+
+function fromInput(val: string): number | null {
+  const n = parseFloat(val);
+  return isNaN(n) ? null : n;
+}
+
+export default function LeetCard({ initialData, onSave }: Props) {
+  const [data, setData] = useState<LeetData>(initialData);
+  const [draft, setDraft] = useState<LeetData>(initialData);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      if (onSave) await onSave(draft);
+      setData(draft);
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const subjects = [
+    { key: 'verbal', label: '언어이해' },
+    { key: 'reasoning', label: '추리논증' },
+  ] as const;
+
+  const fields = [
+    { key: 'raw', label: '원점수' },
+    { key: 'standard', label: '표준점수' },
+    { key: 'percentile', label: '백분위' },
+  ] as const;
 
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">LEET 성적</h2>
         {isEditing
-          ? <EditButtons onCancel={cancel} onSave={save} />
-          : <EditButton onClick={startEdit} />
+          ? <EditButtons onCancel={() => { setDraft(data); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
+          : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
         }
       </div>
       <table className="w-full text-sm table-fixed">
         <thead>
           <tr className="border-b border-border">
             <th className="pb-3 text-left text-text-secondary font-normal w-28"></th>
-            <th className="pb-3 text-left text-text-secondary font-normal">원점수</th>
-            <th className="pb-3 text-left text-text-secondary font-normal">표준점수</th>
-            <th className="pb-3 text-left text-text-secondary font-normal">백분위</th>
+            {fields.map((f) => (
+              <th key={f.key} className="pb-3 text-left text-text-secondary font-normal">{f.label}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {(['언어이해', '추리논증'] as const).map((subject) => (
-            <tr key={subject} className="border-b border-border last:border-0">
-              <td className="py-4 text-text-secondary">{subject}</td>
-              {(['raw', 'standard', 'percentile'] as const).map((field) => (
-                <td key={field} className="py-4 font-semibold text-text-primary">
-                  <div className="h-5">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={draft[subject][field]}
-                        onChange={(e) => setDraft((prev) => ({
+          {subjects.map((s) => (
+            <tr key={s.key} className="border-b border-border last:border-0">
+              <td className="py-4 text-text-secondary">{s.label}</td>
+              {fields.map((f) => (
+                <td key={f.key} className="py-4 font-semibold text-text-primary">
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={draft[s.key][f.key] ?? ''}
+                      onChange={(e: { target: { value: string } }) =>
+                        setDraft((prev: LeetData) => ({
                           ...prev,
-                          [subject]: { ...prev[subject], [field]: e.target.value },
-                        }))}
-                        className="w-36 border-b border-border-input bg-transparent font-semibold text-text-primary focus:outline-none focus:border-brand"
-                      />
-                    ) : (
-                      <span>{data[subject][field]}</span>
-                    )}
-                  </div>
+                          [s.key]: { ...prev[s.key], [f.key]: fromInput(e.target.value) },
+                        }))
+                      }
+                      className="w-24 border-b border-border-input bg-transparent text-base font-semibold text-text-primary py-1 focus:outline-none focus:border-brand"
+                    />
+                  ) : toDisplay(data[s.key][f.key])}
                 </td>
               ))}
             </tr>

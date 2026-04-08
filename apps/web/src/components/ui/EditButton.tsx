@@ -1,9 +1,18 @@
-export function EditButtons({ onCancel, onSave }: { onCancel: () => void; onSave: () => void }) {
+export function EditButtons({
+  onCancel,
+  onSave,
+  disabled = false,
+}: {
+  onCancel: () => void;
+  onSave: () => void;
+  disabled?: boolean;
+}) {
   return (
     <div className="flex gap-2">
       <button
         onClick={onCancel}
-        className="flex items-center gap-1.5 text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+        disabled={disabled}
+        className="flex items-center gap-1.5 text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" />
@@ -12,12 +21,13 @@ export function EditButtons({ onCancel, onSave }: { onCancel: () => void; onSave
       </button>
       <button
         onClick={onSave}
-        className="flex items-center gap-1.5 text-xs text-white bg-brand border border-transparent px-3 py-1.5 rounded-md hover:bg-brand-dark transition-colors"
+        disabled={disabled}
+        className="flex items-center gap-1.5 text-xs text-white bg-brand border border-transparent px-3 py-1.5 rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
         </svg>
-        저장
+        {disabled ? '저장 중...' : '저장'}
       </button>
     </div>
   );

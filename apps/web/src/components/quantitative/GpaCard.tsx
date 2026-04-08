@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
-import GradeTable from '@/components/quantitative/GradeTable';
-import { useEditState } from '@/hooks/useEditState';
+import type { GpaSection } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+export type GpaData = GpaSection;
 
-export type GpaData = { overall: string; major: string; converted: string };
+type Props = {
+  initialData: GpaData;
+  onSave?: (data: GpaData) => Promise<void>;
+};
 
 const fields: { label: string; key: keyof GpaData }[] = [
   { label: '전체 평점 평균', key: 'overall' },
@@ -15,38 +17,28 @@ const fields: { label: string; key: keyof GpaData }[] = [
   { label: '환산점수', key: 'converted' },
 ];
 
-export default function GpaCard({ initialData }: { initialData: GpaData }) {
-  const { data, draft, setDraft, isEditing, startEdit, cancel, save } = useEditState<GpaData>(initialData);
+function toDisplay(val: number | null): string {
+  return val == null ? '-' : String(val);
+}
+
+export default function GpaCard({ initialData, onSave }: Props) {
+  const [data, setData] = useState<GpaData>(initialData);
+  const [draft, setDraft] = useState<GpaData>(initialData);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [showKupid, setShowKupid] = useState(false);
   const [kupidId, setKupidId] = useState('');
   const [kupidPw, setKupidPw] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [gradeRows, setGradeRows] = useState<Record<string, string>[] | null>(null);
 
-  async function handleKupidLogin() {
-    setLoading(true);
-    setError('');
+  async function handleSave() {
+    setIsSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/grades`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: kupidId, pw: kupidPw }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? '오류가 발생했습니다.');
-        return;
-      }
-      setGradeRows(data.rows);
-      setShowKupid(false);
-      setKupidId('');
-      setKupidPw('');
-    } catch {
-      setError('서버에 연결할 수 없습니다.');
+      if (onSave) await onSave(draft);
+      setData(draft);
+      setIsEditing(false);
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   }
 
@@ -55,26 +47,29 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">GPA</h2>
         {isEditing
-          ? <EditButtons onCancel={cancel} onSave={save} />
-          : <EditButton onClick={startEdit} />
+          ? <EditButtons onCancel={() => { setDraft(data); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
+          : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
         }
       </div>
       <div className="grid grid-cols-3 gap-8">
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-text-secondary">{label}</span>
-            <div className="h-7 flex items-center">
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={draft[key]}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
-                />
-              ) : (
-                <span className="text-base font-semibold text-text-primary">{data[key]}</span>
-              )}
-            </div>
+            {isEditing ? (
+              <input
+                type="number"
+                value={draft[key] ?? ''}
+                onChange={(e: { target: { value: string } }) =>
+                  setDraft((prev: GpaData) => ({
+                    ...prev,
+                    [key]: e.target.value === '' ? null : Number(e.target.value),
+                  }))
+                }
+                className="border-b border-border-input bg-transparent text-base font-semibold text-text-primary py-1 focus:outline-none focus:border-brand"
+              />
+            ) : (
+              <span className="text-base font-semibold text-text-primary">{toDisplay(data[key])}</span>
+            )}
           </div>
         ))}
       </div>
@@ -110,7 +105,7 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
               <input
                 type="text"
                 value={kupidId}
-                onChange={(e) => setKupidId(e.target.value)}
+                onChange={(e: { target: { value: string } }) => setKupidId(e.target.value)}
                 placeholder="ID를 입력하세요"
                 className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
               />
@@ -120,7 +115,7 @@ export default function GpaCard({ initialData }: { initialData: GpaData }) {
               <input
                 type="password"
                 value={kupidPw}
-                onChange={(e) => setKupidPw(e.target.value)}
+                onChange={(e: { target: { value: string } }) => setKupidPw(e.target.value)}
                 placeholder="비밀번호를 입력하세요"
                 className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
               />
