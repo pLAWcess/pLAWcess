@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import SelectField from '@/components/ui/SelectField';
 import LeetCard from '@/components/quantitative/LeetCard';
 import LanguageCard from '@/components/quantitative/LanguageCard';
 import GpaCard from '@/components/quantitative/GpaCard';
@@ -51,14 +50,9 @@ export default function QuantitativePage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">정량 데이터</h1>
-          <p className="text-sm text-text-secondary mt-1">시험 성적과 학업 정보를 입력해주세요</p>
-        </div>
-        <div className="w-36">
-          <SelectField value={year} options={YEAR_OPTIONS} onChange={setYear} />
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">정량 데이터</h1>
+        <p className="text-sm text-text-secondary mt-1">시험 성적과 학업 정보를 입력해주세요</p>
       </div>
 
       {error && (
@@ -71,7 +65,7 @@ export default function QuantitativePage() {
         <div className="text-sm text-[#6B7280] py-10 text-center">불러오는 중...</div>
       ) : (
         <>
-          <LeetCard initialData={data.leet} onSave={handleSaveLeet} />
+          <LeetCard initialData={data.leet} onSave={handleSaveLeet} year={year} yearOptions={YEAR_OPTIONS} onYearChange={setYear} />
           <LanguageCard initialData={data.language} onSave={handleSaveLanguage} />
           <GpaCard initialData={data.gpa} onSave={handleSaveGpa} />
         </>

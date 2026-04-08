@@ -46,7 +46,7 @@ export default function SelectField({ value, options, onChange, placeholder }: P
       </button>
 
       {open && (
-        <ul className="absolute z-10 left-0 mt-1 w-full bg-white border border-border rounded-lg shadow-md py-1 text-sm text-text-primary ">
+        <ul className="absolute z-10 left-0 mt-1 min-w-full w-max bg-white border border-border rounded-lg shadow-md py-1 text-sm text-text-primary">
           {options.map((opt) => (
             <li key={opt}>
               <button
