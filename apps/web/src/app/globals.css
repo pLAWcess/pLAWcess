@@ -3,14 +3,6 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-
-  /* pLAWcess brand colors */
-  --color-primary: #3B82F6;
-  --color-page-bg: #F3F4F6;
-  --color-card-bg: #FFFFFF;
-  --color-border: #E5E7EB;
-  --color-text-primary: #111827;
-  --color-text-secondary: #6B7280;
 }
 
 @theme inline {
@@ -18,14 +10,29 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Brand */
+  --color-brand: #3B82F6;
+  --color-brand-dark: #2563EB;
+  --color-brand-light: #EFF6FF;
+  --color-brand-muted: #DBEAFE;
+
+  /* Text */
+  --color-text-primary: #111827;
+  --color-text-body: #374151;
+  --color-text-secondary: #6B7280;
+  --color-text-placeholder: #9CA3AF;
+
+  /* Surfaces */
+  --color-page-bg: #F3F4F6;
+  --color-table-bg: #F9FAFB;
+  --color-card-bg: #FFFFFF;
+
+  /* Borders */
+  --color-border: #E5E7EB;
+  --color-border-input: #D1D5DB;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
 
 body {
   background: var(--background);

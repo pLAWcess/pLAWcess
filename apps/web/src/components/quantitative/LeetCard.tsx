@@ -49,29 +49,29 @@ export default function LeetCard({ initialData, onSave }: Props) {
   ] as const;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-base font-semibold text-[#111827]">LEET 성적</h2>
+        <h2 className="text-base font-semibold text-text-primary">LEET 성적</h2>
         {isEditing
           ? <EditButtons onCancel={() => { setDraft(data); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
           : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
         }
       </div>
-      <table className="w-full text-sm">
+      <table className="w-full text-sm table-fixed">
         <thead>
-          <tr className="border-b border-[#E5E7EB]">
-            <th className="pb-3 text-left text-[#6B7280] font-normal w-28"></th>
+          <tr className="border-b border-border">
+            <th className="pb-3 text-left text-text-secondary font-normal w-28"></th>
             {fields.map((f) => (
-              <th key={f.key} className="pb-3 text-left text-[#6B7280] font-normal">{f.label}</th>
+              <th key={f.key} className="pb-3 text-left text-text-secondary font-normal">{f.label}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {subjects.map((s) => (
-            <tr key={s.key} className="border-b border-[#E5E7EB] last:border-0">
-              <td className="py-4 text-[#6B7280]">{s.label}</td>
+            <tr key={s.key} className="border-b border-border last:border-0">
+              <td className="py-4 text-text-secondary">{s.label}</td>
               {fields.map((f) => (
-                <td key={f.key} className="py-4 font-semibold text-[#111827]">
+                <td key={f.key} className="py-4 font-semibold text-text-primary">
                   {isEditing ? (
                     <input
                       type="number"
@@ -82,7 +82,7 @@ export default function LeetCard({ initialData, onSave }: Props) {
                           [s.key]: { ...prev[s.key], [f.key]: fromInput(e.target.value) },
                         }))
                       }
-                      className="w-24 border-b border-[#D1D5DB] bg-transparent text-base font-semibold text-[#111827] py-1 focus:outline-none focus:border-[#3B82F6]"
+                      className="w-24 border-b border-border-input bg-transparent text-base font-semibold text-text-primary py-1 focus:outline-none focus:border-brand"
                     />
                   ) : toDisplay(data[s.key][f.key])}
                 </td>

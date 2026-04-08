@@ -7,20 +7,34 @@
 ```
 pLAWcess/
 ├── apps/
-│   ├── web/              # 프론트엔드 (Next.js 15, App Router)
-│   └── api/              # 백엔드 API (Next.js 15, Route Handlers)
+│   ├── web/                          # 프론트엔드 (Next.js 16, App Router)
+│   │   └── src/
+│   │       ├── app/                  # 라우트 (mentee/, admin/)
+│   │       ├── components/
+│   │       │   ├── layout/           # DashboardShell, Navbar, Sidebar, Footer
+│   │       │   ├── quantitative/     # GpaCard, LeetCard, LanguageCard, GradeTable
+│   │       │   └── ui/              # EditButton, SelectField
+│   │       ├── constants/            # 타입/상수 정의
+│   │       └── hooks/                # 커스텀 훅 (useEditState)
+│   └── api/                          # 백엔드 API (Next.js 16, Route Handlers)
+│       └── src/app/api/              # /health, /grades
 ├── packages/
-│   └── database/         # Prisma Client 공유 패키지 (PostgreSQL)
-├── docs/                 # 기획 문서, IA, API 스펙
-└── tools/                # 유틸리티 스크립트
+│   └── database/                     # Prisma Client 공유 패키지 (PostgreSQL)
+│       └── prisma/schema.prisma
+├── docs/
+│   ├── architecture/                 # IA, 라우팅 구조
+│   ├── conventions/                  # 커밋/Git 워크플로우 컨벤션
+│   ├── api/                          # API 스펙
+│   └── db/                           # DB 문서
+└── tools/                            # 유틸리티 스크립트
 ```
 
 ## 기술 스택
 
 | 영역 | 스택 |
 |------|------|
-| 프론트엔드 | Next.js 15, React 19, TypeScript, Tailwind CSS |
-| 백엔드 | Next.js 15 API Routes, TypeScript |
+| 프론트엔드 | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| 백엔드 | Next.js 16 Route Handlers, TypeScript |
 | DB | PostgreSQL (Supabase), Prisma ORM |
 | 패키지 매니저 | pnpm workspace (모노레포) |
 
