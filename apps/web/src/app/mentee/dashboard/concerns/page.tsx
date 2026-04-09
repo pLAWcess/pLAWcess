@@ -23,6 +23,13 @@ export default function ConcernsPage() {
         placeholder="예) 비슷한 스펙으로 합격한 경험이 있는 멘토를 희망합니다.&#10;자소서 방향성에 대한 조언을 받고 싶습니다."
         initialValue=""
       />
+
+      <ConcernCard
+        title="특이사항"
+        description="본인만이 가지고 있는 특이사항이나, 멘토에게 꼭 전달하고 싶은 내용을 작성해주세요"
+        placeholder="예) 컴퓨터학과의 장점을 살리고싶습니다.&#10;법학학점이 낮습니다."
+        initialValue=""
+      />
     </div>
   );
 }
