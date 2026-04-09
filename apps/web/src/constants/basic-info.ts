@@ -62,7 +62,7 @@ export const fieldRows: { label: string; key: keyof Omit<PersonalInfo, 'name' | 
     { label: '병역여부', key: 'militaryStatus', type: 'select', options: ['군필', '미필', '해당없음'] },
   ],
   [
-    { label: '학적상태', key: 'academicStatus', type: 'select', options: ['재학', '휴학', '졸업'] },
+    { label: '학적상태', key: 'academicStatus', type: 'select', options: ['재학', '휴학', '수료', '졸업 유예', '졸업'] },
     { label: '졸업년도', key: 'graduationYear', type: 'text' },
   ],
 ];
