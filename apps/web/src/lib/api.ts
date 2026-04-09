@@ -82,38 +82,6 @@ export async function getQuantitative(year: string): Promise<QuantitativeData> {
   return fetchQuantitative(year);
 }
 
-export type GradeRow = {
-  년도: string;
-  학기: string;
-  학수번호: string;
-  과목명: string;
-  이수구분: string;
-  교양영역: string;
-  과목유형: string;
-  학점: string;
-  점수: string;
-  등급: string;
-  평점: string;
-  재수강년도: string;
-  재수강학기: string;
-  재수강과목: string;
-  삭제구분: string;
-};
-
-export async function fetchGradesFromKupid(id: string, pw: string): Promise<GradeRow[]> {
-  const res = await fetch(`${API_BASE}/api/grades`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, pw }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? "성적 불러오기 실패");
-  }
-  const data = await res.json();
-  return data.rows as GradeRow[];
-}
-
 export async function patchQuantitative(
   year: string,
   body: Partial<QuantitativeData>
