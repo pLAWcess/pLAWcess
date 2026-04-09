@@ -24,34 +24,60 @@ export async function POST(req: Request) {
   const outputFile = join(tmpdir(), `grades_${Date.now()}.csv`);
   const scriptPath = join(process.cwd(), '../../tools/scrape_grades.py');
 
-  const rows = await new Promise<Record<string, string>[] | null>((resolve) => {
+  type ScraperResult = { rows: Record<string, string>[] } | { error: string; status: number };
+
+  const result = await new Promise<ScraperResult>((resolve) => {
     const proc = spawn('python3', [scriptPath, outputFile, '--id', id, '--pw', pw]);
 
     let stderr = '';
+    let stdout = '';
     proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
 
     proc.on('close', (code) => {
-      if (code !== 0 || !existsSync(outputFile)) {
-        console.error('scrape_grades stderr:', stderr);
-        resolve(null);
+      const combined = stdout + stderr;
+      console.error('scrape_grades output:', combined);
+
+      if (!existsSync(outputFile)) {
+        // 원인 판별
+        if (combined.includes('포털 로그인 실패') || combined.includes('LoginDeny')) {
+          resolve({ error: 'ID 또는 비밀번호가 올바르지 않습니다.', status: 401 });
+        } else if (combined.includes('python3') && code === null) {
+          resolve({ error: 'python3가 설치되어 있지 않습니다.', status: 500 });
+        } else if (combined.includes('playwright') || combined.includes('ModuleNotFoundError')) {
+          resolve({ error: '서버에 필요한 라이브러리가 설치되어 있지 않습니다. (playwright / beautifulsoup4)', status: 500 });
+        } else if (combined.includes('성적 테이블을 찾지 못')) {
+          resolve({ error: '성적 테이블을 찾지 못했습니다. 잠시 후 다시 시도해주세요.', status: 502 });
+        } else if (code !== 0) {
+          resolve({ error: `스크래핑 실패 (종료코드 ${code}). 서버 로그를 확인하세요.`, status: 500 });
+        } else {
+          resolve({ error: '성적을 불러올 수 없습니다. 잠시 후 다시 시도해주세요.', status: 502 });
+        }
         return;
       }
+
       try {
         const csv = readFileSync(outputFile, 'utf-8');
         unlinkSync(outputFile);
-        resolve(parseCSV(csv));
+        resolve({ rows: parseCSV(csv) });
       } catch {
-        resolve(null);
+        resolve({ error: 'CSV 파일 읽기 실패', status: 500 });
+      }
+    });
+
+    proc.on('error', (err) => {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        resolve({ error: 'python3를 찾을 수 없습니다. 서버에 Python 3이 설치되어 있는지 확인하세요.', status: 500 });
+      } else {
+        resolve({ error: `프로세스 실행 오류: ${err.message}`, status: 500 });
       }
     });
   });
 
-  if (!rows) {
-    return NextResponse.json(
-      { error: '로그인에 실패했거나 성적을 불러올 수 없습니다.' },
-      { status: 401, headers: CORS },
-    );
+  if ('error' in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status, headers: CORS });
   }
+  const { rows } = result;
 
   return NextResponse.json({ rows }, { headers: CORS });
 }
