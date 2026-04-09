@@ -51,7 +51,7 @@ export const TYPE_OPTIONS = ['일반전형', '특별전형'];
 export const fieldRows: { label: string; key: keyof Omit<PersonalInfo, 'name' | 'affiliation'>; type: 'text' | 'select'; options?: string[] }[][] = [
   [
     { label: '생년월일', key: 'birthDate', type: 'text' },
-    { label: '성별', key: 'gender', type: 'select', options: ['남성', '여성'] },
+    { label: '성별', key: 'gender', type: 'select', options: ['남성', '여성', '기타'] },
   ],
   [
     { label: '제1전공', key: 'major1', type: 'text' },
