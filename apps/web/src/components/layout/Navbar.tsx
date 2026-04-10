@@ -15,7 +15,7 @@ export default function Navbar() {
   const pathname = usePathname();
   return (
     <header className="h-16 bg-white border-b border-border shrink-0">
-      <div className="h-full max-w-6xl mx-auto flex items-center px-6 gap-8">
+      <div className="h-full max-w-4xl mx-auto flex items-center px-6 gap-8">
         <Link href="/mentee/dashboard/basic-info" className="text-brand font-bold text-lg tracking-tight shrink-0">
           pLAWcess
         </Link>
