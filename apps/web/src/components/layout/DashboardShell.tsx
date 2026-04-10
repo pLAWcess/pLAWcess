@@ -2,7 +2,6 @@
 
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
-import Footer from '@/components/layout/Footer';
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
@@ -10,9 +9,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-auto bg-page-bg flex flex-col">
-          <div className="flex-1 px-10 py-8">{children}</div>
-          <Footer />
+        <main className="flex-1 overflow-auto bg-page-bg">
+          <div className="px-10 py-8">{children}</div>
         </main>
       </div>
     </div>
