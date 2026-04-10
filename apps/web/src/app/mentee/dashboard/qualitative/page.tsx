@@ -208,7 +208,7 @@ export default function QualitativePage() {
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6">
       {/* 페이지 타이틀 */}
       <div>
         <h1 className="text-2xl font-bold text-text-primary">정성 데이터</h1>

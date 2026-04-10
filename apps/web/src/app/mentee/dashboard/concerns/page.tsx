@@ -4,7 +4,7 @@ import ConcernCard from '@/components/concerns/ConcernCard';
 
 export default function ConcernsPage() {
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">기타 고민</h1>
         <p className="text-sm text-text-secondary mt-1">멘토에게 전달할 고민과 질문을 작성해주세요</p>
