@@ -4,13 +4,37 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
 
+// TODO: API 연결 후 실제 역할 기반 리다이렉트
+// const ROLE_REDIRECT: Record<string, string> = {
+//   mentee: '/mentee/dashboard',
+//   mentor: '/mentor/dashboard',
+//   admin: '/admin/dashboard',
+// };
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: 로그인 로직 연결
+    setError('');
+    setLoading(true);
+    // TODO: POST /api/auth/login 연결
+    // const res = await fetch('http://localhost:3001/api/auth/login', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   credentials: 'include',
+    //   body: JSON.stringify({ email, password }),
+    // });
+    // const data = await res.json();
+    // if (!res.ok) { setError(data.error); setLoading(false); return; }
+    // router.push(ROLE_REDIRECT[data.user.role] ?? '/');
+    setTimeout(() => {
+      setError('아직 로그인 기능이 준비 중입니다.');
+      setLoading(false);
+    }, 500);
   }
 
   return (
@@ -61,11 +85,16 @@ export default function LoginPage() {
                 />
               </div>
 
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+
               <button
                 type="submit"
-                className="w-full py-2.5 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors mt-1"
+                disabled={loading}
+                className="w-full py-2.5 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors mt-1 disabled:opacity-50"
               >
-                로그인
+                {loading ? '로그인 중...' : '로그인'}
               </button>
             </form>
           </div>

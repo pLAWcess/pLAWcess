@@ -8,6 +8,18 @@ export default function LandingNavbar() {
       </Link>
       <div className="flex items-center gap-3">
         <Link
+          href="/mentor/dashboard"
+          className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+        >
+          멘토
+        </Link>
+        <Link
+          href="/admin/dashboard"
+          className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+        >
+          어드민
+        </Link>
+        <Link
           href="/login"
           className="px-4 py-2 text-sm font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
         >
