@@ -9,6 +9,7 @@ const menteeNavItems = [
   { label: '정성 데이터', href: '/mentee/dashboard/qualitative' },
   { label: '기타 고민', href: '/mentee/dashboard/concerns' },
   { label: '프로세스 신청', href: '/mentee/applications' },
+  { label: '합격 아카이브', href: '/mentee/archive' },
 ];
 
 const mentorNavItems = [
