@@ -6,12 +6,20 @@ export default function LandingNavbar() {
       <Link href="/" className="text-brand font-bold text-lg tracking-tight">
         pLAWcess
       </Link>
-      <Link
-        href="/mentee/dashboard/basic-info"
-        className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
-      >
-        시작하기
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/login"
+          className="px-4 py-2 text-sm font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
+        >
+          로그인
+        </Link>
+        <Link
+          href="/mentee/dashboard/basic-info"
+          className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
+        >
+          시작하기
+        </Link>
+      </div>
     </header>
   );
 }
