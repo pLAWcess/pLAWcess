@@ -48,22 +48,6 @@ export default function Hero() {
             서비스 더 알아보기
           </Link>
         </div>
-
-        {/* Social Proof / Features (Optional but adds credibility) */}
-        <div className="mt-20 grid grid-cols-2 gap-8 border-t border-border pt-12 sm:grid-cols-3 lg:grid-cols-3">
-          <div>
-            <div className="text-3xl font-bold text-text-primary">98%</div>
-            <p className="mt-1 text-sm text-text-secondary font-medium">멘티 만족도</p>
-          </div>
-          <div>
-            <div className="text-3xl font-bold text-text-primary">1:1</div>
-            <p className="mt-1 text-sm text-text-secondary font-medium">밀착 케어 시스템</p>
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <div className="text-3xl font-bold text-text-primary">24/7</div>
-            <p className="mt-1 text-sm text-text-secondary font-medium">멘토 상시 소통</p>
-          </div>
-        </div>
       </div>
     </section>
   );
