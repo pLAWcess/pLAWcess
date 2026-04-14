@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function LandingNavbar() {
   return (
-    <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
+    <header className="sticky top-0 z-50 h-16 bg-white/60 backdrop-blur-lg border-b border-border/40 flex items-center px-6 justify-between shrink-0">
       <Link href="/" className="text-brand font-bold text-lg tracking-tight">
         pLAWcess
       </Link>
