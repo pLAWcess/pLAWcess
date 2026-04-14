@@ -20,3 +20,6 @@ out/
 
 # superpowers (local design/plan docs)
 docs/superpowers/
+
+# git worktrees
+.worktrees/
