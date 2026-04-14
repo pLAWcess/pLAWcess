@@ -11,26 +11,26 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Brand */
-  --color-brand: #3B82F6;
-  --color-brand-dark: #2563EB;
-  --color-brand-light: #EFF6FF;
-  --color-brand-muted: #DBEAFE;
+  /* Brand (Stripe-inspired Indigo) */
+  --color-brand: #4F46E5;
+  --color-brand-dark: #4338CA;
+  --color-brand-light: #EEF2FF;
+  --color-brand-muted: #E0E7FF;
 
-  /* Text */
-  --color-text-primary: #111827;
-  --color-text-body: #374151;
-  --color-text-secondary: #6B7280;
-  --color-text-placeholder: #9CA3AF;
+  /* Text (Slate) */
+  --color-text-primary: #0F172A;
+  --color-text-body: #334155;
+  --color-text-secondary: #64748B;
+  --color-text-placeholder: #94A3B8;
 
   /* Surfaces */
-  --color-page-bg: #F3F4F6;
-  --color-table-bg: #F9FAFB;
+  --color-page-bg: #F8FAFC;
+  --color-table-bg: #F1F5F9;
   --color-card-bg: #FFFFFF;
 
   /* Borders */
-  --color-border: #E5E7EB;
-  --color-border-input: #D1D5DB;
+  --color-border: #E2E8F0;
+  --color-border-input: #CBD5E1;
 }
 
 
