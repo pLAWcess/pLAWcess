@@ -35,7 +35,14 @@ export default function LandingNavbar() {
           </Link>
         ))}
         {/* {process.env.NODE_ENV === 'development' && ( */}
+        
           <>
+            <Link
+              href="/mentee/dashboard"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              멘티
+            </Link>
             <Link
               href="/mentor/dashboard"
               className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
