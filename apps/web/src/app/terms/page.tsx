@@ -26,7 +26,7 @@ export default function TermsPage() {
                 제1조 (목적)
               </h2>
               <p className="mt-4 text-base leading-relaxed text-text-body">
-                이 약관은 pLAWcess(이하 "서비스")가 제공하는 로스쿨 입시 멘토링 플랫폼 서비스의 이용 조건 및 절차, 이용자와 서비스 간의 권리·의무 관계를 규정함을 목적으로 합니다.
+                이 약관은 pLAWcess(이하 &ldquo;서비스&rdquo;)가 제공하는 로스쿨 입시 멘토링 플랫폼 서비스의 이용 조건 및 절차, 이용자와 서비스 간의 권리·의무 관계를 규정함을 목적으로 합니다.
               </p>
             </section>
 
