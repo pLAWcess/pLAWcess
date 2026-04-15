@@ -20,8 +20,8 @@ export default function Hero() {
 
         {/* Subheadline */}
         <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-text-secondary leading-relaxed sm:text-xl">
-          검증된 멘토진과 함께하는 맞춤형 입시 프로세스, <br className="hidden sm:block" />
-          pLAWcess와 함께 당신의 꿈을 현실로 만드세요.
+          자유전공학부를 위한 프로세스, <br className="hidden sm:block" />
+          기록으로 꿈을 이루어보세요.
         </p>
 
         {/* Actions */}
@@ -30,7 +30,7 @@ export default function Hero() {
             href="/mentee/dashboard/basic-info"
             className="group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-brand px-8 text-lg font-bold text-white shadow-xl shadow-brand/20 transition-all hover:bg-brand-dark hover:shadow-brand/30 hover:-translate-y-1 sm:w-auto"
           >
-            <span>무료 멘토링 신청하기</span>
+            <span>멘티 페이지 접근하기</span>
             <svg 
               className="h-5 w-5 transition-transform group-hover:translate-x-1" 
               fill="none" 
