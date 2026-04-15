@@ -33,9 +33,9 @@ export default function FAQ() {
           <h2 className="text-base font-bold uppercase tracking-wider text-brand">
             FAQ
           </h2>
-          <p className="mt-2 text-3xl font-extrabold tracking-tight text-text-primary sm:text-4xl">
+          <h1 className="mt-2 text-4xl font-extrabold text-text-primary tracking-tight leading-tight sm:text-5xl">
             자주 묻는 질문
-          </p>
+          </h1>
         </div>
 
         <dl className="mt-16 divide-y divide-border">
