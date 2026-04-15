@@ -10,8 +10,8 @@ export default function AboutHero() {
       </div>
 
       <div className="mx-auto max-w-5xl px-6 text-center">
-        <p className="text-base font-bold uppercase tracking-wider text-brand">
-          About pLAWcess
+        <p className="text-base font-bold tracking-wider text-brand">
+          ABOUT pLAWcess
         </p>
         <h1 className="mt-2 text-4xl font-extrabold text-text-primary tracking-tight leading-tight sm:text-5xl">
           로스쿨 입시, 혼자 준비하지 않아도 됩니다
