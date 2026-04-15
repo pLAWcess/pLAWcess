@@ -22,20 +22,22 @@ export default function LandingNavbar() {
         >
           FAQ
         </Link>
-        {/* DEV ONLY - remove before deploy */}
-        <Link
-          href="/mentor/dashboard"
-          className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-        >
-          멘토
-        </Link>
-        <Link
-          href="/admin/dashboard"
-          className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-        >
-          어드민
-        </Link>
-        {/* /DEV ONLY */}
+        {process.env.NODE_ENV === 'development' && (
+          <>
+            <Link
+              href="/mentor/dashboard"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              멘토
+            </Link>
+            <Link
+              href="/admin/dashboard"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              어드민
+            </Link>
+          </>
+        )}
       </nav>
 
       {/* Right: Action buttons */}
