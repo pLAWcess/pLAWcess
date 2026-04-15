@@ -1,5 +1,11 @@
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import Footer from '@/components/layout/Footer';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'pLAWcess | 이용약관',
+  description: 'pLAWcess 이용약관',
+};
 
 export default function TermsPage() {
   return (
