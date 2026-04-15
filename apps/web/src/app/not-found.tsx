@@ -12,10 +12,10 @@ export default function NotFound() {
           <h1 className="mt-4 text-xl font-bold text-text-primary">페이지를 찾을 수 없어요</h1>
           <p className="mt-2 text-sm text-text-secondary">존재하지 않는 페이지를 찾으셨어요!</p>
           <Link
-            href="/mentee/dashboard"
+            href="/"
             className="inline-block mt-6 px-5 py-2.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
           >
-            대시보드로 돌아가기
+            메인페이지로 돌아가기
           </Link>
         </div>
       </main>
