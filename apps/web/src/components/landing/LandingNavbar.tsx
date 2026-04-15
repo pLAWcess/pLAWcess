@@ -34,7 +34,7 @@ export default function LandingNavbar() {
             {label}
           </Link>
         ))}
-        {process.env.NODE_ENV === 'development' && (
+        {/* {process.env.NODE_ENV === 'development' && ( */}
           <>
             <Link
               href="/mentor/dashboard"
@@ -49,7 +49,7 @@ export default function LandingNavbar() {
               어드민
             </Link>
           </>
-        )}
+        {/* )} */}
       </nav>
 
       {/* Right: Action buttons */}
