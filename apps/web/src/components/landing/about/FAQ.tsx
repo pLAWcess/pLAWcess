@@ -38,7 +38,7 @@ export default function FAQ() {
           </p>
         </div>
 
-        <div className="mt-16 divide-y divide-border">
+        <dl className="mt-16 divide-y divide-border">
           {FAQ_ITEMS.map((item) => (
             <div key={item.question} className="py-8">
               <dt className="text-lg font-semibold text-text-primary">
@@ -49,7 +49,7 @@ export default function FAQ() {
               </dd>
             </div>
           ))}
-        </div>
+        </dl>
       </div>
     </section>
   );
