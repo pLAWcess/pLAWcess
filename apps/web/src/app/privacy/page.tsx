@@ -1,5 +1,11 @@
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import Footer from '@/components/layout/Footer';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'pLAWcess | 개인정보처리방침',
+  description: 'pLAWcess 개인정보처리방침',
+};
 
 export default function PrivacyPage() {
   return (
