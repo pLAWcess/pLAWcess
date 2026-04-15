@@ -1,6 +1,17 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+const NAV_ITEMS = [
+  { href: '/about', label: '서비스 소개' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/announcements', label: '공지사항' },
+];
 
 export default function LandingNavbar() {
+  const pathname = usePathname();
+
   return (
     <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
       {/* Left: Logo */}
@@ -9,19 +20,20 @@ export default function LandingNavbar() {
       </Link>
 
       {/* Center: Nav items */}
-      <nav className="flex items-center gap-6">
-        <Link
-          href="/about"
-          className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-        >
-          서비스 소개
-        </Link>
-        <Link
-          href="/about#faq"
-          className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-        >
-          FAQ
-        </Link>
+      <nav className="flex items-center gap-6" aria-label="주요 메뉴">
+        {NAV_ITEMS.map(({ href, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`text-sm font-medium transition-colors ${
+              pathname === href
+                ? 'text-text-primary'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
         {process.env.NODE_ENV === 'development' && (
           <>
             <Link

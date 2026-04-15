@@ -3,7 +3,6 @@ import Footer from '@/components/layout/Footer';
 import AboutHero from '@/components/landing/about/AboutHero';
 import ServiceIntro from '@/components/landing/about/ServiceIntro';
 import TargetAudience from '@/components/landing/about/TargetAudience';
-import FAQ from '@/components/landing/about/FAQ';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -19,7 +18,6 @@ export default function AboutPage() {
         <AboutHero />
         <ServiceIntro />
         <TargetAudience />
-        <FAQ />
       </main>
       <Footer />
     </div>
