@@ -8,7 +8,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-pretendard);
   --font-mono: var(--font-geist-mono);
 
   /* Brand */
@@ -37,5 +37,5 @@
 body {
   background: #ffffff;
   color: #171717;
-  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-pretendard), 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
 }
