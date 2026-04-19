@@ -1,6 +1,23 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { clearAllCache } from '@/lib/api';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export default function Navbar() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    clearAllCache();
+    router.push('/');
+  }
+
   return (
     <header className="h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
       <Link href="/" className="text-brand font-bold text-lg tracking-tight">
@@ -14,6 +31,12 @@ export default function Navbar() {
           </svg>
         </button>
         <span className="text-text-primary font-medium">홍길동님 환영합니다</span>
+        <button
+          onClick={handleLogout}
+          className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+        >
+          로그아웃
+        </button>
       </div>
     </header>
   );

@@ -30,7 +30,7 @@ export default function Hero() {
             href="/mentee/dashboard/basic-info"
             className="group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-brand px-8 text-lg font-bold text-white shadow-xl shadow-brand/20 transition-all hover:bg-brand-dark hover:shadow-brand/30 hover:-translate-y-1 sm:w-auto"
           >
-            <span>멘티 페이지 접근하기</span>
+            <span>시작하기</span>
             <svg 
               className="h-5 w-5 transition-transform group-hover:translate-x-1" 
               fill="none" 

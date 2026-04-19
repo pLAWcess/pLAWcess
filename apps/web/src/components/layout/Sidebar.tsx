@@ -33,6 +33,7 @@ export default function Sidebar() {
     : pathname.startsWith('/admin')
     ? adminNavItems
     : menteeNavItems;
+
   return (
     <aside className="w-44 bg-white border-r border-border flex flex-col py-6 shrink-0">
       <nav className="flex flex-col gap-1 px-2">
