@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
+import { getTokenFromCookie } from "@/lib/auth";
 
-// TODO: 인증 구현 후 세션에서 userId 추출하도록 교체
 function getUserId(req: NextRequest): string | null {
-  return req.headers.get("x-user-id");
+  return getTokenFromCookie(req)?.user_id ?? null;
 }
 
 function getProcessYear(req: NextRequest): number {
@@ -21,7 +21,7 @@ function getProcessYear(req: NextRequest): number {
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) {
-    return NextResponse.json({ error: "x-user-id 헤더가 필요합니다." }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const processYear = getProcessYear(req);
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) {
-    return NextResponse.json({ error: "x-user-id 헤더가 필요합니다." }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const processYear = getProcessYear(req);

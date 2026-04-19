@@ -1,17 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
+import { saveUser } from '@/lib/api';
 
-// TODO: API 연결 후 실제 역할 기반 리다이렉트
-// const ROLE_REDIRECT: Record<string, string> = {
-//   mentee: '/mentee/dashboard',
-//   mentor: '/mentor/dashboard',
-//   admin: '/admin/dashboard',
-// };
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+const ROLE_REDIRECT: Record<string, string> = {
+  mentee: '/mentee/dashboard',
+  mentor: '/mentor/dashboard',
+  admin: '/admin/dashboard',
+};
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,20 +25,32 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    // TODO: POST /api/auth/login 연결
-    // const res = await fetch('http://localhost:3001/api/auth/login', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   credentials: 'include',
-    //   body: JSON.stringify({ email, password }),
-    // });
-    // const data = await res.json();
-    // if (!res.ok) { setError(data.error); setLoading(false); return; }
-    // router.push(ROLE_REDIRECT[data.user.role] ?? '/');
-    setTimeout(() => {
-      setError('아직 로그인 기능이 준비 중입니다.');
+
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
       setLoading(false);
-    }, 500);
+      return;
+    }
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error ?? '로그인에 실패했습니다.');
+      return;
+    }
+
+    saveUser(data.user);
+    const role: string = data.user.current_role;
+    router.push(ROLE_REDIRECT[role] ?? '/');
   }
 
   return (
@@ -46,13 +62,11 @@ export default function LoginPage() {
       </header>
       <main className="flex-1 bg-page-bg flex justify-center items-start px-4 pt-20">
         <div className="w-full max-w-sm py-16">
-          {/* 타이틀 */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-text-primary">로그인</h1>
             <p className="mt-2 text-sm text-text-secondary">로그인하여 계속하세요</p>
           </div>
 
-          {/* 폼 카드 */}
           <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
@@ -96,6 +110,13 @@ export default function LoginPage() {
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
+
+              <p className="text-center text-sm text-text-secondary">
+                계정이 없으신가요?{' '}
+                <Link href="/signup" className="text-brand hover:underline font-medium">
+                  회원가입
+                </Link>
+              </p>
             </form>
           </div>
         </div>

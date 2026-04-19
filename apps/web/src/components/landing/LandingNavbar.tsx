@@ -1,7 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { getUser, clearAllCache } from '@/lib/api';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
 
 const NAV_ITEMS = [
   { href: '/about', label: '서비스 소개' },
@@ -11,6 +16,27 @@ const NAV_ITEMS = [
 
 export default function LandingNavbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [, setRole] = useState<string>('none');
+
+  useEffect(() => {
+    const user = getUser();
+    if (user) {
+      setLoggedIn(true);
+      setRole(user.current_role);
+    }
+  }, []);
+
+  async function handleLogout() {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    clearAllCache();
+    setLoggedIn(false);
+    router.push('/');
+  }
 
   return (
     <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
@@ -35,7 +61,7 @@ export default function LandingNavbar() {
           </Link>
         ))}
         {/* {process.env.NODE_ENV === 'development' && ( */}
-        
+
           <>
             <Link
               href="/mentee/dashboard"
@@ -61,18 +87,29 @@ export default function LandingNavbar() {
 
       {/* Right: Action buttons */}
       <div className="flex items-center gap-3">
-        <Link
-          href="/login"
-          className="px-4 py-2 text-sm font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
-        >
-          로그인
-        </Link>
-        <Link
-          href="/mentee/dashboard/basic-info"
-          className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
-        >
-          시작하기
-        </Link>
+        {loggedIn ? (
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
+          >
+            로그아웃
+          </button>
+        ) : (
+          <>
+            <Link
+              href="/login"
+              className="px-4 py-2 text-sm font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
+            >
+              로그인
+            </Link>
+            <Link
+              href="/signup"
+              className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
+            >
+              회원가입
+            </Link>
+          </>
+        )}
       </div>
     </header>
   );
