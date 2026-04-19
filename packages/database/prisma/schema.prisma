@@ -95,6 +95,8 @@ model User {
   account_status  AccountStatus   @default(active)
   current_role    CurrentRole     @default(none)
 
+  password_hash   String?         @db.VarChar(100)
+
   // Soft Delete
   // 탈퇴 시: is_deleted=true, deleted_at=now()
   //          name="탈퇴한 사용자", phone/student_id=null
