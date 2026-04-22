@@ -19,7 +19,7 @@ out/
 *.tsbuildinfo
 
 # superpowers (local design/plan docs)
-docs/superpowers/
+/.superpowers/
 
 # git worktrees
 .worktrees/
