@@ -144,7 +144,7 @@ export default function LoginPage() {
                 {loading ? '로그인 중...' : '로그인'}
               </button>
 
-              {process.env.NODE_ENV === 'development' && (
+              {process.env.NEXT_PUBLIC_SHOW_DEV_LOGIN === 'true' && (
                 <button
                   type="button"
                   onClick={() => handleTestAdminLogin()}
