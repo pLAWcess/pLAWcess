@@ -58,7 +58,7 @@ export default function LoginPage() {
     setLoading(true);
 
     const testEmail = process.env.NEXT_PUBLIC_TEST_ADMIN_EMAIL ?? 'admin@test.com';
-    const testPassword = process.env.NEXT_PUBLIC_TEST_ADMIN_PASSWORD ?? 'admin123';
+    const testPassword = process.env.NEXT_PUBLIC_TEST_ADMIN_PASSWORD ?? '1234';
 
     let res: Response;
     try {
