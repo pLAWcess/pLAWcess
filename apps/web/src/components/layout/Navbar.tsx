@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { clearAllCache, saveUser, getUser, type AuthUser } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export default function Navbar() {
-  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
@@ -26,9 +24,7 @@ export default function Navbar() {
         credentials: 'include',
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          router.push('/login');
-        }
+        console.warn('사용자 정보 조회 실패:', res.status);
         return;
       }
       const data = await res.json();
