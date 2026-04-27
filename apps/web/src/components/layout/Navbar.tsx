@@ -1,13 +1,49 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { clearAllCache } from '@/lib/api';
+import { clearAllCache, saveUser, getUser, type AuthUser } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export default function Navbar() {
   const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    const cachedUser = getUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+    } else {
+      fetchUser();
+    }
+  }, []);
+
+  async function fetchUser() {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push('/login');
+        }
+        return;
+      }
+      const data = await res.json();
+      const userData: AuthUser = {
+        user_id: data.user.user_id,
+        name: data.user.name,
+        email: data.user.email,
+        current_role: data.user.current_role,
+      };
+      saveUser(userData);
+      setUser(userData);
+    } catch (error) {
+      console.error('사용자 정보 조회 실패:', error);
+    }
+  }
 
   async function handleLogout() {
     await fetch(`${API_BASE}/api/auth/logout`, {
@@ -30,7 +66,9 @@ export default function Navbar() {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
         </button>
-        <span className="text-text-primary font-medium">홍길동님 환영합니다</span>
+        <span className="text-text-primary font-medium">
+          {user ? `${user.name}님 환영합니다` : '로딩 중...'}
+        </span>
         <button
           onClick={handleLogout}
           className="text-sm text-text-secondary hover:text-text-primary transition-colors"
