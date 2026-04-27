@@ -150,7 +150,7 @@ export default function LoginPage() {
                   onClick={() => handleTestAdminLogin()}
                   className="w-full py-2.5 text-sm font-semibold text-brand bg-blue-50 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
                 >
-                  [테스트] Admin으로 빠른 로그인
+                  [dev용] Admin으로 빠른 로그인
                 </button>
               )}
 
