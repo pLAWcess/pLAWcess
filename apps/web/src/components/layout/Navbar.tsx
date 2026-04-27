@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { clearAllCache, saveUser, getUser, type AuthUser } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export default function Navbar() {
+  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
