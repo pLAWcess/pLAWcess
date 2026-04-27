@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
 import { saveUser } from '@/lib/api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API_BASE = '';
 
 const ROLE_REDIRECT: Record<string, string> = {
   mentee: '/mentee/dashboard',
