@@ -103,3 +103,58 @@ export async function patchQuantitative(
   writeLocalCache(year, data);
   return data;
 }
+
+// ----------------------------------------------------------------
+// Basic Info
+// ----------------------------------------------------------------
+
+export type BasicInfoPersonal = {
+  name: string;
+  affiliation: string;
+  birthDate: string;
+  gender: string;
+  major1: string;
+  major2: string;
+  admissionYear: string;
+  academicStatus: string;
+  graduationYear: string;
+};
+
+export type BasicInfoAdmission = {
+  // DB에 저장되는 필드: 가/나군 제1지망 학교, 특별전형 여부
+  가: { first: string };
+  나: { first: string };
+  isSpecialAdmission: boolean;
+};
+
+export type BasicInfoData = {
+  personal: BasicInfoPersonal;
+  admission: BasicInfoAdmission;
+};
+
+export async function getBasicInfo(year: string): Promise<BasicInfoData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/basic-info?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("기본정보 조회 실패");
+  return res.json();
+}
+
+export async function patchBasicInfo(
+  year: string,
+  body: {
+    personal?: Partial<Omit<BasicInfoPersonal, "name" | "affiliation">>;
+    admission?: {
+      가?: { first?: string };
+      나?: { first?: string };
+      isSpecialAdmission?: boolean;
+    };
+  }
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/basic-info?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
+  );
+  if (!res.ok) throw new Error("기본정보 저장 실패");
+}
