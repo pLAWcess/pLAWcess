@@ -1,47 +1,128 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SelectField from '@/components/ui/SelectField';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
   type PersonalInfo,
   type AdmissionInfo,
-  initialPersonalInfo,
-  initialAdmissionInfo,
+  emptyPersonalInfo,
+  emptyAdmissionInfo,
   SCHOOL_OPTIONS,
   TYPE_OPTIONS,
   fieldRows,
 } from '@/constants/basic-info';
+import { getBasicInfo, patchBasicInfo } from '@/lib/api';
+
+const YEAR = '2026학년도';
 
 function formatBirthDate(value: string) {
   return value;
 }
 
 export default function BasicInfoPage() {
-  const [personalInfo, setPersonalInfo] = useState<PersonalInfo>(initialPersonalInfo);
-  const [draft, setDraft] = useState<PersonalInfo>(initialPersonalInfo);
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfo>(emptyPersonalInfo);
+  const [draft, setDraft] = useState<PersonalInfo>(emptyPersonalInfo);
   const [isEditing, setIsEditing] = useState(false);
   const [birthDateError, setBirthDateError] = useState('');
+  const [personalSaving, setPersonalSaving] = useState(false);
 
-  const [admissionInfo, setAdmissionInfo] = useState<AdmissionInfo>(initialAdmissionInfo);
-  const [admissionDraft, setAdmissionDraft] = useState<AdmissionInfo>(initialAdmissionInfo);
+  const [admissionInfo, setAdmissionInfo] = useState<AdmissionInfo>(emptyAdmissionInfo);
+  const [admissionDraft, setAdmissionDraft] = useState<AdmissionInfo>(emptyAdmissionInfo);
   const [isAdmissionEditing, setIsAdmissionEditing] = useState(false);
+  const [admissionSaving, setAdmissionSaving] = useState(false);
 
-  function handleSave() {
-    if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(draft.birthDate)) {
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  // API에서 기본정보 로드
+  useEffect(() => {
+    getBasicInfo(YEAR)
+      .then((data) => {
+        const personal: PersonalInfo = {
+          ...emptyPersonalInfo,
+          name: data.personal.name,
+          affiliation: data.personal.affiliation,
+          birthDate: data.personal.birthDate,
+          gender: data.personal.gender,
+          major1: data.personal.major1,
+          major2: data.personal.major2,
+          admissionYear: data.personal.admissionYear,
+          academicStatus: data.personal.academicStatus,
+          graduationYear: data.personal.graduationYear,
+          // militaryStatus는 DB 미지원 — 빈 값 유지
+        };
+        const admission: AdmissionInfo = {
+          가: {
+            first: { school: data.admission.가.first, type: data.admission.isSpecialAdmission ? '특별전형' : '일반전형' },
+            second: emptyAdmissionInfo.가.second,  // DB 미지원
+          },
+          나: {
+            first: { school: data.admission.나.first, type: data.admission.isSpecialAdmission ? '특별전형' : '일반전형' },
+            second: emptyAdmissionInfo.나.second,  // DB 미지원
+          },
+        };
+        setPersonalInfo(personal);
+        setAdmissionInfo(admission);
+      })
+      .catch(() => setLoadError('기본정보를 불러오지 못했습니다.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(draft.birthDate) && draft.birthDate !== '') {
       setBirthDateError('YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)');
       return;
     }
     setBirthDateError('');
-    setPersonalInfo(draft);
-    setIsEditing(false);
+    setPersonalSaving(true);
+    try {
+      await patchBasicInfo(YEAR, {
+        personal: {
+          birthDate: draft.birthDate,
+          gender: draft.gender,
+          major1: draft.major1,
+          major2: draft.major2,
+          admissionYear: draft.admissionYear,
+          academicStatus: draft.academicStatus,
+          graduationYear: draft.graduationYear,
+          // militaryStatus는 DB 미지원 — 저장하지 않음
+        },
+      });
+      setPersonalInfo(draft);
+      setIsEditing(false);
+    } catch {
+      setBirthDateError('저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setPersonalSaving(false);
+    }
   }
+
   function handleCancel() { setBirthDateError(''); setIsEditing(false); }
   function handleChange(key: keyof PersonalInfo, value: string) {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleAdmissionSave() { setAdmissionInfo(admissionDraft); setIsAdmissionEditing(false); }
+  async function handleAdmissionSave() {
+    setAdmissionSaving(true);
+    try {
+      await patchBasicInfo(YEAR, {
+        admission: {
+          가: { first: admissionDraft.가.first.school },
+          나: { first: admissionDraft.나.first.school },
+          // 제1지망 type 기준으로 is_special_admission 결정 (가군 기준)
+          isSpecialAdmission: admissionDraft.가.first.type === '특별전형',
+        },
+      });
+      setAdmissionInfo(admissionDraft);
+      setIsAdmissionEditing(false);
+    } catch {
+      // 저장 실패 시 편집 상태 유지
+    } finally {
+      setAdmissionSaving(false);
+    }
+  }
+
   function handleAdmissionCancel() { setIsAdmissionEditing(false); }
   function handleAdmissionChange(
     group: '가' | '나',
@@ -58,6 +139,18 @@ export default function BasicInfoPage() {
     }));
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">개인정보</h1>
+          <p className="text-sm text-text-secondary mt-1">기본 프로필과 희망 학교 정보를 입력해주세요</p>
+        </div>
+        <div className="text-sm text-text-secondary py-10 text-center">불러오는 중...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
       {/* 페이지 타이틀 */}
@@ -65,6 +158,12 @@ export default function BasicInfoPage() {
         <h1 className="text-2xl font-bold text-text-primary">개인정보</h1>
         <p className="text-sm text-text-secondary mt-1">기본 프로필과 희망 학교 정보를 입력해주세요</p>
       </div>
+
+      {loadError && (
+        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          {loadError}
+        </div>
+      )}
 
       {/* 개인정보 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm">
@@ -82,7 +181,7 @@ export default function BasicInfoPage() {
             </div>
           </div>
           {isEditing
-            ? <EditButtons onCancel={handleCancel} onSave={handleSave} />
+            ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={personalSaving} />
             : <EditButton onClick={() => { setDraft(personalInfo); setIsEditing(true); }} />
           }
         </div>
@@ -130,7 +229,7 @@ export default function BasicInfoPage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-base font-semibold text-text-primary">희망 학교 및 전형</h2>
           {isAdmissionEditing
-            ? <EditButtons onCancel={handleAdmissionCancel} onSave={handleAdmissionSave} />
+            ? <EditButtons onCancel={handleAdmissionCancel} onSave={handleAdmissionSave} disabled={admissionSaving} />
             : <EditButton onClick={() => { setAdmissionDraft(admissionInfo); setIsAdmissionEditing(true); }} />
           }
         </div>
