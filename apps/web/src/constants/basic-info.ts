@@ -33,17 +33,48 @@ export const emptyPersonalInfo: PersonalInfo = {
 export const emptyAdmissionInfo: AdmissionInfo = {
   가: {
     first: { school: '', type: '일반전형' },
-    second: { school: '', type: '' },
+    second: { school: '', type: '일반전형' },
   },
   나: {
     first: { school: '', type: '일반전형' },
-    second: { school: '', type: '' },
+    second: { school: '', type: '일반전형' },
   },
 };
 
-export const SCHOOL_OPTIONS = [
-  '서울대학교', '고려대학교', '연세대학교', '성균관대학교',
-  '한양대학교', '이화여자대학교', '경희대학교', '중앙대학교',
+export type LawSchool = {
+  name: string;
+  inGa: boolean;
+  inNa: boolean;
+};
+
+// 2027학년도 전국 25개 법학전문대학원 가군·나군 모집 분류
+// 출처: https://www.infogoodman.com/2026/04/2027-law-school-ga-na-admission-quota.html
+export const LAW_SCHOOLS: readonly LawSchool[] = [
+  { name: '강원대학교',     inGa: false, inNa: true  },
+  { name: '건국대학교',     inGa: true,  inNa: false },
+  { name: '경북대학교',     inGa: true,  inNa: true  },
+  { name: '경희대학교',     inGa: true,  inNa: false },
+  { name: '고려대학교',     inGa: false, inNa: true  },
+  { name: '동아대학교',     inGa: true,  inNa: true  },
+  { name: '부산대학교',     inGa: true,  inNa: true  },
+  { name: '서강대학교',     inGa: true,  inNa: true  },
+  { name: '서울대학교',     inGa: true,  inNa: false },
+  { name: '서울시립대학교', inGa: true,  inNa: false },
+  { name: '성균관대학교',   inGa: false, inNa: true  },
+  { name: '아주대학교',     inGa: true,  inNa: true  },
+  { name: '연세대학교',     inGa: false, inNa: true  },
+  { name: '영남대학교',     inGa: true,  inNa: true  },
+  { name: '원광대학교',     inGa: true,  inNa: true  },
+  { name: '이화여자대학교', inGa: false, inNa: true  },
+  { name: '인하대학교',     inGa: true,  inNa: true  },
+  { name: '전남대학교',     inGa: true,  inNa: true  },
+  { name: '전북대학교',     inGa: true,  inNa: true  },
+  { name: '중앙대학교',     inGa: true,  inNa: false },
+  { name: '제주대학교',     inGa: true,  inNa: true  },
+  { name: '충남대학교',     inGa: true,  inNa: true  },
+  { name: '충북대학교',     inGa: true,  inNa: true  },
+  { name: '한국외국어대학교', inGa: true, inNa: false },
+  { name: '한양대학교',     inGa: false, inNa: true  },
 ];
 
 export const TYPE_OPTIONS = ['일반전형', '특별전형'];

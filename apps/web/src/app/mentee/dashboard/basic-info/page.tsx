@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import SelectField from '@/components/ui/SelectField';
+import SchoolPickerModal from '@/components/ui/SchoolPickerModal';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
   type PersonalInfo,
   type AdmissionInfo,
   emptyPersonalInfo,
   emptyAdmissionInfo,
-  SCHOOL_OPTIONS,
   TYPE_OPTIONS,
   fieldRows,
 } from '@/constants/basic-info';
@@ -31,6 +31,8 @@ export default function BasicInfoPage() {
   const [admissionDraft, setAdmissionDraft] = useState<AdmissionInfo>(emptyAdmissionInfo);
   const [isAdmissionEditing, setIsAdmissionEditing] = useState(false);
   const [admissionSaving, setAdmissionSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerInitialSlot, setPickerInitialSlot] = useState<{ group: '가' | '나'; rank: 'first' | 'second' } | undefined>(undefined);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -252,12 +254,22 @@ export default function BasicInfoPage() {
                           <td className="py-4 w-36">
                             {isAdmissionEditing ? (
                               <div className="h-5">
-                                <SelectField
-                                  value={item.school}
-                                  options={SCHOOL_OPTIONS}
-                                  onChange={(val) => handleAdmissionChange(group, rank, 'school', val)}
-                                  placeholder="학교 선택"
-                                />
+                                <button
+                                  type="button"
+                                  onClick={() => { setPickerInitialSlot({ group, rank }); setPickerOpen(true); }}
+                                  className="w-full flex items-center justify-between border-b border-border-input py-0 focus:outline-none focus:border-brand"
+                                >
+                                  <span className={item.school ? 'text-text-primary' : 'text-text-placeholder'}>
+                                    {item.school || '학교 선택'}
+                                  </span>
+                                  <svg
+                                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                    className="text-text-placeholder shrink-0"
+                                  >
+                                    <polyline points="6 9 12 15 18 9" />
+                                  </svg>
+                                </button>
                               </div>
                             ) : (
                               <span className="text-text-primary">{item.school}</span>
@@ -287,6 +299,14 @@ export default function BasicInfoPage() {
           })}
         </div>
       </div>
+
+      <SchoolPickerModal
+        open={pickerOpen}
+        initial={admissionDraft}
+        initialActive={pickerInitialSlot}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(next) => { setAdmissionDraft(next); setPickerOpen(false); }}
+      />
     </div>
   );
 }
