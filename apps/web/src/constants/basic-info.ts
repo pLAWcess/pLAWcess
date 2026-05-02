@@ -33,11 +33,11 @@ export const emptyPersonalInfo: PersonalInfo = {
 export const emptyAdmissionInfo: AdmissionInfo = {
   가: {
     first: { school: '', type: '일반전형' },
-    second: { school: '', type: '' },
+    second: { school: '', type: '일반전형' },
   },
   나: {
     first: { school: '', type: '일반전형' },
-    second: { school: '', type: '' },
+    second: { school: '', type: '일반전형' },
   },
 };
 
