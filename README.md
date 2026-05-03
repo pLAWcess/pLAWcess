@@ -20,7 +20,8 @@ pLAWcess/
 │   │       ├── hooks/                # 커스텀 훅 (useEditState)
 │   │       └── lib/                  # API 클라이언트 등 유틸
 │   └── api/                          # 백엔드 API (Next.js 16, Route Handlers)
-│       └── src/app/api/              # /health, /grades, /auth/*, /mentee/*
+│       ├── src/proxy.ts              # CORS + 역할 기반 접근 제어 (Next.js 16 proxy)
+│       └── src/app/api/              # /health, /auth/*, /mentee/*
 ├── packages/
 │   └── database/                     # Prisma Client 공유 패키지 (PostgreSQL)
 │       └── prisma/schema.prisma
@@ -120,10 +121,23 @@ pnpm db:migrate     # 마이그레이션 실행
 | 경로 | 설명 |
 |------|------|
 | `/api/health` | 헬스 체크 |
-| `/api/grades` | 학점 데이터 |
 | `/api/auth/signup` | 회원가입 |
 | `/api/auth/login` | 로그인 |
 | `/api/auth/logout` | 로그아웃 |
 | `/api/auth/me` | 현재 사용자 조회 |
 | `/api/mentee/basic-info` | 멘티 기본정보 |
 | `/api/mentee/quantitative` | 멘티 정량 데이터 |
+| `/api/mentee/grades` | KUPID 성적 크롤링 |
+
+### 권한 정책
+
+`apps/api/src/proxy.ts`에서 경로 prefix 기반으로 역할 검증 (Next.js 16 proxy 컨벤션):
+
+| 경로 | 요구 역할 |
+|------|-----------|
+| `/api/auth/*`, `/api/health` | 공개 |
+| `/api/mentee/*` | `mentee` 또는 `admin` |
+| `/api/mentor/*` | `mentor` 또는 `admin` |
+| `/api/admin/*` | `admin` |
+
+> `admin`은 모든 역할 가드를 통과합니다 (슈퍼유저). 단, 호출하는 라우트가 "본인 데이터" 기준이면 본인(admin) 레코드를 조회하므로 다른 사용자 데이터는 별도 admin 전용 엔드포인트로 접근하세요.
