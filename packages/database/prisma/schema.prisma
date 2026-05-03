@@ -36,6 +36,18 @@ enum AcademicStatus {
   expelled        // 제적
 }
 
+enum MilitaryStatus {
+  completed       // 군필
+  not_completed   // 미필
+  not_applicable  // 해당없음 (여성 등)
+}
+
+enum CareerGoal {
+  lawyer          // 변호사
+  prosecutor      // 검사
+  judge           // 판사
+}
+
 enum AccountStatus {
   active
   inactive
@@ -92,6 +104,7 @@ model User {
   second_major    String?         @db.VarChar(100)
   school_name     String?         @db.VarChar(100)
   academic_status AcademicStatus?
+  military_status MilitaryStatus?
   account_status  AccountStatus   @default(active)
   current_role    CurrentRole     @default(none)
 
@@ -164,6 +177,7 @@ model MenteeRecord {
   qualitative_activities Json?    // { volunteer, conference, thesis, club, external }
   core_keywords          String?  @db.VarChar(500)
   story_summary          String?  @db.Text
+  career_goal            CareerGoal?  // 변호사 / 검사 / 판사 (정성 대시보드 선택)
 
   // AI 분석 결과 (LLM Output)
   star_analysis          Json?    // STAR 구조화 결과
