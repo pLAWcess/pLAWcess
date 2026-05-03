@@ -305,7 +305,9 @@ export default function MentorQualitativePage() {
       {/* 페이지 타이틀 */}
       <div>
         <h1 className="text-2xl font-bold text-text-primary">정성 데이터</h1>
-        <p className="text-sm text-text-secondary mt-1">경험과 활동 정보를 입력하고 AI 분석을 받아보세요</p>
+        <p className="text-sm text-text-secondary mt-1">
+          멘티 시절 작성한 정성 데이터가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
+        </p>
       </div>
 
       {/* 탭 */}
