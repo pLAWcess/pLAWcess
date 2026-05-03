@@ -9,6 +9,7 @@
     "build:api": "pnpm --filter api build",
     "db:generate": "pnpm --filter @plawcess/database generate",
     "db:push": "pnpm --filter @plawcess/database push",
-    "db:migrate": "pnpm --filter @plawcess/database migrate"
+    "db:migrate": "pnpm --filter @plawcess/database migrate",
+    "db:migrate:deploy": "pnpm --filter @plawcess/database migrate:deploy"
   }
 }
