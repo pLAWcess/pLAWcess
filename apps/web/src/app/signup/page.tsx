@@ -24,6 +24,11 @@ type FormState = {
   enrollmentFile: File | null;
 };
 
+type CheckResult = {
+  ok: boolean;
+  message: string;
+};
+
 const EMPTY_FORM: FormState = {
   role: 'mentee',
   name: '',
@@ -51,10 +56,65 @@ export default function SignupPage() {
   const [form, setForm] = useState<FormState>({ ...EMPTY_FORM, birthDate: todayDots() });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
+  const [checkLoading, setCheckLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+    // loginId 변경 시 체크 결과 초기화
+    if (key === 'loginId') {
+      setCheckResult(null);
+    }
+  }
+
+  async function handleCheckLoginId() {
+    const { loginId } = form;
+    if (!loginId) {
+      setError('아이디를 입력해주세요.');
+      return;
+    }
+
+    setCheckLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/check-login-id`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ loginId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCheckResult({
+          ok: false,
+          message: '아이디 형식이 올바르지 않습니다. (영문/숫자/언더스코어 4~30자)',
+        });
+        return;
+      }
+
+      if (data.available) {
+        setCheckResult({
+          ok: true,
+          message: '사용 가능한 아이디입니다.',
+        });
+      } else {
+        setCheckResult({
+          ok: false,
+          message: '이미 사용 중인 아이디입니다.',
+        });
+      }
+    } catch (err) {
+      setCheckResult({
+        ok: false,
+        message: '중복 확인에 실패했습니다. 다시 시도해주세요.',
+      });
+    } finally {
+      setCheckLoading(false);
+    }
   }
 
   function handleFile(file: File | null) {
@@ -69,6 +129,11 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!checkResult?.ok) {
+      setError('아이디 중복확인을 해주세요.');
+      return;
+    }
 
     if (form.password !== form.passwordConfirm) {
       setError('비밀번호가 일치하지 않습니다.');
@@ -159,15 +224,30 @@ export default function SignupPage() {
 
               {/* 아이디 */}
               <Field label="아이디" htmlFor="loginId">
-                <input
-                  id="loginId"
-                  type="text"
-                  value={form.loginId}
-                  onChange={(e) => update('loginId', e.target.value)}
-                  placeholder="영문, 숫자 조합"
-                  required
-                  className={inputClass}
-                />
+                <div className="flex gap-2">
+                  <input
+                    id="loginId"
+                    type="text"
+                    value={form.loginId}
+                    onChange={(e) => update('loginId', e.target.value)}
+                    placeholder="영문, 숫자 조합"
+                    required
+                    className={`${inputClass} flex-1`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCheckLoginId}
+                    disabled={!form.loginId || checkLoading}
+                    className="px-4 py-2.5 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {checkLoading ? '확인 중...' : '중복확인'}
+                  </button>
+                </div>
+                {checkResult && (
+                  <p className={`text-xs ${checkResult.ok ? 'text-green-600' : 'text-red-500'}`}>
+                    {checkResult.message}
+                  </p>
+                )}
               </Field>
 
               {/* 이메일 + 인증하기 */}
