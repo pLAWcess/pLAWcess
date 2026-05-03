@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { EditButton, EditButtons } from '@/components/ui/EditButton';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
 type Tab = typeof TABS[number];
@@ -162,13 +163,27 @@ function CareerGoalCard({
   value: CareerGoal;
   onChange: (value: CareerGoal) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<CareerGoal>(value);
   const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    setDraft(value);
+    setIsEditing(true);
+  }
+
+  function handleCancel() {
+    setDraft(value);
+    setIsEditing(false);
+  }
 
   async function handleSave() {
     setSaving(true);
     try {
       // TODO: 희망 진로 저장 API 연동
       await new Promise((resolve) => setTimeout(resolve, 300));
+      onChange(draft);
+      setIsEditing(false);
     } finally {
       setSaving(false);
     }
@@ -176,16 +191,22 @@ function CareerGoalCard({
 
   return (
     <div className="border border-border rounded-xl px-8 py-6">
-      <div className="flex flex-col gap-3">
-        <label className="text-sm font-medium text-text-primary">희망 진로</label>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-text-primary">희망 진로</h3>
+        {isEditing
+          ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={saving} />
+          : <EditButton onClick={startEdit} />}
+      </div>
+
+      {isEditing ? (
         <div className="flex gap-2">
           {CAREER_OPTIONS.map((option) => {
-            const selected = value === option;
+            const selected = draft === option;
             return (
               <button
                 key={option}
                 type="button"
-                onClick={() => onChange(selected ? '' : option)}
+                onClick={() => setDraft(selected ? '' : option)}
                 className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
                   selected
                     ? 'bg-brand text-white border-brand'
@@ -197,17 +218,11 @@ function CareerGoalCard({
             );
           })}
         </div>
-        <div className="flex justify-end mt-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!value || saving}
-            className="px-5 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            {saving ? '저장 중...' : '저장하기'}
-          </button>
-        </div>
-      </div>
+      ) : (
+        <p className={`text-base ${value ? 'text-text-primary' : 'text-text-placeholder'}`}>
+          {value || '선택되지 않음'}
+        </p>
+      )}
     </div>
   );
 }
