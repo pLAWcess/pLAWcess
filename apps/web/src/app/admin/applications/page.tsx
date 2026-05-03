@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 type ScheduleItem = { label: string; period: string };
@@ -82,11 +82,7 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
 
 function MemoCell({ memo }: { memo: string | null }) {
   if (memo) return <span className="text-sm text-text-body">{memo}</span>;
-  return (
-    <button className="text-sm text-text-placeholder hover:text-brand transition-colors">
-      메모 입력
-    </button>
-  );
+  return <span className="text-sm text-text-placeholder">—</span>;
 }
 
 function SearchIcon() {
@@ -189,8 +185,13 @@ function ApplicationsPageContent() {
 
       {tab === 'mentee' ? (
         <ApplicationPanel<MenteeApp>
-          data={MENTEE_APPLICATIONS}
+          initialData={MENTEE_APPLICATIONS}
           searchKeys={['name', 'studentId', 'major']}
+          kindLabel="멘티"
+          metaForModal={(a) => [
+            { label: '학번', value: a.studentId },
+            { label: '전공', value: a.major },
+          ]}
           columns={[
             { key: 'name', label: '이름', sortable: true },
             { key: 'studentId', label: '학번', sortable: true },
@@ -201,8 +202,13 @@ function ApplicationsPageContent() {
         />
       ) : (
         <ApplicationPanel<MentorApp>
-          data={MENTOR_APPLICATIONS}
+          initialData={MENTOR_APPLICATIONS}
           searchKeys={['name', 'studentId', 'school']}
+          kindLabel="멘토"
+          metaForModal={(a) => [
+            { label: '학번', value: a.studentId },
+            { label: '소속 학교', value: a.school },
+          ]}
           columns={[
             { key: 'name', label: '이름', sortable: true },
             { key: 'studentId', label: '학번', sortable: true },
@@ -239,19 +245,29 @@ type ColumnDef<T> = {
   render?: (row: T) => React.ReactNode;
 };
 
-function ApplicationPanel<T extends { id: string; status: ApplicationStatus }>({
-  data,
+type ApplicationRow = { id: string; status: ApplicationStatus; memo: string | null; name: string };
+
+function ApplicationPanel<T extends ApplicationRow>({
+  initialData,
   columns,
   searchKeys,
+  metaForModal,
+  kindLabel,
 }: {
-  data: T[];
+  initialData: T[];
   columns: ColumnDef<T>[];
   searchKeys: (keyof T)[];
+  metaForModal: (row: T) => { label: string; value: string }[];
+  kindLabel: string;
 }) {
+  const [data, setData] = useState<T[]>(initialData);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
   const [sort, setSort] = useState<SortState<T>>(null);
   const [page, setPage] = useState(1);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const editing = editingId ? data.find((r) => r.id === editingId) ?? null : null;
 
   const processed = useMemo(() => {
     let result = data;
@@ -322,12 +338,13 @@ function ApplicationPanel<T extends { id: string; status: ApplicationStatus }>({
                 )}
               </th>
             ))}
+            <th className="w-16"></th>
           </tr>
         </thead>
         <tbody>
           {paged.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td>
+              <td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td>
             </tr>
           ) : (
             paged.map((row) => (
@@ -337,6 +354,18 @@ function ApplicationPanel<T extends { id: string; status: ApplicationStatus }>({
                     {col.render ? col.render(row) : String(row[col.key])}
                   </td>
                 ))}
+                <td className="py-4 pr-2 text-right align-middle whitespace-nowrap">
+                  <button
+                    onClick={() => setEditingId(row.id)}
+                    className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    수정
+                  </button>
+                </td>
               </tr>
             ))
           )}
@@ -349,7 +378,167 @@ function ApplicationPanel<T extends { id: string; status: ApplicationStatus }>({
         </span>
         {totalPages > 1 && <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />}
       </div>
+
+      <ApplicationEditModal
+        target={editing}
+        meta={editing ? metaForModal(editing) : []}
+        kindLabel={kindLabel}
+        onClose={() => setEditingId(null)}
+        onSave={async ({ memo, status }) => {
+          // TODO: PATCH /api/admin/applications/:id { memo, status }
+          await new Promise((r) => setTimeout(r, 300));
+          setData((prev) => prev.map((r) => (r.id === editingId ? { ...r, memo: memo || null, status } : r)));
+          setEditingId(null);
+        }}
+      />
     </section>
+  );
+}
+
+function ApplicationEditModal<T extends ApplicationRow>({
+  target,
+  meta,
+  kindLabel,
+  onClose,
+  onSave,
+}: {
+  target: T | null;
+  meta: { label: string; value: string }[];
+  kindLabel: string;
+  onClose: () => void;
+  onSave: (next: { memo: string; status: ApplicationStatus }) => Promise<void>;
+}) {
+  const [memo, setMemo] = useState('');
+  const [status, setStatus] = useState<ApplicationStatus>('pending');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (target) {
+      setMemo(target.memo ?? '');
+      setStatus(target.status);
+      setSaving(false);
+    }
+  }, [target]);
+
+  useEffect(() => {
+    if (!target) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [target, onClose]);
+
+  if (!target) return null;
+
+  const requireMemo = status === 'revision' && !memo.trim();
+
+  async function handleSave() {
+    if (requireMemo) return;
+    setSaving(true);
+    try {
+      await onSave({ memo: memo.trim(), status });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${kindLabel} 신청 검토`}
+        className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]"
+      >
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-text-primary">{kindLabel} 신청 검토</h2>
+          <button type="button" onClick={onClose} aria-label="닫기" className="text-text-placeholder hover:text-text-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* 본문 */}
+        <div className="px-6 py-5 flex flex-col gap-6 overflow-y-auto">
+          {/* 신청자 정보 */}
+          <div>
+            <p className="text-xs font-medium text-text-secondary mb-2">신청자 정보</p>
+            <div className="bg-page-bg border border-border rounded-md px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+              <div>
+                <span className="block text-xs text-text-secondary">이름</span>
+                <p className="text-sm font-medium text-text-primary">{target.name}</p>
+              </div>
+              {meta.map(({ label, value }) => (
+                <div key={label}>
+                  <span className="block text-xs text-text-secondary">{label}</span>
+                  <p className="text-sm text-text-primary">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 신청 상태 */}
+          <div>
+            <p className="text-sm font-medium text-text-primary mb-3">신청 상태</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(['approved', 'pending', 'revision'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatus(s)}
+                  className={`px-3 py-2.5 text-sm rounded-md border transition-colors ${
+                    status === s
+                      ? 'border-brand bg-brand-light text-brand font-semibold'
+                      : 'border-border text-text-secondary hover:bg-gray-50'
+                  }`}
+                >
+                  {STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 관리자 메모 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-text-primary">관리자 메모</p>
+              {status === 'revision' && (
+                <span className="text-xs text-orange-500">보완요청 사유 필수</span>
+              )}
+            </div>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="검토 사유나 요청사항을 입력하세요"
+              rows={4}
+              className="w-full px-3 py-2 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand resize-none placeholder:text-text-placeholder"
+            />
+          </div>
+        </div>
+
+        {/* 푸터 */}
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || requireMemo}
+            className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
