@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import ConcernCard from '@/components/concerns/ConcernCard';
+import { getApplication } from '@/lib/api';
+
+const YEAR = '2026학년도';
 
 const STEPS = [
   { title: '신청서 작성 및 제출', desc: '희망 로스쿨과 시작일, 예산 등을 입력하고 신청서를 제출합니다.' },
@@ -11,25 +14,40 @@ const STEPS = [
   { title: '지속적인 관리', desc: '정기적인 피드백과 관리를 통해 로스쿨 합격까지 함께합니다.' },
 ];
 
-type ApplicationData = {
-  가군1지망: string;
-  나군1지망: string;
+type ApplicationFormData = {
   추가요청: string;
 };
 
-const initialApplication: ApplicationData = {
-  가군1지망: '고려대학교 (일반전형)',
-  나군1지망: '서울대학교 (일반전형)',
-  추가요청: '-',
+const initialApplication: ApplicationFormData = {
+  추가요청: '',
 };
+
+function formatSchoolWithType(school: string, isSpecial: boolean): string {
+  if (!school) return '';
+  return `${school} (${isSpecial ? '특별전형' : '일반전형'})`;
+}
 
 export default function ApplicationsPage() {
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
 
-  const [appData, setAppData] = useState<ApplicationData>(initialApplication);
-  const [draft, setDraft] = useState<ApplicationData>(initialApplication);
+  const [targetSchoolGa, setTargetSchoolGa] = useState('');
+  const [targetSchoolNa, setTargetSchoolNa] = useState('');
+  const [isSpecialAdmission, setIsSpecialAdmission] = useState(false);
+
+  const [appData, setAppData] = useState<ApplicationFormData>(initialApplication);
+  const [draft, setDraft] = useState<ApplicationFormData>(initialApplication);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    getApplication(YEAR)
+      .then((data) => {
+        setTargetSchoolGa(data.targetSchoolGa);
+        setTargetSchoolNa(data.targetSchoolNa);
+        setIsSpecialAdmission(data.isSpecialAdmission);
+      })
+      .catch(() => {});
+  }, []);
 
   function handleSubmit() {
     if (!agreed) {
@@ -161,28 +179,25 @@ export default function ApplicationsPage() {
         </div>
 
         <div className="space-y-6">
-          {/* 희망 로스쿨 */}
+          {/* 희망 로스쿨 (기본정보 연동, 읽기 전용) */}
           <div>
-            <p className="text-sm font-medium text-text-primary mb-3">희망 로스쿨</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-text-primary">희망 로스쿨</p>
+              <p className="text-xs text-text-secondary">기본정보에서 설정한 값이 자동 반영됩니다</p>
+            </div>
             <div className="grid grid-cols-2 gap-6">
-              {(['가군', '나군'] as const).map((group) => {
-                const key = group === '가군' ? '가군1지망' : '나군1지망';
-                return (
-                  <div key={group}>
-                    <p className="text-sm text-text-secondary mb-1">{group}</p>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={draft[key]}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="w-full border-b border-border-input bg-transparent text-sm text-brand font-medium py-1 focus:outline-none focus:border-brand"
-                      />
-                    ) : (
-                      <p className="text-sm text-brand font-medium">1지망: {appData[key]}</p>
-                    )}
-                  </div>
-                );
-              })}
+              <div>
+                <p className="text-sm text-text-secondary mb-1">가군</p>
+                <p className="text-sm text-brand font-medium">
+                  1지망: {formatSchoolWithType(targetSchoolGa, isSpecialAdmission) || '미입력'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-text-secondary mb-1">나군</p>
+                <p className="text-sm text-brand font-medium">
+                  1지망: {formatSchoolWithType(targetSchoolNa, isSpecialAdmission) || '미입력'}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -197,7 +212,7 @@ export default function ApplicationsPage() {
                 className="w-full border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand resize-none"
               />
             ) : (
-              <p className="text-sm text-text-secondary">{appData['추가요청']}</p>
+              <p className="text-sm text-text-secondary">{appData['추가요청'] || '-'}</p>
             )}
           </div>
         </div>

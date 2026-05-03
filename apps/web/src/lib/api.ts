@@ -158,3 +158,22 @@ export async function patchBasicInfo(
   );
   if (!res.ok) throw new Error("기본정보 저장 실패");
 }
+
+// ----------------------------------------------------------------
+// Application (프로세스 신청서)
+// ----------------------------------------------------------------
+
+export type ApplicationData = {
+  targetSchoolGa: string;
+  targetSchoolNa: string;
+  isSpecialAdmission: boolean;
+};
+
+export async function getApplication(year: string): Promise<ApplicationData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/application?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("신청서 정보 조회 실패");
+  return res.json();
+}
