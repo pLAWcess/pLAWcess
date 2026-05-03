@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SelectField from '@/components/ui/SelectField';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
@@ -8,27 +8,68 @@ import {
   emptyMentorPersonalInfo,
   fieldRows,
 } from '@/constants/mentor-basic-info';
+import { getBasicInfo, patchBasicInfo } from '@/lib/api';
+
+const YEAR = '2026학년도';
 
 export default function MentorBasicInfoPage() {
-  // TODO: 멘토 기본정보 API 연동 (멘티→멘토 권한 전환자는 멘티 데이터 이전,
-  //       처음부터 멘토로 가입한 경우 빈 값. BE 작업 후 fetch/save 연결)
   const [personalInfo, setPersonalInfo] = useState<MentorPersonalInfo>(emptyMentorPersonalInfo);
   const [draft, setDraft] = useState<MentorPersonalInfo>(emptyMentorPersonalInfo);
   const [isEditing, setIsEditing] = useState(false);
   const [birthDateError, setBirthDateError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  function handleSave() {
+  // 멘티 시절 작성한 기본정보를 멘티 API에서 그대로 로드
+  useEffect(() => {
+    getBasicInfo(YEAR)
+      .then((data) => {
+        setPersonalInfo({
+          ...emptyMentorPersonalInfo,
+          name: data.personal.name,
+          affiliation: data.personal.affiliation,
+          birthDate: data.personal.birthDate,
+          gender: data.personal.gender,
+          academicStatus: data.personal.academicStatus,
+          major1: data.personal.major1,
+          major2: data.personal.major2,
+          admissionYear: data.personal.admissionYear,
+          graduationYear: data.personal.graduationYear,
+          // lawSchoolGrade, militaryStatus는 멘티 API 미지원 — 빈 값 유지
+        });
+      })
+      .catch(() => setLoadError('기본정보를 불러오지 못했습니다.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
     if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(draft.birthDate) && draft.birthDate !== '') {
       setBirthDateError('YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)');
       return;
     }
     setBirthDateError('');
     setSaving(true);
-    // TODO: 실제 저장 API 호출
-    setPersonalInfo(draft);
-    setIsEditing(false);
-    setSaving(false);
+    try {
+      await patchBasicInfo(YEAR, {
+        personal: {
+          birthDate: draft.birthDate,
+          gender: draft.gender,
+          academicStatus: draft.academicStatus,
+          major1: draft.major1,
+          major2: draft.major2,
+          admissionYear: draft.admissionYear,
+          graduationYear: draft.graduationYear,
+          // lawSchoolGrade, militaryStatus는 멘티 API 미지원 — 저장 안 함
+        },
+      });
+      setPersonalInfo(draft);
+      setIsEditing(false);
+    } catch {
+      setBirthDateError('저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleCancel() {
@@ -40,6 +81,20 @@ export default function MentorBasicInfoPage() {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            멘티 시절 작성한 기본정보가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
+          </p>
+        </div>
+        <div className="text-sm text-text-secondary py-10 text-center">불러오는 중...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
       {/* 페이지 타이틀 */}
@@ -49,6 +104,12 @@ export default function MentorBasicInfoPage() {
           멘티 시절 작성한 기본정보가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
         </p>
       </div>
+
+      {loadError && (
+        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          {loadError}
+        </div>
+      )}
 
       {/* 개인정보 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm">
