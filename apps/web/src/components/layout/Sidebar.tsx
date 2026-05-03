@@ -21,7 +21,7 @@ type NavItem = { label: string; href: string; match?: string };
 const adminNavItems: NavItem[] = [
   { label: '회원관리', href: '/admin/users' },
   { label: '신청관리', href: '/admin/applications' },
-  { label: '매칭관리', href: '/admin/matchings/targets', match: '/admin/matchings' },
+  { label: '매칭관리', href: '/admin/matchings', match: '/admin/matchings' },
   { label: '멘토 계정 생성', href: '/admin/mentors/create', match: '/admin/mentors' },
 ];
 
