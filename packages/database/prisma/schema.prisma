@@ -94,6 +94,7 @@ enum MatchStatus {
 // ----------------------------------------------------------------
 model User {
   user_id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  login_id        String?         @unique @db.VarChar(50)  // 사용자가 직접 정하는 로그인 ID. 신규 가입자는 필수, 기존 dummy 유저는 NULL
   name            String          @db.VarChar(50)
   birth_year      Int?
   gender          Gender?

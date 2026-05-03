@@ -28,13 +28,11 @@ export default function LoginPage() {
 
     let res: Response;
     try {
-      // Option A: BE가 아직 email 기반 로그인이라 사용자가 아이디 자리에 email을 입력해야 함.
-      //           #120 머지 후 페이로드 키를 loginId로 전환 예정.
       res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: loginId, password }),
+        body: JSON.stringify({ loginId, password }),
       });
     } catch {
       setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');

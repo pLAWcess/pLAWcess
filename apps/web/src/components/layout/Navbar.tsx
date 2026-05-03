@@ -33,6 +33,7 @@ export default function Navbar() {
       const userData: AuthUser = {
         user_id: data.user.user_id,
         name: data.user.name,
+        login_id: data.user.login_id ?? null,
         email: data.user.email,
         current_role: data.user.current_role,
       };
