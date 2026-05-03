@@ -162,6 +162,18 @@ function CareerGoalCard({
   value: CareerGoal;
   onChange: (value: CareerGoal) => void;
 }) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      // TODO: 희망 진로 저장 API 연동
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="border border-border rounded-xl px-8 py-6">
       <div className="flex flex-col gap-3">
@@ -184,6 +196,16 @@ function CareerGoalCard({
               </button>
             );
           })}
+        </div>
+        <div className="flex justify-end mt-2">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!value || saving}
+            className="px-5 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {saving ? '저장 중...' : '저장하기'}
+          </button>
         </div>
       </div>
     </div>
