@@ -2,6 +2,6 @@
 
 import AccountSettings from '@/components/settings/AccountSettings';
 
-export default function MenteeSettingsPage() {
+export default function MentorSettingsPage() {
   return <AccountSettings />;
 }
