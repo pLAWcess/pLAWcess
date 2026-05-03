@@ -198,31 +198,33 @@ function CareerGoalCard({
           : <EditButton onClick={startEdit} />}
       </div>
 
-      {isEditing ? (
-        <div className="flex gap-2">
-          {CAREER_OPTIONS.map((option) => {
-            const selected = draft === option;
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setDraft(selected ? '' : option)}
-                className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
-                  selected
-                    ? 'bg-brand text-white border-brand'
-                    : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
-                }`}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <p className={`text-base ${value ? 'text-text-primary' : 'text-text-placeholder'}`}>
-          {value || '선택되지 않음'}
-        </p>
-      )}
+      <div className="min-h-[40px] flex items-center">
+        {isEditing ? (
+          <div className="flex gap-2">
+            {CAREER_OPTIONS.map((option) => {
+              const selected = draft === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setDraft(selected ? '' : option)}
+                  className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
+                    selected
+                      ? 'bg-brand text-white border-brand'
+                      : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
+                  }`}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className={`text-base ${value ? 'text-text-primary' : 'text-text-placeholder'}`}>
+            {value || '선택되지 않음'}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
