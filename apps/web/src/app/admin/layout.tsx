@@ -23,5 +23,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/login');
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <DashboardShell>
+      <div className="max-w-6xl mx-auto w-full">{children}</div>
+    </DashboardShell>
+  );
 }
