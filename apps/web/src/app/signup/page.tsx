@@ -85,13 +85,18 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    // Option A: 추가 필드(loginId, birthDate, gender, phone, studentId, enrollmentFile, role)는
-    //           BE 미지원이므로 일단 무시. #120/#83/#84에서 BE 확장 후 페이로드에 포함 예정.
+    // #120: loginId까지 BE 지원. birthDate/gender/phone/studentId/enrollmentFile/role은
+    //       추후 BE 확장 시 추가 (#83 이메일 인증, 학번/재학증명서 처리 등 별도 이슈)
     const res = await fetch(`${API_BASE}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+      body: JSON.stringify({
+        name: form.name,
+        loginId: form.loginId,
+        email: form.email,
+        password: form.password,
+      }),
     });
 
     const data = await res.json();

@@ -30,7 +30,7 @@ function headers() {
 const LS_PREFIX = "plawcess:";
 const USER_KEY = `${LS_PREFIX}user`;
 
-export type AuthUser = { user_id: string; name: string; email: string; current_role: string };
+export type AuthUser = { user_id: string; name: string; login_id: string | null; email: string; current_role: string };
 
 export function saveUser(user: AuthUser) {
   try { localStorage.setItem(USER_KEY, JSON.stringify(user)); } catch {}
