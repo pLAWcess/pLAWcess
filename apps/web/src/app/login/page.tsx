@@ -16,7 +16,7 @@ const ROLE_REDIRECT: Record<string, string> = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,11 +28,13 @@ export default function LoginPage() {
 
     let res: Response;
     try {
+      // Option A: BE가 아직 email 기반 로그인이라 사용자가 아이디 자리에 email을 입력해야 함.
+      //           #120 머지 후 페이로드 키를 loginId로 전환 예정.
       res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: loginId, password }),
       });
     } catch {
       setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
@@ -103,15 +105,15 @@ export default function LoginPage() {
           <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="email" className="text-sm font-medium text-text-primary">
-                  이메일
+                <label htmlFor="loginId" className="text-sm font-medium text-text-primary">
+                  아이디
                 </label>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@email.com"
+                  id="loginId"
+                  type="text"
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
+                  placeholder="아이디를 입력하세요"
                   required
                   className="w-full px-3 py-2.5 text-sm border border-border-input rounded-md bg-white text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-brand transition-colors"
                 />
