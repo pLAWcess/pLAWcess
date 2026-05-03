@@ -152,6 +152,32 @@ function AddItemPlaceholder({ onClick }: { onClick: () => void }) {
   );
 }
 
+function CareerGoalCard({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="border border-border rounded-xl px-8 py-6">
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium text-text-primary">
+          희망 진로 <span className="text-text-secondary font-normal">(예: 공익 변호사, 검사, 사내 변호사)</span>
+        </label>
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="앞으로 어떤 법조인이 되고 싶은지 자유롭게 작성해주세요"
+          rows={3}
+          className="border border-border rounded-lg bg-transparent text-sm text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none"
+        />
+        <p className="text-xs text-text-secondary">희망 진로는 멘토 매칭과 활동 분석에 참고됩니다.</p>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -172,7 +198,15 @@ function EmptyState() {
   );
 }
 
-function TabContent({ tab }: { tab: Tab }) {
+function TabContent({
+  tab,
+  careerGoal,
+  onCareerGoalChange,
+}: {
+  tab: Tab;
+  careerGoal: string;
+  onCareerGoalChange: (value: string) => void;
+}) {
   const [forms, setForms] = useState<ActivityForm[]>([]);
 
   function addForm() {
@@ -187,7 +221,14 @@ function TabContent({ tab }: { tab: Tab }) {
     setForms(forms.filter((_, i) => i !== index));
   }
 
-  if (tab === '대시보드') return <EmptyState />;
+  if (tab === '대시보드') {
+    return (
+      <div className="flex flex-col gap-6">
+        <CareerGoalCard value={careerGoal} onChange={onCareerGoalChange} />
+        <EmptyState />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -206,6 +247,7 @@ function TabContent({ tab }: { tab: Tab }) {
 
 export default function QualitativePage() {
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
+  const [careerGoal, setCareerGoal] = useState('');
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
@@ -235,7 +277,11 @@ export default function QualitativePage() {
 
         {/* 탭 콘텐츠 */}
         <div className="px-8 py-6">
-          <TabContent tab={activeTab} />
+          <TabContent
+            tab={activeTab}
+            careerGoal={careerGoal}
+            onCareerGoalChange={setCareerGoal}
+          />
         </div>
       </div>
     </div>
