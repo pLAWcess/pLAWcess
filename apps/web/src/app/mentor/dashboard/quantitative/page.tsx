@@ -1,5 +1,7 @@
 'use client';
 
+import QuantitativeContent from '@/components/quantitative/QuantitativeContent';
+
 export default function MentorQuantitativePage() {
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
@@ -10,9 +12,7 @@ export default function MentorQuantitativePage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-10 text-center text-sm text-text-secondary">
-        준비 중입니다.
-      </div>
+      <QuantitativeContent />
     </div>
   );
 }
