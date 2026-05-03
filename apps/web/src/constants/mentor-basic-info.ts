@@ -66,7 +66,7 @@ export const LAW_SCHOOL_GRADES = Array.from({ length: 20 }, (_, i) => {
 export const ACADEMIC_STATUS_OPTIONS = ['재학', '휴학', '수료', '졸업 유예', '졸업'];
 export const MILITARY_STATUS_OPTIONS = ['군필', '미필', '해당없음'];
 
-export const fieldRows: { label: string; key: keyof Omit<MentorPersonalInfo, 'name' | 'affiliation'>; type: 'text' | 'select'; options?: string[] }[][] = [
+export const fieldRows: { label: string; key: keyof Omit<MentorPersonalInfo, 'name'>; type: 'text' | 'select'; options?: string[] }[][] = [
   [
     { label: '생년월일', key: 'birthDate', type: 'text' },
     { label: '성별', key: 'gender', type: 'select', options: GENDER_OPTIONS },
