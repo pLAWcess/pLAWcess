@@ -11,11 +11,15 @@ const menteeNavItems = [
   { label: '합격 아카이브', href: '/mentee/archive' },
 ];
 
-const mentorNavItems = [
-  { label: '대시보드', href: '/mentor/dashboard' },
-];
+type NavItem = { label: string; href: string; match?: string; exact?: boolean };
 
-type NavItem = { label: string; href: string; match?: string };
+const mentorNavItems: NavItem[] = [
+  { label: '프로세스 대시보드', href: '/mentor/dashboard', exact: true },
+  { label: '기본정보', href: '/mentor/dashboard/basic-info' },
+  { label: '정량 데이터', href: '/mentor/dashboard/quantitative' },
+  { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
+  { label: '합격 아카이브', href: '/mentor/archive' },
+];
 
 const adminNavItems: NavItem[] = [
   { label: '회원관리', href: '/admin/users' },
@@ -39,7 +43,9 @@ export default function Sidebar() {
       <nav className="flex flex-col gap-1 px-2">
         {navItems.map((item) => {
           const matchPath = item.match ?? item.href;
-          const isActive = pathname === matchPath || pathname.startsWith(matchPath + '/');
+          const isActive = item.exact
+            ? pathname === matchPath
+            : pathname === matchPath || pathname.startsWith(matchPath + '/');
           return (
             <Link
               key={item.href}
