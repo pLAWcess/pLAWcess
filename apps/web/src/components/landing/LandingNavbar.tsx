@@ -76,7 +76,7 @@ export default function LandingNavbar() {
               멘토
             </Link>
             <Link
-              href="/admin/dashboard"
+              href="/admin/users"
               className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
             >
               어드민
