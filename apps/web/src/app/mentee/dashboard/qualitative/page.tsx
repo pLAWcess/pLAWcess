@@ -5,6 +5,9 @@ import { useState } from 'react';
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
 type Tab = typeof TABS[number];
 
+const CAREER_OPTIONS = ['변호사', '검사', '판사'] as const;
+type CareerGoal = typeof CAREER_OPTIONS[number] | '';
+
 type ActivityForm = {
   name: string;
   organization: string;
@@ -156,23 +159,32 @@ function CareerGoalCard({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  value: CareerGoal;
+  onChange: (value: CareerGoal) => void;
 }) {
   return (
     <div className="border border-border rounded-xl px-8 py-6">
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-text-primary">
-          희망 진로 <span className="text-text-secondary font-normal">(예: 공익 변호사, 검사, 사내 변호사)</span>
-        </label>
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="앞으로 어떤 법조인이 되고 싶은지 자유롭게 작성해주세요"
-          rows={3}
-          className="border border-border rounded-lg bg-transparent text-sm text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none"
-        />
-        <p className="text-xs text-text-secondary">희망 진로는 멘토 매칭과 활동 분석에 참고됩니다.</p>
+      <div className="flex flex-col gap-3">
+        <label className="text-sm font-medium text-text-primary">희망 진로</label>
+        <div className="flex gap-2">
+          {CAREER_OPTIONS.map((option) => {
+            const selected = value === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => onChange(selected ? '' : option)}
+                className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
+                  selected
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -204,8 +216,8 @@ function TabContent({
   onCareerGoalChange,
 }: {
   tab: Tab;
-  careerGoal: string;
-  onCareerGoalChange: (value: string) => void;
+  careerGoal: CareerGoal;
+  onCareerGoalChange: (value: CareerGoal) => void;
 }) {
   const [forms, setForms] = useState<ActivityForm[]>([]);
 
@@ -247,7 +259,7 @@ function TabContent({
 
 export default function QualitativePage() {
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
-  const [careerGoal, setCareerGoal] = useState('');
+  const [careerGoal, setCareerGoal] = useState<CareerGoal>('');
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
