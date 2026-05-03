@@ -16,19 +16,19 @@ const mentorNavItems = [
   { label: '대시보드', href: '/mentor/dashboard' },
 ];
 
-const adminNavItems = [
-  { label: '대시보드', href: '/admin/dashboard' },
-  { label: '회원 관리', href: '/admin/users' },
-  { label: '지원서 관리', href: '/admin/applications' },
-  { label: '매칭 대상', href: '/admin/matchings/targets' },
-  { label: '매칭 실행', href: '/admin/matchings/run' },
-  { label: '매칭 결과', href: '/admin/matchings/results' },
+type NavItem = { label: string; href: string; match?: string };
+
+const adminNavItems: NavItem[] = [
+  { label: '회원관리', href: '/admin/users' },
+  { label: '신청관리', href: '/admin/applications' },
+  { label: '매칭관리', href: '/admin/matchings', match: '/admin/matchings' },
+  { label: '멘토 계정 생성', href: '/admin/mentors/create', match: '/admin/mentors' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
-  const navItems = pathname.startsWith('/mentor')
+  const navItems: NavItem[] = pathname.startsWith('/mentor')
     ? mentorNavItems
     : pathname.startsWith('/admin')
     ? adminNavItems
@@ -38,7 +38,8 @@ export default function Sidebar() {
     <aside className="w-44 bg-white border-r border-border flex flex-col py-6 shrink-0">
       <nav className="flex flex-col gap-1 px-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const matchPath = item.match ?? item.href;
+          const isActive = pathname === matchPath || pathname.startsWith(matchPath + '/');
           return (
             <Link
               key={item.href}

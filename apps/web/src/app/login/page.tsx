@@ -11,7 +11,7 @@ const API_BASE = '';
 const ROLE_REDIRECT: Record<string, string> = {
   mentee: '/mentee/dashboard',
   mentor: '/mentor/dashboard',
-  admin: '/admin/dashboard',
+  admin: '/admin/users',
 };
 
 export default function LoginPage() {

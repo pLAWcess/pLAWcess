@@ -1,191 +1,613 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
-type ApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'revision_requested';
+type ScheduleItem = { label: string; period: string };
 
-interface Application {
-  application_id: string;
+const SCHEDULE_BY_YEAR: Record<string, ScheduleItem[]> = {
+  '2024': [
+    { label: '멘토 모집', period: '2024년 3월 1일 ~ 2024년 3월 31일' },
+    { label: '멘티 신청', period: '2024년 4월 1일 ~ 2024년 4월 30일' },
+    { label: '멘티-멘토 매칭', period: '2024년 5월 1일 ~ 2024년 5월 15일' },
+    { label: '매칭 공지', period: '2024년 5월 20일' },
+    { label: '입시 결과 수집', period: '2024년 11월 1일 ~ 2024년 12월 31일' },
+  ],
+};
+
+type ApplicationStatus = 'approved' | 'pending' | 'revision';
+
+type MenteeApp = {
+  id: string;
   name: string;
-  email: string;
-  student_id: string;
-  target_school_ga: string | null;
-  target_school_na: string | null;
-  gpa: number | null;
-  leet_score: number | null;
-  application_status: ApplicationStatus;
-  submitted_at: string;
-}
+  studentId: string;
+  major: string;
+  status: ApplicationStatus;
+  memo: string | null;
+};
 
-// TODO: API 연결 후 실제 데이터로 교체
-const MOCK_APPLICATIONS: Application[] = [
-  {
-    application_id: 'app-1',
-    name: '김자전',
-    email: 'kim@korea.ac.kr',
-    student_id: '2021120001',
-    target_school_ga: '고려대학교',
-    target_school_na: '연세대학교',
-    gpa: 4.1,
-    leet_score: 142.3,
-    application_status: 'submitted',
-    submitted_at: '2026-04-10T09:23:00Z',
-  },
-  {
-    application_id: 'app-2',
-    name: '이지원',
-    email: 'lee@korea.ac.kr',
-    student_id: '2020110032',
-    target_school_ga: '서울대학교',
-    target_school_na: '고려대학교',
-    gpa: 4.3,
-    leet_score: 158.7,
-    application_status: 'approved',
-    submitted_at: '2026-04-08T14:10:00Z',
-  },
-  {
-    application_id: 'app-3',
-    name: '박한결',
-    email: 'park@korea.ac.kr',
-    student_id: '2022130045',
-    target_school_ga: '성균관대학교',
-    target_school_na: null,
-    gpa: 3.8,
-    leet_score: null,
-    application_status: 'revision_requested',
-    submitted_at: '2026-04-09T11:00:00Z',
-  },
-  {
-    application_id: 'app-4',
-    name: '최승현',
-    email: 'choi@korea.ac.kr',
-    student_id: '2019100078',
-    target_school_ga: '한양대학교',
-    target_school_na: '이화여자대학교',
-    gpa: 3.5,
-    leet_score: 131.0,
-    application_status: 'rejected',
-    submitted_at: '2026-04-07T16:45:00Z',
-  },
+type MentorApp = {
+  id: string;
+  name: string;
+  studentId: string;
+  school: string;
+  status: ApplicationStatus;
+  memo: string | null;
+};
+
+const MENTEE_APPLICATIONS: MenteeApp[] = [
+  { id: 'm1', name: '김민준', studentId: '2020123456', major: '법학과', status: 'approved', memo: '서류 확인 완료' },
+  { id: 'm2', name: '이서연', studentId: '2019234567', major: '경영학과', status: 'pending', memo: null },
+  { id: 'm3', name: '박지호', studentId: '2021345678', major: '컴퓨터공학과', status: 'revision', memo: '학적 증명서 추가 필요' },
+  { id: 'm4', name: '정태양', studentId: '2020567890', major: '경제학과', status: 'pending', memo: null },
+  { id: 'm5', name: '강하늘', studentId: '2019678901', major: '심리학과', status: 'approved', memo: '서류 확인 완료' },
+  { id: 'm6', name: '임나래', studentId: '2021789012', major: '법학과', status: 'pending', memo: null },
+  { id: 'm7', name: '윤도현', studentId: '2020345612', major: '컴퓨터학과', status: 'approved', memo: '서류 확인 완료' },
+  { id: 'm8', name: '조예린', studentId: '2019456712', major: '경영학과', status: 'revision', memo: '자소서 보완 요청' },
+  { id: 'm9', name: '한승호', studentId: '2021567823', major: '법학과', status: 'pending', memo: null },
+  { id: 'm10', name: '서민지', studentId: '2020678934', major: '사회학과', status: 'approved', memo: '서류 확인 완료' },
+  { id: 'm11', name: '권우석', studentId: '2019789045', major: '경제학과', status: 'pending', memo: null },
+  { id: 'm12', name: '문가연', studentId: '2021890156', major: '법학과', status: 'approved', memo: '서류 확인 완료' },
+];
+
+const MENTOR_APPLICATIONS: MentorApp[] = [
+  { id: 't1', name: '최수진', studentId: '2018456789', school: '성균관대학교', status: 'approved', memo: '경력 확인 완료' },
+  { id: 't2', name: '오승민', studentId: '2017890123', school: '연세대학교', status: 'approved', memo: '경력 확인 완료' },
+  { id: 't3', name: '한지우', studentId: '2016901234', school: '고려대학교', status: 'pending', memo: null },
+  { id: 't4', name: '윤서아', studentId: '2018012345', school: '서울대학교', status: 'revision', memo: '자기소개서 보완 필요' },
+  { id: 't5', name: '배현우', studentId: '2017123456', school: '성균관대학교', status: 'approved', memo: '경력 확인 완료' },
+  { id: 't6', name: '신예원', studentId: '2016234567', school: '한양대학교', status: 'pending', memo: null },
 ];
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  submitted: '검토 대기',
   approved: '승인',
-  rejected: '반려',
-  revision_requested: '보완 요청',
+  pending: '대기',
+  revision: '보완요청',
 };
 
-const STATUS_STYLES: Record<ApplicationStatus, string> = {
-  submitted: 'bg-blue-50 text-blue-600',
-  approved: 'bg-green-50 text-green-600',
-  rejected: 'bg-red-50 text-red-500',
-  revision_requested: 'bg-yellow-50 text-yellow-600',
-};
+const PAGE_SIZE = 5;
 
-const FILTER_TABS: { key: 'all' | ApplicationStatus; label: string }[] = [
-  { key: 'all', label: '전체' },
-  { key: 'submitted', label: '검토 대기' },
-  { key: 'revision_requested', label: '보완 요청' },
-  { key: 'approved', label: '승인' },
-  { key: 'rejected', label: '반려' },
-];
+function StatusBadge({ status }: { status: ApplicationStatus }) {
+  const styles: Record<ApplicationStatus, string> = {
+    approved: 'bg-green-500 text-white',
+    pending: 'bg-gray-200 text-gray-600',
+    revision: 'border border-orange-400 text-orange-500',
+  };
+  return (
+    <span className={`inline-flex items-center justify-center min-w-[64px] px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+function MemoCell({ memo }: { memo: string | null }) {
+  if (memo) return <span className="text-sm text-text-body">{memo}</span>;
+  return <span className="text-sm text-text-placeholder">—</span>;
+}
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+const YEARS = ['2024', '2025', '2026'];
+type Tab = 'mentee' | 'mentor';
 
 export default function AdminApplicationsPage() {
-  const [filter, setFilter] = useState<'all' | ApplicationStatus>('all');
+  return (
+    <Suspense fallback={null}>
+      <ApplicationsPageContent />
+    </Suspense>
+  );
+}
 
-  const filtered = filter === 'all'
-    ? MOCK_APPLICATIONS
-    : MOCK_APPLICATIONS.filter((a) => a.application_status === filter);
+function ApplicationsPageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const tab: Tab = params.get('tab') === 'mentor' ? 'mentor' : 'mentee';
 
-  const counts = MOCK_APPLICATIONS.reduce((acc, a) => {
-    acc[a.application_status] = (acc[a.application_status] ?? 0) + 1;
-    return acc;
-  }, {} as Record<ApplicationStatus, number>);
+  const setTab = (t: Tab) => {
+    const next = new URLSearchParams(Array.from(params.entries()));
+    next.set('tab', t);
+    router.replace(`${pathname}?${next.toString()}`);
+  };
+
+  const [year, setYear] = useState('2024');
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+
+  const schedule = SCHEDULE_BY_YEAR[year] ?? [];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold text-text-primary">지원서 관리</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          총 {MOCK_APPLICATIONS.length}건 · 검토 대기 {counts.submitted ?? 0}건
-        </p>
+    <div className="flex flex-col gap-8">
+      {/* 페이지 헤더 */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
+          <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
+        </div>
+        <select
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+          className="px-4 py-2 pr-8 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
+        >
+          {YEARS.map((y) => (
+            <option key={y} value={y}>{y}년</option>
+          ))}
+        </select>
       </div>
 
-      {/* 필터 탭 */}
-      <div className="flex gap-1 border-b border-border">
-        {FILTER_TABS.map(({ key, label }) => (
+      {/* 사업 스케줄 */}
+      <section className="bg-white border border-border rounded-xl px-8 py-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-base font-semibold text-text-primary">pLAWcess 사업 스케줄</h2>
           <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              filter === key
-                ? 'border-brand text-brand'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
+            onClick={() => setIsEditingSchedule((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
           >
-            {label}
-            {key !== 'all' && counts[key as ApplicationStatus] != null && (
-              <span className="ml-1.5 text-xs">{counts[key as ApplicationStatus]}</span>
-            )}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            {isEditingSchedule ? '완료' : '수정'}
           </button>
-        ))}
+        </div>
+        <ul className="divide-y divide-border">
+          {schedule.map(({ label, period }) => (
+            <li key={label} className="grid grid-cols-[180px_1fr] items-center py-5">
+              <span className="text-sm font-medium text-text-primary">{label}</span>
+              {isEditingSchedule ? (
+                <input
+                  defaultValue={period}
+                  className="px-3 py-1.5 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand"
+                />
+              ) : (
+                <span className="text-sm text-text-secondary">{period}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* 탭 */}
+      <div className="flex gap-1 border-b border-border">
+        <TabButton active={tab === 'mentee'} onClick={() => setTab('mentee')}>
+          멘티 신청 <span className="ml-1.5 text-xs text-text-placeholder">{MENTEE_APPLICATIONS.length}</span>
+        </TabButton>
+        <TabButton active={tab === 'mentor'} onClick={() => setTab('mentor')}>
+          멘토 신청 <span className="ml-1.5 text-xs text-text-placeholder">{MENTOR_APPLICATIONS.length}</span>
+        </TabButton>
       </div>
 
-      {/* 테이블 */}
-      <div className="bg-white border border-border rounded-xl overflow-x-auto">
-        <table className="w-full text-sm whitespace-nowrap">
-          <thead className="bg-page-bg border-b border-border">
+      {tab === 'mentee' ? (
+        <ApplicationPanel<MenteeApp>
+          initialData={MENTEE_APPLICATIONS}
+          searchKeys={['name', 'studentId', 'major']}
+          kindLabel="멘티"
+          metaForModal={(a) => [
+            { label: '학번', value: a.studentId },
+            { label: '전공', value: a.major },
+          ]}
+          columns={[
+            { key: 'name', label: '이름', sortable: true },
+            { key: 'studentId', label: '학번', sortable: true },
+            { key: 'major', label: '전공', sortable: true },
+            { key: 'status', label: '신청 상태', sortable: true, render: (a) => <StatusBadge status={a.status} /> },
+            { key: 'memo', label: '요청사항 및 관리자메모', render: (a) => <MemoCell memo={a.memo} /> },
+          ]}
+        />
+      ) : (
+        <ApplicationPanel<MentorApp>
+          initialData={MENTOR_APPLICATIONS}
+          searchKeys={['name', 'studentId', 'school']}
+          kindLabel="멘토"
+          metaForModal={(a) => [
+            { label: '학번', value: a.studentId },
+            { label: '소속 학교', value: a.school },
+          ]}
+          columns={[
+            { key: 'name', label: '이름', sortable: true },
+            { key: 'studentId', label: '학번', sortable: true },
+            { key: 'school', label: '소속 학교', sortable: true },
+            { key: 'status', label: '신청 상태', sortable: true, render: (a) => <StatusBadge status={a.status} /> },
+            { key: 'memo', label: '요청사항 및 관리자메모', render: (a) => <MemoCell memo={a.memo} /> },
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+        active ? 'border-brand text-brand' : 'border-transparent text-text-secondary hover:text-text-primary'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+type SortDir = 'asc' | 'desc';
+type SortState<T> = { key: keyof T; dir: SortDir } | null;
+
+type ColumnDef<T> = {
+  key: keyof T;
+  label: string;
+  sortable?: boolean;
+  render?: (row: T) => React.ReactNode;
+};
+
+type ApplicationRow = { id: string; status: ApplicationStatus; memo: string | null; name: string };
+
+function ApplicationPanel<T extends ApplicationRow>({
+  initialData,
+  columns,
+  searchKeys,
+  metaForModal,
+  kindLabel,
+}: {
+  initialData: T[];
+  columns: ColumnDef<T>[];
+  searchKeys: (keyof T)[];
+  metaForModal: (row: T) => { label: string; value: string }[];
+  kindLabel: string;
+}) {
+  const [data, setData] = useState<T[]>(initialData);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
+  const [sort, setSort] = useState<SortState<T>>(null);
+  const [page, setPage] = useState(1);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const editing = editingId ? data.find((r) => r.id === editingId) ?? null : null;
+
+  const processed = useMemo(() => {
+    let result = data;
+    const q = query.trim().toLowerCase();
+    if (q) result = result.filter((r) => searchKeys.some((k) => String(r[k]).toLowerCase().includes(q)));
+    if (statusFilter !== 'all') result = result.filter((r) => r.status === statusFilter);
+    if (sort) {
+      result = [...result].sort((a, b) => {
+        const av = String(a[sort.key]);
+        const bv = String(b[sort.key]);
+        const cmp = av.localeCompare(bv, 'ko');
+        return sort.dir === 'asc' ? cmp : -cmp;
+      });
+    }
+    return result;
+  }, [data, query, statusFilter, sort, searchKeys]);
+
+  const total = processed.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = processed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const onSort = (key: keyof T) => {
+    setPage(1);
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: 'asc' };
+      if (prev.dir === 'asc') return { key, dir: 'desc' };
+      return null;
+    });
+  };
+
+  return (
+    <section className="bg-white border border-border rounded-xl px-8 py-6">
+      <div className="flex items-center justify-between mb-4 gap-4">
+        <div className="flex items-center gap-2 text-text-placeholder">
+          <SearchIcon />
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            placeholder="검색..."
+            className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
+          className="px-3 py-1.5 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
+        >
+          <option value="all">전체 상태</option>
+          <option value="approved">승인</option>
+          <option value="pending">대기</option>
+          <option value="revision">보완요청</option>
+        </select>
+      </div>
+
+      <table className="w-full table-auto">
+        <thead>
+          <tr className="border-b border-border">
+            {columns.map((col) => (
+              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none">
+                {col.sortable ? (
+                  <button onClick={() => onSort(col.key)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                    {col.label}
+                    <SortIndicator active={sort?.key === col.key} dir={sort?.key === col.key ? sort.dir : null} />
+                  </button>
+                ) : (
+                  <span>{col.label}</span>
+                )}
+              </th>
+            ))}
+            <th className="w-16"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {paged.length === 0 ? (
             <tr>
-              {['이름', '학번', '가군', '나군', 'GPA', 'LEET', '제출일', '상태', ''].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-text-secondary font-medium whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
+              <td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td>
             </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-text-secondary">
-                  해당 상태의 지원서가 없습니다.
+          ) : (
+            paged.map((row) => (
+              <tr key={row.id} className="border-b border-border last:border-b-0">
+                {columns.map((col) => (
+                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle">
+                    {col.render ? col.render(row) : String(row[col.key])}
+                  </td>
+                ))}
+                <td className="py-4 pr-2 text-right align-middle whitespace-nowrap">
+                  <button
+                    onClick={() => setEditingId(row.id)}
+                    className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    수정
+                  </button>
                 </td>
               </tr>
-            ) : (
-              filtered.map((app) => (
-                <tr key={app.application_id} className="border-t border-border hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-text-primary">{app.name}</p>
-                    <p className="text-xs text-text-secondary">{app.email}</p>
-                  </td>
-                  <td className="px-4 py-3 text-text-secondary">{app.student_id}</td>
-                  <td className="px-4 py-3 text-text-secondary">{app.target_school_ga ?? '-'}</td>
-                  <td className="px-4 py-3 text-text-secondary">{app.target_school_na ?? '-'}</td>
-                  <td className="px-4 py-3 text-text-secondary">{app.gpa ?? '-'}</td>
-                  <td className="px-4 py-3 text-text-secondary">{app.leet_score ?? '-'}</td>
-                  <td className="px-4 py-3 text-text-secondary whitespace-nowrap">
-                    {new Date(app.submitted_at).toLocaleDateString('ko-KR')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[app.application_status]}`}>
-                      {STATUS_LABELS[app.application_status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/applications/${app.application_id}`}
-                      className="text-xs font-medium text-brand hover:underline whitespace-nowrap"
-                    >
-                      상세보기
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+            ))
+          )}
+        </tbody>
+      </table>
+
+      <div className="flex items-center justify-between mt-5">
+        <span className="text-xs text-text-secondary">
+          총 {total}건 · {safePage} / {totalPages} 페이지
+        </span>
+        {totalPages > 1 && <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />}
+      </div>
+
+      <ApplicationEditModal
+        target={editing}
+        meta={editing ? metaForModal(editing) : []}
+        kindLabel={kindLabel}
+        onClose={() => setEditingId(null)}
+        onSave={async ({ memo, status }) => {
+          // TODO: PATCH /api/admin/applications/:id { memo, status }
+          await new Promise((r) => setTimeout(r, 300));
+          setData((prev) => prev.map((r) => (r.id === editingId ? { ...r, memo: memo || null, status } : r)));
+          setEditingId(null);
+        }}
+      />
+    </section>
+  );
+}
+
+function ApplicationEditModal<T extends ApplicationRow>({
+  target,
+  meta,
+  kindLabel,
+  onClose,
+  onSave,
+}: {
+  target: T | null;
+  meta: { label: string; value: string }[];
+  kindLabel: string;
+  onClose: () => void;
+  onSave: (next: { memo: string; status: ApplicationStatus }) => Promise<void>;
+}) {
+  const [memo, setMemo] = useState('');
+  const [status, setStatus] = useState<ApplicationStatus>('pending');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (target) {
+      setMemo(target.memo ?? '');
+      setStatus(target.status);
+      setSaving(false);
+    }
+  }, [target]);
+
+  useEffect(() => {
+    if (!target) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [target, onClose]);
+
+  if (!target) return null;
+
+  const requireMemo = status === 'revision' && !memo.trim();
+
+  async function handleSave() {
+    if (requireMemo) return;
+    setSaving(true);
+    try {
+      await onSave({ memo: memo.trim(), status });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${kindLabel} 신청 검토`}
+        className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]"
+      >
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-text-primary">{kindLabel} 신청 검토</h2>
+          <button type="button" onClick={onClose} aria-label="닫기" className="text-text-placeholder hover:text-text-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* 본문 */}
+        <div className="px-6 py-5 flex flex-col gap-6 overflow-y-auto">
+          {/* 신청자 정보 */}
+          <div>
+            <p className="text-xs font-medium text-text-secondary mb-2">신청자 정보</p>
+            <div className="bg-page-bg border border-border rounded-md px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+              <div>
+                <span className="block text-xs text-text-secondary">이름</span>
+                <p className="text-sm font-medium text-text-primary">{target.name}</p>
+              </div>
+              {meta.map(({ label, value }) => (
+                <div key={label}>
+                  <span className="block text-xs text-text-secondary">{label}</span>
+                  <p className="text-sm text-text-primary">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 신청 상태 */}
+          <div>
+            <p className="text-sm font-medium text-text-primary mb-3">신청 상태</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(['approved', 'pending', 'revision'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatus(s)}
+                  className={`px-3 py-2.5 text-sm rounded-md border transition-colors ${
+                    status === s
+                      ? 'border-brand bg-brand-light text-brand font-semibold'
+                      : 'border-border text-text-secondary hover:bg-gray-50'
+                  }`}
+                >
+                  {STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 관리자 메모 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-text-primary">관리자 메모</p>
+              {status === 'revision' && (
+                <span className="text-xs text-orange-500">보완요청 사유 필수</span>
+              )}
+            </div>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="검토 사유나 요청사항을 입력하세요"
+              rows={4}
+              className="w-full px-3 py-2 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand resize-none placeholder:text-text-placeholder"
+            />
+          </div>
+        </div>
+
+        {/* 푸터 */}
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || requireMemo}
+            className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
       </div>
     </div>
   );
+}
+
+function SortIndicator({ active, dir }: { active: boolean; dir: SortDir | null }) {
+  if (!active) {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-placeholder">
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
+      {dir === 'asc' ? <polyline points="18 15 12 9 6 15" /> : <polyline points="6 9 12 15 18 9" />}
+    </svg>
+  );
+}
+
+function Pagination({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (p: number) => void }) {
+  const pages = pageNumbers(page, totalPages);
+  return (
+    <div className="flex items-center gap-1">
+      <PageButton onClick={() => onPage(page - 1)} disabled={page === 1}>‹</PageButton>
+      {pages.map((p, i) =>
+        p === '…' ? (
+          <span key={`e${i}`} className="px-2 text-xs text-text-placeholder">…</span>
+        ) : (
+          <PageButton key={p} onClick={() => onPage(p)} active={p === page}>{p}</PageButton>
+        ),
+      )}
+      <PageButton onClick={() => onPage(page + 1)} disabled={page === totalPages}>›</PageButton>
+    </div>
+  );
+}
+
+function PageButton({
+  onClick,
+  disabled,
+  active,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`min-w-[28px] h-7 px-2 text-xs rounded-md transition-colors ${
+        active
+          ? 'bg-brand text-white font-semibold'
+          : 'text-text-secondary hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function pageNumbers(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | '…')[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push('…');
+  for (let p = start; p <= end; p++) pages.push(p);
+  if (end < total - 1) pages.push('…');
+  pages.push(total);
+  return pages;
 }
