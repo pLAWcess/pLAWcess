@@ -1,9 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { EditButton, EditButtons } from '@/components/ui/EditButton';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
 type Tab = typeof TABS[number];
+
+const CAREER_OPTIONS = ['변호사', '검사', '판사'] as const;
+type CareerGoal = typeof CAREER_OPTIONS[number] | '';
 
 type ActivityForm = {
   name: string;
@@ -152,6 +156,79 @@ function AddItemPlaceholder({ onClick }: { onClick: () => void }) {
   );
 }
 
+function CareerGoalCard({
+  value,
+  onChange,
+}: {
+  value: CareerGoal;
+  onChange: (value: CareerGoal) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<CareerGoal>(value);
+  const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    setDraft(value);
+    setIsEditing(true);
+  }
+
+  function handleCancel() {
+    setDraft(value);
+    setIsEditing(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      // TODO: 희망 진로 저장 API 연동
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      onChange(draft);
+      setIsEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="border border-border rounded-xl px-8 py-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-text-primary">희망 진로</h3>
+        {isEditing
+          ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={saving} />
+          : <EditButton onClick={startEdit} />}
+      </div>
+
+      <div className="min-h-[40px] flex items-center">
+        {isEditing ? (
+          <div className="flex gap-2">
+            {CAREER_OPTIONS.map((option) => {
+              const selected = draft === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setDraft(selected ? '' : option)}
+                  className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
+                    selected
+                      ? 'bg-brand text-white border-brand'
+                      : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
+                  }`}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className={`text-base ${value ? 'text-text-primary' : 'text-text-placeholder'}`}>
+            {value || '선택되지 않음'}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -172,7 +249,15 @@ function EmptyState() {
   );
 }
 
-function TabContent({ tab }: { tab: Tab }) {
+function TabContent({
+  tab,
+  careerGoal,
+  onCareerGoalChange,
+}: {
+  tab: Tab;
+  careerGoal: CareerGoal;
+  onCareerGoalChange: (value: CareerGoal) => void;
+}) {
   const [forms, setForms] = useState<ActivityForm[]>([]);
 
   function addForm() {
@@ -187,7 +272,14 @@ function TabContent({ tab }: { tab: Tab }) {
     setForms(forms.filter((_, i) => i !== index));
   }
 
-  if (tab === '대시보드') return <EmptyState />;
+  if (tab === '대시보드') {
+    return (
+      <div className="flex flex-col gap-6">
+        <CareerGoalCard value={careerGoal} onChange={onCareerGoalChange} />
+        <EmptyState />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -206,6 +298,7 @@ function TabContent({ tab }: { tab: Tab }) {
 
 export default function QualitativePage() {
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
+  const [careerGoal, setCareerGoal] = useState<CareerGoal>('');
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
@@ -235,7 +328,11 @@ export default function QualitativePage() {
 
         {/* 탭 콘텐츠 */}
         <div className="px-8 py-6">
-          <TabContent tab={activeTab} />
+          <TabContent
+            tab={activeTab}
+            careerGoal={careerGoal}
+            onCareerGoalChange={setCareerGoal}
+          />
         </div>
       </div>
     </div>
