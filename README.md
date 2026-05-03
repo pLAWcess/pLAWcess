@@ -63,10 +63,68 @@ pnpm build:web
 pnpm build:api
 
 # DB
-pnpm db:generate    # Prisma Client 생성
-pnpm db:push        # 스키마 반영
-pnpm db:migrate     # 마이그레이션 실행
+pnpm db:generate          # Prisma Client 생성
+pnpm db:push              # 스키마를 dev DB에 즉시 반영 (마이그레이션 X)
+pnpm db:migrate           # 로컬 dev DB에 새 마이그레이션 생성·적용 (prisma migrate dev)
+pnpm db:migrate:deploy    # 운영(Supabase)에 미적용 마이그레이션 배포 (prisma migrate deploy)
 ```
+
+## DB 스키마 변경 워크플로우
+
+운영 DB는 Supabase, 마이그레이션은 Prisma가 `_prisma_migrations` 테이블에 추적. 다음 4단계로 끝.
+
+### 1. `schema.prisma` 수정
+`packages/database/prisma/schema.prisma`에 필드/모델/enum 변경.
+
+### 2. 마이그레이션 SQL 파일 작성
+`packages/database/prisma/migrations/YYYYMMDDHHMMSS_descriptive_name/migration.sql` 폴더 만들고 SQL 직접 작성.
+
+```sql
+-- 예시
+ALTER TABLE "users" ADD COLUMN "new_field" TEXT;
+```
+
+SQL을 손으로 쓰기 귀찮으면 자동 생성:
+```bash
+cd packages/database
+node_modules/.bin/prisma migrate diff \
+  --from-schema-datasource prisma/schema.prisma \
+  --to-schema-datamodel prisma/schema.prisma \
+  --script
+```
+출력을 `migration.sql`에 붙여넣기.
+
+### 3. 커밋
+```bash
+git add packages/database/prisma/schema.prisma \
+        packages/database/prisma/migrations/YYYYMMDDHHMMSS_*
+git commit -m "feat(#xxx): ..."
+```
+
+### 4. Supabase에 반영
+```bash
+pnpm db:migrate:deploy
+```
+Prisma가 `_prisma_migrations`를 보고 미적용 마이그레이션의 SQL을 실행 + 추적 행 추가. **SQL Editor 직접 실행 안 해도 됨.**
+
+### 5. 코드 동기화 (필요 시)
+```bash
+pnpm db:generate
+```
+(`postinstall`로 자동되긴 함)
+
+### `db:migrate:deploy`가 hang 될 때
+`.env`의 `DATABASE_URL`이 pgbouncer 풀러(포트 6543)를 가리키면 마이그레이션 스텝에서 멈출 수 있음. 그때만 임시로 DIRECT_URL 강제:
+```bash
+cd packages/database
+DIRECT_URL_VAL=$(grep "^DIRECT_URL=" .env | cut -d= -f2- | tr -d '"')
+DATABASE_URL="$DIRECT_URL_VAL" node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma
+```
+
+### 잘못 적용됐을 때
+- **이미 SQL Editor에서 직접 실행해버린 마이그레이션이 있다면**: `node_modules/.bin/prisma migrate resolve --applied <migration_name> --schema=prisma/schema.prisma` 로 추적만 마크 (스키마는 안 건드림)
+- **잘못 적용된 마이그레이션을 되돌리려면**: 새 마이그레이션 폴더에 `DROP COLUMN ...` SQL 작성 후 deploy (마이그레이션은 forward-only)
+
 
 ## 페이지 라우팅
 
