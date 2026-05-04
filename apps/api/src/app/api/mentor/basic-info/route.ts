@@ -1,15 +1,15 @@
 // apps/api/src/app/api/mentor/basic-info/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@plawcess/database";
+import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
 import {
-  genderToLabel, labelToGender,
-  statusToLabel, labelToStatus,
-  militaryToLabel, labelToMilitary,
-  dateToLabel, labelToDate,
+  genderToLabel,
+  statusToLabel,
+  militaryToLabel,
+  dateToLabel,
   yearToLabel,
 } from "@/lib/labels";
-import { splitPayload, MENTOR_RECORD_FIELDS } from "@/lib/payload-split";
+import { splitPayload, MENTOR_RECORD_FIELDS, flattenPersonal, PersonalPatchInput } from "@/lib/payload-split";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -95,15 +95,7 @@ export async function PATCH(req: NextRequest) {
   const processYear = getProcessYear(req);
 
   let body: {
-    personal?: {
-      birthDate?: string;
-      gender?: string;
-      militaryStatus?: string;
-      major1?: string;
-      major2?: string;
-      admissionYear?: string;
-      academicStatus?: string;
-      graduationYear?: string;
+    personal?: PersonalPatchInput & {
       currentLawschool?: string;
       graduatedLawschool?: string;
       lawschoolGrade?: number | null;
@@ -115,23 +107,9 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "요청 본문이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const flat: Record<string, unknown> = {};
+  const flat: Record<string, unknown> = body.personal ? flattenPersonal(body.personal) : {};
   if (body.personal) {
     const p = body.personal;
-    if (p.birthDate !== undefined) flat.birth_date = labelToDate(p.birthDate);
-    if (p.gender !== undefined) flat.gender = labelToGender(p.gender);
-    if (p.militaryStatus !== undefined) flat.military_status = labelToMilitary(p.militaryStatus);
-    if (p.major1 !== undefined) flat.undergrad_first_major = p.major1;
-    if (p.major2 !== undefined) flat.undergrad_second_major = p.major2;
-    if (p.admissionYear !== undefined) {
-      const n = parseInt(p.admissionYear, 10);
-      flat.undergrad_entry_year = isNaN(n) ? null : n;
-    }
-    if (p.graduationYear !== undefined) {
-      const n = parseInt(p.graduationYear, 10);
-      flat.undergrad_graduation_year = isNaN(n) ? null : n;
-    }
-    if (p.academicStatus !== undefined) flat.academic_status = labelToStatus(p.academicStatus);
     if (p.currentLawschool !== undefined) flat.current_lawschool = p.currentLawschool || null;
     if (p.graduatedLawschool !== undefined) flat.graduated_lawschool = p.graduatedLawschool || null;
     if (p.lawschoolGrade !== undefined) flat.lawschool_grade = p.lawschoolGrade;
@@ -144,7 +122,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const ops = [];
+  const ops: Prisma.PrismaPromise<unknown>[] = [];
   if (Object.keys(userData).length > 0) {
     ops.push(prisma.user.update({ where: { user_id: userId }, data: userData }));
   }

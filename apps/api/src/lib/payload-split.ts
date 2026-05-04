@@ -2,6 +2,10 @@
 // 하이브리드 PATCH: 단일 엔드포인트로 들어온 본문을 User 필드와 Record 필드로 분리한다.
 // FE는 평탄한 객체를 보내고, BE는 어느 테이블로 가는지를 캡슐화한다.
 
+import {
+  labelToGender, labelToStatus, labelToMilitary, labelToDate,
+} from "./labels";
+
 export const USER_FIELDS = new Set<string>([
   // 신상
   "birth_date", "gender", "military_status", "phone",
@@ -52,4 +56,41 @@ export function splitPayload(
     else if (recordFieldSet.has(key)) recordData[key] = value;
   }
   return { userData, recordData };
+}
+
+// ----------------------------------------------------------------
+// 공용 personal-블록 평탄화
+// ----------------------------------------------------------------
+export type PersonalPatchInput = {
+  birthDate?: string;
+  gender?: string;
+  militaryStatus?: string;
+  major1?: string;
+  major2?: string;
+  admissionYear?: string;
+  graduationYear?: string;
+  academicStatus?: string;
+};
+
+/**
+ * 멘티/멘토 공통 personal 블록을 DB 컬럼명+enum 값으로 평탄화.
+ * 호출 측은 반환값에 role-specific 필드(admission / lawschool 등)를 spread해 추가한다.
+ */
+export function flattenPersonal(p: PersonalPatchInput): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (p.birthDate !== undefined) out.birth_date = labelToDate(p.birthDate);
+  if (p.gender !== undefined) out.gender = labelToGender(p.gender);
+  if (p.militaryStatus !== undefined) out.military_status = labelToMilitary(p.militaryStatus);
+  if (p.major1 !== undefined) out.undergrad_first_major = p.major1;
+  if (p.major2 !== undefined) out.undergrad_second_major = p.major2;
+  if (p.admissionYear !== undefined) {
+    const n = parseInt(p.admissionYear, 10);
+    out.undergrad_entry_year = isNaN(n) ? null : n;
+  }
+  if (p.graduationYear !== undefined) {
+    const n = parseInt(p.graduationYear, 10);
+    out.undergrad_graduation_year = isNaN(n) ? null : n;
+  }
+  if (p.academicStatus !== undefined) out.academic_status = labelToStatus(p.academicStatus);
+  return out;
 }
