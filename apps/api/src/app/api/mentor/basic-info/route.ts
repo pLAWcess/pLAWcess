@@ -1,3 +1,4 @@
+// apps/api/src/app/api/mentor/basic-info/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
@@ -8,7 +9,7 @@ import {
   dateToLabel,
   yearToLabel,
 } from "@/lib/labels";
-import { splitPayload, MENTEE_RECORD_FIELDS, flattenPersonal, PersonalPatchInput } from "@/lib/payload-split";
+import { splitPayload, MENTOR_RECORD_FIELDS, flattenPersonal, PersonalPatchInput } from "@/lib/payload-split";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -22,8 +23,8 @@ function getProcessYear(req: NextRequest): number {
 }
 
 // ----------------------------------------------------------------
-// GET /api/mentee/basic-info?year=2026학년도
-// 응답: User(신상) + MenteeRecord(사이클 학적·희망학교) 합성
+// GET /api/mentor/basic-info?year=2026
+// 응답: User(신상 + 로스쿨) + MentorRecord(학적 스냅샷) 합성
 // ----------------------------------------------------------------
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
@@ -46,16 +47,14 @@ export async function GET(req: NextRequest) {
         undergrad_second_major: true,
         undergrad_entry_year: true,
         undergrad_graduation_year: true,
+        current_lawschool: true,
+        graduated_lawschool: true,
+        lawschool_grade: true,
       },
     }),
-    prisma.menteeRecord.findUnique({
+    prisma.mentorRecord.findUnique({
       where: { user_id_process_year: { user_id: userId, process_year: processYear } },
-      select: {
-        academic_status: true,
-        target_school_ga: true,
-        target_school_na: true,
-        is_special_admission: true,
-      },
+      select: { academic_status: true },
     }),
   ]);
 
@@ -75,19 +74,17 @@ export async function GET(req: NextRequest) {
       admissionYear: yearToLabel(user.undergrad_entry_year),
       graduationYear: yearToLabel(user.undergrad_graduation_year),
       academicStatus: statusToLabel(record?.academic_status),
-    },
-    admission: {
-      가: { first: record?.target_school_ga ?? "" },
-      나: { first: record?.target_school_na ?? "" },
-      isSpecialAdmission: record?.is_special_admission ?? false,
+      currentLawschool: user.current_lawschool ?? "",
+      graduatedLawschool: user.graduated_lawschool ?? "",
+      lawschoolGrade: user.lawschool_grade ?? null,
     },
   });
 }
 
 // ----------------------------------------------------------------
-// PATCH /api/mentee/basic-info?year=2026학년도
-// Body: { personal?: {...}, admission?: {...} }   ← FE 호환성 유지
-// 내부: 평탄화 → splitPayload → User.update + MenteeRecord.upsert (트랜잭션)
+// PATCH /api/mentor/basic-info?year=2026
+// Body: { personal?: {...} }   ← 멘토는 admission(가/나군) 대신 lawschool 필드를 갖는다.
+// 내부: 평탄화 → splitPayload → User.update + MentorRecord.upsert
 // ----------------------------------------------------------------
 export async function PATCH(req: NextRequest) {
   const userId = getUserId(req);
@@ -98,11 +95,10 @@ export async function PATCH(req: NextRequest) {
   const processYear = getProcessYear(req);
 
   let body: {
-    personal?: PersonalPatchInput;
-    admission?: {
-      가?: { first?: string };
-      나?: { first?: string };
-      isSpecialAdmission?: boolean;
+    personal?: PersonalPatchInput & {
+      currentLawschool?: string;
+      graduatedLawschool?: string;
+      lawschoolGrade?: number | null;
     };
   };
   try {
@@ -111,32 +107,28 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "요청 본문이 올바르지 않습니다." }, { status: 400 });
   }
 
-  // 1) 중첩 본문 → 평탄화 + DB 컬럼명 + 라벨 변환
   const flat: Record<string, unknown> = body.personal ? flattenPersonal(body.personal) : {};
-  if (body.admission) {
-    const { 가: ga, 나: na, isSpecialAdmission } = body.admission;
-    if (ga?.first !== undefined) flat.target_school_ga = ga.first || null;
-    if (na?.first !== undefined) flat.target_school_na = na.first || null;
-    if (isSpecialAdmission !== undefined) flat.is_special_admission = isSpecialAdmission;
+  if (body.personal) {
+    const p = body.personal;
+    if (p.currentLawschool !== undefined) flat.current_lawschool = p.currentLawschool || null;
+    if (p.graduatedLawschool !== undefined) flat.graduated_lawschool = p.graduatedLawschool || null;
+    if (p.lawschoolGrade !== undefined) flat.lawschool_grade = p.lawschoolGrade;
   }
 
-  // 2) User / MenteeRecord 분기
-  const { userData, recordData } = splitPayload(flat, MENTEE_RECORD_FIELDS);
+  const { userData, recordData } = splitPayload(flat, MENTOR_RECORD_FIELDS);
 
-  // 3) 사용자 존재 확인
   const exists = await prisma.user.findUnique({ where: { user_id: userId }, select: { user_id: true } });
   if (!exists) {
     return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  // 4) 트랜잭션으로 두 테이블 동시 반영
   const ops: Prisma.PrismaPromise<unknown>[] = [];
   if (Object.keys(userData).length > 0) {
     ops.push(prisma.user.update({ where: { user_id: userId }, data: userData }));
   }
   if (Object.keys(recordData).length > 0) {
     ops.push(
-      prisma.menteeRecord.upsert({
+      prisma.mentorRecord.upsert({
         where: { user_id_process_year: { user_id: userId, process_year: processYear } },
         create: { user_id: userId, process_year: processYear, ...recordData },
         update: recordData,

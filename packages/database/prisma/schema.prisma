@@ -94,27 +94,35 @@ enum MatchStatus {
 // ----------------------------------------------------------------
 model User {
   user_id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  login_id        String?         @unique @db.VarChar(50)  // 사용자가 직접 정하는 로그인 ID. 신규 가입자는 필수, 기존 dummy 유저는 NULL
+  login_id        String?         @unique @db.VarChar(50)
   name            String          @db.VarChar(50)
-  birth_year      Int?
+
+  // 신상 (시간 불변)
+  birth_date      DateTime?       @db.Date
   gender          Gender?
+  military_status MilitaryStatus?
   phone           String?         @db.VarChar(20)
   email           String          @unique @db.VarChar(100)
   student_id      String?         @db.VarChar(20)
-  first_major     String?         @db.VarChar(100)
-  second_major    String?         @db.VarChar(100)
-  school_name     String?         @db.VarChar(100)
-  academic_status AcademicStatus?
-  military_status MilitaryStatus?
+
+  // 학부 (시간 불변)
+  undergrad_school_name      String? @db.VarChar(100)
+  undergrad_first_major      String? @db.VarChar(100)
+  undergrad_second_major     String? @db.VarChar(100)
+  undergrad_entry_year       Int?
+  undergrad_graduation_year  Int?
+
+  // 로스쿨 (시간 불변)
+  current_lawschool   String? @db.VarChar(100)
+  graduated_lawschool String? @db.VarChar(100)
+  lawschool_grade     Int?
+
+  // 계정
   account_status  AccountStatus   @default(active)
   current_role    CurrentRole     @default(none)
-
   password_hash   String?         @db.VarChar(100)
 
   // Soft Delete
-  // 탈퇴 시: is_deleted=true, deleted_at=now()
-  //          name="탈퇴한 사용자", phone/student_id=null
-  //          email="deleted_{user_id}@removed.com" (unique 제약 유지)
   is_deleted      Boolean         @default(false)
   deleted_at      DateTime?
 
@@ -143,10 +151,6 @@ model MenteeRecord {
   process_year          Int
 
   // 1단계: 기본정보
-  birth_date            DateTime?         @db.Date
-  major                 String?           @db.VarChar(100)  // 신청 당시 전공 (users.first_major와 별도)
-  graduation_year       Int?
-  university_entry_year Int?
   first_leet_year       Int?
   has_leet_experience   Boolean           @default(false)
   leet_exam_years       Json?             // [2023, 2024] — 표시용, 검색 안 함
@@ -191,6 +195,9 @@ model MenteeRecord {
   strengths_weaknesses  String?           @db.Text
   desired_mentor        String?           @db.Text
 
+  // 신청 시점 학적 스냅샷
+  academic_status       AcademicStatus?
+
   // 작성 상태 (draft ↔ submitted 만 사용)
   record_status         ApplicationStatus @default(draft)
   current_step          Int               @default(1) @db.SmallInt  // 1~4
@@ -218,11 +225,8 @@ model MentorRecord {
   user_id                    String            @db.Uuid
   process_year               Int
 
-  current_lawschool          String?           @db.VarChar(100)
-  graduated_lawschool        String?           @db.VarChar(100)
   leet_score                 Decimal?          @db.Decimal(5, 2)
   gpa                        Decimal?          @db.Decimal(3, 2)
-  graduation_year            Int?
   leet_exam_year             Int?
   has_law_class              Boolean           @default(false)
   law_class_subjects         Json?             // 표시용, 검색 안 함
@@ -230,6 +234,9 @@ model MentorRecord {
   strengths_weaknesses       String?           @db.Text
   career_goal                String?           @db.Text
   is_special_admission       Boolean           @default(false)
+
+  // 신청 시점 학적 스냅샷 (멘토 본인의 로스쿨 학적)
+  academic_status            AcademicStatus?
 
   // 작성 상태
   record_status              ApplicationStatus @default(draft)
