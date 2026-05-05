@@ -282,6 +282,8 @@ function ActivityCard({
     ? `${activity.startDate} ~ ${activity.ongoing ? '현재' : (activity.endDate || '-')}`
     : '-';
   const keywords = star?.keywords ?? [];
+  const bodyText = star?.summary ?? activity.content;
+  const isAiSummary = !!star?.summary;
 
   return (
     <div className="flex flex-col gap-3">
@@ -291,7 +293,10 @@ function ActivityCard({
           <span className="flex items-center gap-1.5"><IconBuilding /> {activity.organization || '-'}</span>
           <span className="flex items-center gap-1.5"><IconCalendar /> {period}</span>
         </div>
-        <p className="text-sm text-text-primary mt-4 whitespace-pre-wrap leading-relaxed">{activity.content}</p>
+        <p className="text-sm text-text-primary mt-4 whitespace-pre-wrap leading-relaxed">{bodyText}</p>
+        {!isAiSummary && (
+          <p className="text-xs text-text-placeholder mt-2">분석 대기 중 — 분석 완료 시 AI 요약으로 대체됩니다.</p>
+        )}
         {keywords.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4">
             {keywords.map((k, i) => (
@@ -489,11 +494,20 @@ export default function QualitativePage() {
     setAnalyzing(false);
   }, []);
 
+  // 분석 진행 안전망: 90초 지나도 결과 없으면 폴링 종료
+  const POLL_TIMEOUT_MS = 90_000;
+
   const startPolling = useCallback(() => {
     analysisStartRef.current = Date.now();
     setAnalyzing(true);
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
+      // 타임아웃 도달 → 강제 중단
+      if (Date.now() - analysisStartRef.current > POLL_TIMEOUT_MS) {
+        stopPolling();
+        alert('AI 분석이 예상보다 오래 걸리고 있어요. 잠시 후 다시 시도해주세요.');
+        return;
+      }
       try {
         const data = await getQualitative(YEAR);
         applyData(data);
@@ -502,7 +516,7 @@ export default function QualitativePage() {
           stopPolling();
         }
       } catch {
-        // 일시적 네트워크 오류 무시
+        // 일시적 네트워크 오류는 다음 tick에서 재시도
       }
     }, 5000);
   }, [applyData, stopPolling]);
@@ -529,6 +543,20 @@ export default function QualitativePage() {
     setDrafts((d) => ({ ...d, [category]: d[category].filter((_, i) => i !== index) }));
   }
 
+  function triggerAnalysis() {
+    startPolling();
+    analyzeQualitative(YEAR)
+      .then((data) => {
+        applyData(data);
+        stopPolling();
+      })
+      .catch((err) => {
+        console.error(err);
+        stopPolling();
+        alert('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
+      });
+  }
+
   async function submitDraft(category: CategoryTab, index: number) {
     if (submitting) return;
     setSubmitting(true);
@@ -538,8 +566,7 @@ export default function QualitativePage() {
       const saved = await patchQualitative(YEAR, { activities: next });
       applyData(saved);
       removeDraft(category, index);
-      analyzeQualitative(YEAR).catch((err) => console.error(err));
-      startPolling();
+      triggerAnalysis();
     } catch (err) {
       console.error(err);
       alert('저장에 실패했어요. 잠시 후 다시 시도해주세요.');
@@ -567,8 +594,7 @@ export default function QualitativePage() {
       applyData(saved);
       setEditingIdx(null);
       setEditDraft(null);
-      analyzeQualitative(YEAR).catch((err) => console.error(err));
-      startPolling();
+      triggerAnalysis();
     } catch (err) {
       console.error(err);
       alert('수정에 실패했어요. 잠시 후 다시 시도해주세요.');
