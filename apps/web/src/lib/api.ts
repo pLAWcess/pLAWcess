@@ -186,14 +186,19 @@ export type StarItem = {
   keywords: string[];
 };
 
+export type KeywordCount = {
+  keyword: string;
+  count: number;
+};
+
 export type QualitativeData = {
   careerGoal: "변호사" | "검사" | "판사" | "";
   activities: QualitativeActivity[];
   analysis: {
     isAnalyzed: boolean;
     analyzedAt: string | null;
-    starAnalysis: { activities: StarItem[]; keywords?: string[] } | null;
-    aiKeywords: string[] | null;
+    starAnalysis: { activities: StarItem[]; keywords?: KeywordCount[] } | null;
+    aiKeywords: KeywordCount[] | null;
   };
 };
 

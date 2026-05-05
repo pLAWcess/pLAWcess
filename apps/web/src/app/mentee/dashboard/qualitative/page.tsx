@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
   getQualitative, patchQualitative, analyzeQualitative,
-  type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory,
+  type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
 } from '@/lib/api';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
@@ -71,6 +71,46 @@ function IconChevron({ open, className = 'w-4 h-4' }: { open: boolean; className
 }
 
 // ----------------------------------------------------------------
+// DateInput — 빈 값일 때는 type="text" + 명시적 placeholder, 클릭 시 type="date"로 전환해 네이티브 피커 호출
+// 모든 브라우저에서 빈 상태가 일관되게 "YYYY-MM-DD"로 보임
+// ----------------------------------------------------------------
+function DateInput({
+  value,
+  onChange,
+  disabled,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [interacted, setInteracted] = useState(false);
+  const showAsDate = interacted || !!value;
+
+  return (
+    <input
+      ref={ref}
+      type={showAsDate ? 'date' : 'text'}
+      value={value}
+      placeholder="YYYY-MM-DD"
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={() => {
+        setInteracted(true);
+        // 다음 프레임에 type이 'date'로 바뀐 뒤 picker 호출
+        requestAnimationFrame(() => {
+          ref.current?.showPicker?.();
+        });
+      }}
+      onBlur={() => { if (!value) setInteracted(false); }}
+      className={className}
+    />
+  );
+}
+
+// ----------------------------------------------------------------
 // 입력 폼 카드 (활동 추가/수정 공용)
 // ----------------------------------------------------------------
 function ActivityFormCard({
@@ -89,36 +129,42 @@ function ActivityFormCard({
   submitLabel?: string;
 }) {
   return (
-    <div className="border border-border rounded-xl px-8 py-6">
-      <h3 className="text-lg font-semibold text-text-primary mb-6">활동 정보 입력</h3>
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <h2 className="text-base font-semibold text-text-primary mb-6">활동 정보 입력</h2>
       <hr className="border-border mb-6" />
 
       <div className="grid grid-cols-2 gap-8 mb-6">
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-text-primary">활동명 <span className="text-red-500">*</span></label>
+          <label className="text-sm text-text-secondary">활동명 <span className="text-red-500">*</span></label>
           <input type="text" value={form.name} onChange={(e) => onChange({ ...form, name: e.target.value })}
             placeholder="활동명을 입력하세요"
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand" />
+            className="border-b border-border-input bg-transparent text-base text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand" />
         </div>
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-text-primary">기관명 <span className="text-red-500">*</span></label>
+          <label className="text-sm text-text-secondary">기관명 <span className="text-red-500">*</span></label>
           <input type="text" value={form.organization} onChange={(e) => onChange({ ...form, organization: e.target.value })}
             placeholder="기관명을 입력하세요"
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand" />
+            className="border-b border-border-input bg-transparent text-base text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand" />
         </div>
       </div>
 
       <div className="grid grid-cols-[1fr_1fr_auto] gap-8 items-end mb-6">
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-text-primary">시작일 <span className="text-red-500">*</span></label>
-          <input type="date" value={form.startDate} onChange={(e) => onChange({ ...form, startDate: e.target.value })}
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand" />
+          <label className="text-sm text-text-secondary">시작일</label>
+          <DateInput
+            value={form.startDate}
+            onChange={(v) => onChange({ ...form, startDate: v })}
+            className="border-b border-border-input bg-transparent text-base text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand"
+          />
         </div>
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-text-primary">종료일</label>
-          <input type="date" value={form.endDate} onChange={(e) => onChange({ ...form, endDate: e.target.value })}
+          <label className="text-sm text-text-secondary">종료일</label>
+          <DateInput
+            value={form.endDate}
+            onChange={(v) => onChange({ ...form, endDate: v })}
             disabled={form.ongoing}
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand disabled:text-text-placeholder" />
+            className="border-b border-border-input bg-transparent text-base text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand disabled:text-text-placeholder"
+          />
         </div>
         <label className="flex items-center gap-2 pb-2 cursor-pointer">
           <input type="checkbox" checked={form.ongoing}
@@ -129,15 +175,15 @@ function ActivityFormCard({
       </div>
 
       <div className="flex flex-col gap-2 mb-6">
-        <label className="text-sm font-medium text-text-primary">작성 내용 <span className="text-red-500">*</span></label>
+        <label className="text-sm text-text-secondary">작성 내용 <span className="text-red-500">*</span></label>
         <textarea value={form.content} onChange={(e) => onChange({ ...form, content: e.target.value })}
           placeholder="활동 내용을 상세히 작성해주세요" rows={4}
-          className="border border-border rounded-lg bg-transparent text-sm text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none" />
+          className="border border-border rounded-lg bg-transparent text-base text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none" />
         <p className="text-xs text-text-secondary">구체적인 역할, 성과, 배운 점 등을 포함하여 작성하면 더 정확한 분석이 가능합니다.</p>
       </div>
 
       <div className="flex flex-col gap-2 mb-6">
-        <label className="text-sm font-medium text-text-primary">파일 첨부</label>
+        <label className="text-sm text-text-secondary">파일 첨부</label>
         <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-placeholder mb-2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -154,7 +200,7 @@ function ActivityFormCard({
           className="py-3 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50">
           취소
         </button>
-        <button onClick={onSubmit} disabled={submitting || !form.name || !form.organization || !form.startDate || !form.content}
+        <button onClick={onSubmit} disabled={submitting || !form.name || !form.organization || !form.content}
           className="py-3 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50">
           {submitting ? '저장 중...' : submitLabel}
         </button>
@@ -166,7 +212,7 @@ function ActivityFormCard({
 function AddItemPlaceholder({ onClick }: { onClick: () => void }) {
   return (
     <div onClick={onClick}
-      className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+      className="flex flex-col items-center justify-center py-12 bg-white border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
       <div className="w-12 h-12 rounded-full bg-brand-light flex items-center justify-center hover:bg-brand-muted transition-colors">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
           <path d="M12 5v14M5 12h14" />
@@ -196,9 +242,9 @@ function CareerGoalCard({
   }
 
   return (
-    <div className="border border-border rounded-xl px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-text-primary">희망 진로</h3>
+        <h2 className="text-base font-semibold text-text-primary">희망 진로</h2>
         {isEditing
           ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={saving} />
           : <EditButton onClick={startEdit} />}
@@ -287,8 +333,8 @@ function ActivityCard({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="border border-border rounded-xl px-8 py-6">
-        <h3 className="text-lg font-semibold text-text-primary">{activity.name}</h3>
+      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+        <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
         <div className="flex items-center gap-4 mt-2 text-sm text-text-secondary">
           <span className="flex items-center gap-1.5"><IconBuilding /> {activity.organization || '-'}</span>
           <span className="flex items-center gap-1.5"><IconCalendar /> {period}</span>
@@ -334,8 +380,8 @@ function ActivityListTable({
   keywordFreq: Map<string, number>;
 }) {
   return (
-    <div className="border border-border rounded-xl px-8 py-6">
-      <h3 className="text-lg font-semibold text-text-primary mb-4">활동 목록</h3>
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <h2 className="text-lg font-semibold text-text-primary mb-4">활동 목록</h2>
       <hr className="border-border mb-2" />
       <table className="w-full">
         <thead>
@@ -385,24 +431,24 @@ function ActivityListTable({
 // 대시보드: 키워드 빈도 사이드바
 // ----------------------------------------------------------------
 function KeywordFrequencyCard({
-  freqEntries,
+  keywords,
   totalActivities,
 }: {
-  freqEntries: [string, number][];
+  keywords: KeywordCount[];
   totalActivities: number;
 }) {
-  const max = freqEntries[0]?.[1] ?? 1;
+  const max = keywords[0]?.count ?? 1;
   return (
-    <div className="border border-border rounded-xl px-6 py-6">
-      <h3 className="text-base font-semibold text-blue-700 mb-5">핵심 키워드 분석</h3>
+    <div className="bg-white rounded-xl border border-border shadow-sm px-6 py-6">
+      <h2 className="text-base font-semibold text-blue-700 mb-5">핵심 키워드 분석</h2>
       <div className="flex flex-col gap-4">
-        {freqEntries.length === 0 && (
+        {keywords.length === 0 && (
           <p className="text-sm text-text-placeholder">분석 결과가 없습니다.</p>
         )}
-        {freqEntries.map(([k, count]) => (
-          <div key={k}>
+        {keywords.map(({ keyword, count }, i) => (
+          <div key={`${keyword}-${i}`}>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-sm text-text-primary">{k}</span>
+              <span className="text-sm text-text-primary">{keyword}</span>
               <span className="px-2 py-0.5 text-xs rounded bg-brand-light text-brand font-medium">{count}회</span>
             </div>
             <div className="h-2 bg-page-bg rounded-full overflow-hidden">
@@ -425,7 +471,7 @@ function KeywordFrequencyCard({
 
 function AnalysisPending() {
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-3 border border-dashed border-border rounded-xl">
+    <div className="flex flex-col items-center justify-center py-12 gap-3 bg-white border border-dashed border-border rounded-xl">
       <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       <p className="text-sm text-text-secondary">AI가 활동을 분석하고 있어요... (최대 1분 정도 걸립니다)</p>
     </div>
@@ -496,8 +542,8 @@ export default function QualitativePage() {
     setAnalyzing(false);
   }, []);
 
-  // 분석 진행 안전망: 90초 지나도 결과 없으면 폴링 종료
-  const POLL_TIMEOUT_MS = 90_000;
+  // 분석 진행 안전망: 120초 지나도 결과 없으면 폴링 종료
+  const POLL_TIMEOUT_MS = 120_000;
 
   const startPolling = useCallback(() => {
     analysisStartRef.current = Date.now();
@@ -631,14 +677,16 @@ export default function QualitativePage() {
 
   // ----- 렌더 -----
   function renderDashboard() {
-    // 활동별 keywords 합산 → 빈도 카운트
-    const freq = new Map<string, number>();
+    // 활동별 keywords 합산 → 행 하이라이트용 (raw 문자열 매칭)
+    const rowFreq = new Map<string, number>();
     for (const star of allStarItems) {
       for (const k of star.keywords ?? []) {
-        freq.set(k, (freq.get(k) ?? 0) + 1);
+        rowFreq.set(k, (rowFreq.get(k) ?? 0) + 1);
       }
     }
-    const freqEntries = Array.from(freq.entries()).sort((a, b) => b[1] - a[1]);
+
+    // 사이드바: Gemini가 의미적으로 병합·집계한 최상위 키워드 (count 내림차순 가정)
+    const serverKeywords: KeywordCount[] = (analysis?.aiKeywords ?? []) as KeywordCount[];
 
     if (serverActivities.length === 0 && !analyzing) {
       return (
@@ -658,13 +706,13 @@ export default function QualitativePage() {
             <ActivityListTable
               activities={serverActivities}
               starByIdx={findStar}
-              keywordFreq={freq}
+              keywordFreq={rowFreq}
             />
           )}
         </div>
         <div className="flex flex-col gap-6">
           <KeywordFrequencyCard
-            freqEntries={freqEntries}
+            keywords={serverKeywords}
             totalActivities={serverActivities.length}
           />
         </div>
@@ -726,23 +774,28 @@ export default function QualitativePage() {
         <p className="text-sm text-text-secondary mt-1">경험과 활동 정보를 입력하고 AI 분석을 받아보세요</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-        <div className="flex border-b border-border px-2 pt-2">
-          {TABS.map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${
-                activeTab === tab ? 'bg-brand text-white' : 'text-text-secondary hover:text-text-primary hover:bg-gray-50'
-              }`}>
-              {tab}
-            </button>
-          ))}
-        </div>
-        <div className="px-8 py-6">
-          {activeTab === '대시보드'
-            ? renderDashboard()
-            : <div className="max-w-3xl mx-auto">{renderCategoryTab(activeTab)}</div>}
+      <div className="bg-white rounded-xl border border-border shadow-sm px-2 py-2">
+        <div className="flex gap-1">
+          {TABS.map((tab) => {
+            const active = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-2.5 text-sm font-medium rounded-md transition-colors ${
+                  active
+                    ? 'bg-brand text-white'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-gray-50'
+                }`}
+              >
+                {tab}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {activeTab === '대시보드' ? renderDashboard() : renderCategoryTab(activeTab)}
     </div>
   );
 }
