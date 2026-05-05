@@ -158,3 +158,71 @@ export async function patchBasicInfo(
   );
   if (!res.ok) throw new Error("기본정보 저장 실패");
 }
+
+// ----------------------------------------------------------------
+// Qualitative
+// ----------------------------------------------------------------
+
+export type ActivityCategory = '교내' | '대외' | '사회경험' | '자격·시험';
+
+export type QualitativeActivity = {
+  category?: ActivityCategory;
+  name: string;
+  organization: string;
+  startDate: string;
+  endDate: string;
+  ongoing: boolean;
+  content: string;
+};
+
+export type StarItem = {
+  activity_index: number;
+  activity_name: string;
+  summary: string;
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+  keywords: string[];
+};
+
+export type QualitativeData = {
+  careerGoal: "변호사" | "검사" | "판사" | "";
+  activities: QualitativeActivity[];
+  analysis: {
+    isAnalyzed: boolean;
+    analyzedAt: string | null;
+    starAnalysis: { activities: StarItem[]; keywords?: string[] } | null;
+    aiKeywords: string[] | null;
+  };
+};
+
+export async function getQualitative(year: string): Promise<QualitativeData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("정성 데이터 조회 실패");
+  return res.json();
+}
+
+export async function patchQualitative(
+  year: string,
+  body: { careerGoal?: string; activities?: QualitativeActivity[] }
+): Promise<QualitativeData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
+  );
+  if (!res.ok) throw new Error("정성 데이터 저장 실패");
+  return res.json();
+}
+
+export async function analyzeQualitative(year: string): Promise<QualitativeData & { skipped: boolean }> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative/analyze?year=${encodeURIComponent(year)}`,
+    { method: "POST", headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("AI 분석 실패");
+  return res.json();
+}

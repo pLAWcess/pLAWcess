@@ -1,24 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
+import {
+  getQualitative, patchQualitative, analyzeQualitative,
+  type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory,
+} from '@/lib/api';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
 type Tab = typeof TABS[number];
+type CategoryTab = Exclude<Tab, '대시보드'>;
+const DEFAULT_CATEGORY: ActivityCategory = '교내';
 
 const CAREER_OPTIONS = ['변호사', '검사', '판사'] as const;
 type CareerGoal = typeof CAREER_OPTIONS[number] | '';
 
-type ActivityForm = {
-  name: string;
-  organization: string;
-  startDate: string;
-  endDate: string;
-  ongoing: boolean;
-  content: string;
-};
+type ActivityForm = QualitativeActivity;
 
-const EMPTY_FORM: ActivityForm = {
+const EMPTY_FORM: Omit<ActivityForm, 'category'> = {
   name: '',
   organization: '',
   startDate: '',
@@ -27,90 +26,116 @@ const EMPTY_FORM: ActivityForm = {
   content: '',
 };
 
+const YEAR = new Date().getFullYear().toString();
+
+// ----------------------------------------------------------------
+// 작은 SVG 아이콘들
+// ----------------------------------------------------------------
+function IconBuilding({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01" />
+    </svg>
+  );
+}
+function IconCalendar({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+function IconClipboard({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="6" y="4" width="12" height="18" rx="2" />
+      <path d="M9 4V2h6v2M9 12h6M9 16h6" />
+    </svg>
+  );
+}
+function IconPencil({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  );
+}
+function IconChevron({ open, className = 'w-4 h-4' }: { open: boolean; className?: string }) {
+  return (
+    <svg className={`${className} transition-transform ${open ? '' : 'rotate-180'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 15l-6-6-6 6" />
+    </svg>
+  );
+}
+
+// ----------------------------------------------------------------
+// 입력 폼 카드 (활동 추가/수정 공용)
+// ----------------------------------------------------------------
 function ActivityFormCard({
   form,
   onChange,
   onCancel,
+  onSubmit,
+  submitting,
+  submitLabel = '저장 및 분석',
 }: {
   form: ActivityForm;
   onChange: (form: ActivityForm) => void;
   onCancel: () => void;
+  onSubmit: () => void;
+  submitting: boolean;
+  submitLabel?: string;
 }) {
   return (
     <div className="border border-border rounded-xl px-8 py-6">
       <h3 className="text-lg font-semibold text-text-primary mb-6">활동 정보 입력</h3>
       <hr className="border-border mb-6" />
 
-      {/* 활동명 / 기관명 */}
       <div className="grid grid-cols-2 gap-8 mb-6">
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-text-primary">활동명 <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => onChange({ ...form, name: e.target.value })}
+          <input type="text" value={form.name} onChange={(e) => onChange({ ...form, name: e.target.value })}
             placeholder="활동명을 입력하세요"
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand"
-          />
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand" />
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-text-primary">기관명 <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            value={form.organization}
-            onChange={(e) => onChange({ ...form, organization: e.target.value })}
+          <input type="text" value={form.organization} onChange={(e) => onChange({ ...form, organization: e.target.value })}
             placeholder="기관명을 입력하세요"
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand"
-          />
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand" />
         </div>
       </div>
 
-      {/* 시작일 / 종료일 / 진행중 */}
       <div className="grid grid-cols-[1fr_1fr_auto] gap-8 items-end mb-6">
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-text-primary">시작일 <span className="text-red-500">*</span></label>
-          <input
-            type="date"
-            value={form.startDate}
-            onChange={(e) => onChange({ ...form, startDate: e.target.value })}
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand"
-          />
+          <input type="date" value={form.startDate} onChange={(e) => onChange({ ...form, startDate: e.target.value })}
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand" />
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-text-primary">종료일</label>
-          <input
-            type="date"
-            value={form.endDate}
-            onChange={(e) => onChange({ ...form, endDate: e.target.value })}
+          <input type="date" value={form.endDate} onChange={(e) => onChange({ ...form, endDate: e.target.value })}
             disabled={form.ongoing}
-            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand disabled:text-text-placeholder"
-          />
+            className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand disabled:text-text-placeholder" />
         </div>
         <label className="flex items-center gap-2 pb-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.ongoing}
+          <input type="checkbox" checked={form.ongoing}
             onChange={(e) => onChange({ ...form, ongoing: e.target.checked, endDate: e.target.checked ? '' : form.endDate })}
-            className="w-4 h-4 rounded border-border-input accent-brand"
-          />
+            className="w-4 h-4 rounded border-border-input accent-brand" />
           <span className="text-sm text-text-secondary">진행중</span>
         </label>
       </div>
 
-      {/* 작성 내용 */}
       <div className="flex flex-col gap-2 mb-6">
         <label className="text-sm font-medium text-text-primary">작성 내용 <span className="text-red-500">*</span></label>
-        <textarea
-          value={form.content}
-          onChange={(e) => onChange({ ...form, content: e.target.value })}
-          placeholder="활동 내용을 상세히 작성해주세요"
-          rows={4}
-          className="border border-border rounded-lg bg-transparent text-sm text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none"
-        />
+        <textarea value={form.content} onChange={(e) => onChange({ ...form, content: e.target.value })}
+          placeholder="활동 내용을 상세히 작성해주세요" rows={4}
+          className="border border-border rounded-lg bg-transparent text-sm text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none" />
         <p className="text-xs text-text-secondary">구체적인 역할, 성과, 배운 점 등을 포함하여 작성하면 더 정확한 분석이 가능합니다.</p>
       </div>
 
-      {/* 파일 첨부 */}
       <div className="flex flex-col gap-2 mb-6">
         <label className="text-sm font-medium text-text-primary">파일 첨부</label>
         <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
@@ -124,16 +149,14 @@ function ActivityFormCard({
         </div>
       </div>
 
-      {/* 버튼 */}
       <div className="grid grid-cols-2 gap-4">
-        <button
-          onClick={onCancel}
-          className="py-3 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors"
-        >
+        <button onClick={onCancel} disabled={submitting}
+          className="py-3 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50">
           취소
         </button>
-        <button className="py-3 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors">
-          저장 및 분석
+        <button onClick={onSubmit} disabled={submitting || !form.name || !form.organization || !form.startDate || !form.content}
+          className="py-3 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50">
+          {submitting ? '저장 중...' : submitLabel}
         </button>
       </div>
     </div>
@@ -142,10 +165,8 @@ function ActivityFormCard({
 
 function AddItemPlaceholder({ onClick }: { onClick: () => void }) {
   return (
-    <div
-      onClick={onClick}
-      className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-    >
+    <div onClick={onClick}
+      className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
       <div className="w-12 h-12 rounded-full bg-brand-light flex items-center justify-center hover:bg-brand-muted transition-colors">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
           <path d="M12 5v14M5 12h14" />
@@ -158,35 +179,20 @@ function AddItemPlaceholder({ onClick }: { onClick: () => void }) {
 
 function CareerGoalCard({
   value,
-  onChange,
+  onSave,
 }: {
   value: CareerGoal;
-  onChange: (value: CareerGoal) => void;
+  onSave: (value: CareerGoal) => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<CareerGoal>(value);
   const [saving, setSaving] = useState(false);
 
-  function startEdit() {
-    setDraft(value);
-    setIsEditing(true);
-  }
-
-  function handleCancel() {
-    setDraft(value);
-    setIsEditing(false);
-  }
-
+  function startEdit() { setDraft(value); setIsEditing(true); }
+  function handleCancel() { setDraft(value); setIsEditing(false); }
   async function handleSave() {
     setSaving(true);
-    try {
-      // TODO: 희망 진로 저장 API 연동
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      onChange(draft);
-      setIsEditing(false);
-    } finally {
-      setSaving(false);
-    }
+    try { await onSave(draft); setIsEditing(false); } finally { setSaving(false); }
   }
 
   return (
@@ -197,23 +203,16 @@ function CareerGoalCard({
           ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={saving} />
           : <EditButton onClick={startEdit} />}
       </div>
-
       <div className="min-h-[40px] flex items-center">
         {isEditing ? (
           <div className="flex gap-2">
             {CAREER_OPTIONS.map((option) => {
               const selected = draft === option;
               return (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setDraft(selected ? '' : option)}
+                <button key={option} type="button" onClick={() => setDraft(selected ? '' : option)}
                   className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
-                    selected
-                      ? 'bg-brand text-white border-brand'
-                      : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
-                  }`}
-                >
+                    selected ? 'bg-brand text-white border-brand' : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
+                  }`}>
                   {option}
                 </button>
               );
@@ -229,7 +228,206 @@ function CareerGoalCard({
   );
 }
 
-function EmptyState() {
+// ----------------------------------------------------------------
+// STAR 분석 결과 (2x2 컬러 그리드)
+// ----------------------------------------------------------------
+const STAR_BLOCKS = [
+  { letter: 'S', label: 'Situation', key: 'situation' as const, badgeBg: 'bg-green-100', badgeText: 'text-green-700' },
+  { letter: 'T', label: 'Task',      key: 'task' as const,      badgeBg: 'bg-amber-100', badgeText: 'text-amber-700' },
+  { letter: 'A', label: 'Action',    key: 'action' as const,    badgeBg: 'bg-purple-100', badgeText: 'text-purple-700' },
+  { letter: 'R', label: 'Result',    key: 'result' as const,    badgeBg: 'bg-orange-100', badgeText: 'text-orange-700' },
+];
+
+function StarGrid({ item }: { item: StarItem }) {
+  return (
+    <div className="bg-blue-50/60 border border-blue-100 rounded-xl px-6 py-5">
+      <h4 className="flex items-center gap-2 text-base font-semibold text-blue-900 mb-4">
+        <IconClipboard className="w-5 h-5 text-blue-700" />
+        STAR 분석 결과
+      </h4>
+      <div className="grid grid-cols-2 gap-3">
+        {STAR_BLOCKS.map((b) => (
+          <div key={b.letter} className="bg-white rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${b.badgeBg} ${b.badgeText}`}>
+                {b.letter}
+              </span>
+              <span className="text-sm font-semibold text-text-primary">{b.label}</span>
+            </div>
+            <p className="text-sm text-text-secondary leading-relaxed">{item[b.key]}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------
+// 활동 카드 (시안: 메타 + 내용 + 키워드 + 수정/STAR 토글)
+// ----------------------------------------------------------------
+function ActivityCard({
+  activity,
+  star,
+  expanded,
+  onToggle,
+  onEdit,
+}: {
+  activity: ActivityForm;
+  star?: StarItem;
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  const period = activity.startDate
+    ? `${activity.startDate} ~ ${activity.ongoing ? '현재' : (activity.endDate || '-')}`
+    : '-';
+  const keywords = star?.keywords ?? [];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="border border-border rounded-xl px-8 py-6">
+        <h3 className="text-lg font-semibold text-text-primary">{activity.name}</h3>
+        <div className="flex items-center gap-4 mt-2 text-sm text-text-secondary">
+          <span className="flex items-center gap-1.5"><IconBuilding /> {activity.organization || '-'}</span>
+          <span className="flex items-center gap-1.5"><IconCalendar /> {period}</span>
+        </div>
+        <p className="text-sm text-text-primary mt-4 whitespace-pre-wrap leading-relaxed">{activity.content}</p>
+        {keywords.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {keywords.map((k, i) => (
+              <span key={i} className="px-2.5 py-1 text-xs rounded-md bg-blue-50 text-blue-600">{k}</span>
+            ))}
+          </div>
+        )}
+        <hr className="border-border my-5" />
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={onEdit}
+            className="flex items-center justify-center gap-2 py-2.5 text-sm text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors">
+            <IconPencil /> 수정
+          </button>
+          <button onClick={onToggle} disabled={!star}
+            className="flex items-center justify-center gap-2 py-2.5 text-sm text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-40">
+            <IconClipboard /> STAR 분석 {expanded ? '접기' : '펼치기'} <IconChevron open={expanded} />
+          </button>
+        </div>
+      </div>
+      {expanded && star && <StarGrid item={star} />}
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------
+// 대시보드: 활동 목록 표
+// ----------------------------------------------------------------
+function ActivityListTable({
+  activities,
+  starByIdx,
+  keywordFreq,
+}: {
+  activities: ActivityForm[];
+  starByIdx: (idx: number) => StarItem | undefined;
+  keywordFreq: Map<string, number>;
+}) {
+  return (
+    <div className="border border-border rounded-xl px-8 py-6">
+      <h3 className="text-lg font-semibold text-text-primary mb-4">활동 목록</h3>
+      <hr className="border-border mb-2" />
+      <table className="w-full">
+        <thead>
+          <tr className="text-left text-sm text-text-secondary border-b border-border">
+            <th className="py-3 pr-4 font-medium w-12">번호</th>
+            <th className="py-3 pr-4 font-medium">활동명</th>
+            <th className="py-3 font-medium">핵심 키워드</th>
+          </tr>
+        </thead>
+        <tbody>
+          {activities.map((a, idx) => {
+            const star = starByIdx(idx);
+            const keywords = star?.keywords ?? [];
+            return (
+              <tr key={idx} className="border-b border-border last:border-0 align-top">
+                <td className="py-4 pr-4 text-sm text-text-secondary">{idx + 1}</td>
+                <td className="py-4 pr-4 text-sm text-text-primary">{a.name}</td>
+                <td className="py-4">
+                  <div className="flex flex-wrap gap-1.5">
+                    {keywords.length === 0 && <span className="text-xs text-text-placeholder">분석 대기 중</span>}
+                    {keywords.map((k, i) => {
+                      const count = keywordFreq.get(k) ?? 1;
+                      const highlight = count >= 2;
+                      return (
+                        <span
+                          key={i}
+                          className={`px-2.5 py-1 text-xs rounded-md ${
+                            highlight ? 'bg-brand text-white font-medium' : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {k}{highlight ? ` (${count})` : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------
+// 대시보드: 키워드 빈도 사이드바
+// ----------------------------------------------------------------
+function KeywordFrequencyCard({
+  freqEntries,
+  totalActivities,
+}: {
+  freqEntries: [string, number][];
+  totalActivities: number;
+}) {
+  const max = freqEntries[0]?.[1] ?? 1;
+  return (
+    <div className="border border-border rounded-xl px-6 py-6">
+      <h3 className="text-base font-semibold text-blue-700 mb-5">핵심 키워드 분석</h3>
+      <div className="flex flex-col gap-4">
+        {freqEntries.length === 0 && (
+          <p className="text-sm text-text-placeholder">분석 결과가 없습니다.</p>
+        )}
+        {freqEntries.map(([k, count]) => (
+          <div key={k}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm text-text-primary">{k}</span>
+              <span className="px-2 py-0.5 text-xs rounded bg-brand-light text-brand font-medium">{count}회</span>
+            </div>
+            <div className="h-2 bg-page-bg rounded-full overflow-hidden">
+              <div
+                className="h-full bg-brand rounded-full transition-all"
+                style={{ width: `${(count / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <hr className="border-border my-5" />
+      <div className="flex flex-col items-start">
+        <span className="text-xs text-text-secondary">총 활동 수</span>
+        <span className="text-3xl font-bold text-brand mt-1">{totalActivities}</span>
+      </div>
+    </div>
+  );
+}
+
+function AnalysisPending() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-3 border border-dashed border-border rounded-xl">
+      <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      <p className="text-sm text-text-secondary">AI가 활동을 분석하고 있어요... (최대 1분 정도 걸립니다)</p>
+    </div>
+  );
+}
+
+function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <div className="w-20 h-20 rounded-full bg-page-bg flex items-center justify-center text-text-placeholder">
@@ -242,97 +440,272 @@ function EmptyState() {
         <p className="text-base font-semibold text-text-primary">분석을 위해 정보를 입력해주세요</p>
         <p className="text-sm text-text-secondary mt-1">활동 정보를 입력하면 AI가 자동으로 경험을 분석해드립니다</p>
       </div>
-      <button className="mt-2 px-5 py-2.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
-        샘플 데이터 불러오기
+      <button onClick={onAdd}
+        className="mt-2 px-5 py-2.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
+        활동 추가하기
       </button>
     </div>
   );
 }
 
-function TabContent({
-  tab,
-  careerGoal,
-  onCareerGoalChange,
-}: {
-  tab: Tab;
-  careerGoal: CareerGoal;
-  onCareerGoalChange: (value: CareerGoal) => void;
-}) {
-  const [forms, setForms] = useState<ActivityForm[]>([]);
+// ================================================================
+// 페이지
+// ================================================================
+export default function QualitativePage() {
+  const [activeTab, setActiveTab] = useState<Tab>('대시보드');
+  const [careerGoal, setCareerGoal] = useState<CareerGoal>('');
+  const [serverActivities, setServerActivities] = useState<ActivityForm[]>([]);
+  const [drafts, setDrafts] = useState<Record<CategoryTab, ActivityForm[]>>({
+    '교내': [], '대외': [], '사회경험': [], '자격·시험': [],
+  });
+  const [analysis, setAnalysis] = useState<QualitativeData['analysis'] | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set());
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<ActivityForm | null>(null);
 
-  function addForm() {
-    setForms([...forms, { ...EMPTY_FORM }]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const analysisStartRef = useRef<number>(0);
+
+  const applyData = useCallback((data: QualitativeData) => {
+    setCareerGoal((data.careerGoal as CareerGoal) || '');
+    setServerActivities(
+      (data.activities ?? []).map((a) => ({ ...a, category: a.category ?? DEFAULT_CATEGORY }))
+    );
+    setAnalysis(data.analysis);
+    // 새 분석 결과가 들어오면 모든 카드 자동 펼침 (사용자 마지막 토글은 잃지만 첫 분석 직후엔 자연스러움)
+    if (data.analysis?.isAnalyzed) {
+      const star = (data.analysis.starAnalysis?.activities ?? []) as StarItem[];
+      setExpandedSet(new Set(star.map((s) => s.activity_index)));
+    }
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setAnalyzing(false);
+  }, []);
+
+  const startPolling = useCallback(() => {
+    analysisStartRef.current = Date.now();
+    setAnalyzing(true);
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const data = await getQualitative(YEAR);
+        applyData(data);
+        const analyzedAtMs = data.analysis.analyzedAt ? new Date(data.analysis.analyzedAt).getTime() : 0;
+        if (data.analysis.isAnalyzed && analyzedAtMs >= analysisStartRef.current) {
+          stopPolling();
+        }
+      } catch {
+        // 일시적 네트워크 오류 무시
+      }
+    }, 5000);
+  }, [applyData, stopPolling]);
+
+  useEffect(() => {
+    getQualitative(YEAR).then(applyData).catch(() => {});
+    return () => stopPolling();
+  }, [applyData, stopPolling]);
+
+  async function handleCareerGoalSave(next: CareerGoal) {
+    const data = await patchQualitative(YEAR, { careerGoal: next });
+    applyData(data);
   }
 
-  function updateForm(index: number, updated: ActivityForm) {
-    setForms(forms.map((f, i) => (i === index ? updated : f)));
+  function addDraft(category: CategoryTab) {
+    setDrafts((d) => ({ ...d, [category]: [...d[category], { ...EMPTY_FORM, category }] }));
   }
 
-  function removeForm(index: number) {
-    setForms(forms.filter((_, i) => i !== index));
+  function updateDraft(category: CategoryTab, index: number, updated: ActivityForm) {
+    setDrafts((d) => ({ ...d, [category]: d[category].map((f, i) => (i === index ? updated : f)) }));
   }
 
-  if (tab === '대시보드') {
+  function removeDraft(category: CategoryTab, index: number) {
+    setDrafts((d) => ({ ...d, [category]: d[category].filter((_, i) => i !== index) }));
+  }
+
+  async function submitDraft(category: CategoryTab, index: number) {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const draft = drafts[category][index];
+      const next = [...serverActivities, draft];
+      const saved = await patchQualitative(YEAR, { activities: next });
+      applyData(saved);
+      removeDraft(category, index);
+      analyzeQualitative(YEAR).catch((err) => console.error(err));
+      startPolling();
+    } catch (err) {
+      console.error(err);
+      alert('저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function startEdit(idx: number) {
+    setEditingIdx(idx);
+    setEditDraft({ ...serverActivities[idx] });
+  }
+
+  function cancelEdit() {
+    setEditingIdx(null);
+    setEditDraft(null);
+  }
+
+  async function saveEdit() {
+    if (editingIdx === null || !editDraft || submitting) return;
+    setSubmitting(true);
+    try {
+      const next = serverActivities.map((a, i) => (i === editingIdx ? editDraft : a));
+      const saved = await patchQualitative(YEAR, { activities: next });
+      applyData(saved);
+      setEditingIdx(null);
+      setEditDraft(null);
+      analyzeQualitative(YEAR).catch((err) => console.error(err));
+      startPolling();
+    } catch (err) {
+      console.error(err);
+      alert('수정에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function toggleExpand(idx: number) {
+    setExpandedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  // ----- 파생 -----
+  const activityWithIndex = serverActivities.map((a, idx) => ({ activity: a, idx }));
+  const allStarItems = (analysis?.starAnalysis?.activities ?? []) as StarItem[];
+
+  function findStar(idx: number): StarItem | undefined {
+    return allStarItems.find((s) => s.activity_index === idx);
+  }
+
+  // ----- 렌더 -----
+  function renderDashboard() {
+    // 활동별 keywords 합산 → 빈도 카운트
+    const freq = new Map<string, number>();
+    for (const star of allStarItems) {
+      for (const k of star.keywords ?? []) {
+        freq.set(k, (freq.get(k) ?? 0) + 1);
+      }
+    }
+    const freqEntries = Array.from(freq.entries()).sort((a, b) => b[1] - a[1]);
+
+    if (serverActivities.length === 0 && !analyzing) {
+      return (
+        <div className="flex flex-col gap-6 max-w-3xl mx-auto">
+          <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
+          <EmptyDashboard onAdd={() => setActiveTab('교내')} />
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="flex flex-col gap-6 min-w-0">
+          <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
+          {analyzing && <AnalysisPending />}
+          {serverActivities.length > 0 && (
+            <ActivityListTable
+              activities={serverActivities}
+              starByIdx={findStar}
+              keywordFreq={freq}
+            />
+          )}
+        </div>
+        <div className="flex flex-col gap-6">
+          <KeywordFrequencyCard
+            freqEntries={freqEntries}
+            totalActivities={serverActivities.length}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  function renderCategoryTab(category: CategoryTab) {
+    const inTab = activityWithIndex.filter((x) => x.activity.category === category);
+    const draftList = drafts[category];
+
     return (
       <div className="flex flex-col gap-6">
-        <CareerGoalCard value={careerGoal} onChange={onCareerGoalChange} />
-        <EmptyState />
+        {inTab.map((x) => {
+          if (editingIdx === x.idx && editDraft) {
+            return (
+              <ActivityFormCard
+                key={`edit-${x.idx}`}
+                form={editDraft}
+                onChange={(updated) => setEditDraft(updated)}
+                onCancel={cancelEdit}
+                onSubmit={saveEdit}
+                submitting={submitting}
+                submitLabel="수정 및 재분석"
+              />
+            );
+          }
+          return (
+            <ActivityCard
+              key={`saved-${x.idx}`}
+              activity={x.activity}
+              star={findStar(x.idx)}
+              expanded={expandedSet.has(x.idx)}
+              onToggle={() => toggleExpand(x.idx)}
+              onEdit={() => startEdit(x.idx)}
+            />
+          );
+        })}
+        {analyzing && <AnalysisPending />}
+        {draftList.map((form, i) => (
+          <ActivityFormCard
+            key={`draft-${i}`}
+            form={form}
+            onChange={(updated) => updateDraft(category, i, updated)}
+            onCancel={() => removeDraft(category, i)}
+            onSubmit={() => submitDraft(category, i)}
+            submitting={submitting}
+          />
+        ))}
+        <AddItemPlaceholder onClick={() => addDraft(category)} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {forms.map((form, i) => (
-        <ActivityFormCard
-          key={i}
-          form={form}
-          onChange={(updated) => updateForm(i, updated)}
-          onCancel={() => removeForm(i)}
-        />
-      ))}
-      <AddItemPlaceholder onClick={addForm} />
-    </div>
-  );
-}
-
-export default function QualitativePage() {
-  const [activeTab, setActiveTab] = useState<Tab>('대시보드');
-  const [careerGoal, setCareerGoal] = useState<CareerGoal>('');
-
-  return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
-      {/* 페이지 타이틀 */}
+    <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">정성 데이터</h1>
         <p className="text-sm text-text-secondary mt-1">경험과 활동 정보를 입력하고 AI 분석을 받아보세요</p>
       </div>
 
-      {/* 탭 */}
       <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="flex border-b border-border px-2 pt-2">
           {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+            <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${
-                activeTab === tab
-                  ? 'bg-brand text-white'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-gray-50'
-              }`}
-            >
+                activeTab === tab ? 'bg-brand text-white' : 'text-text-secondary hover:text-text-primary hover:bg-gray-50'
+              }`}>
               {tab}
             </button>
           ))}
         </div>
-
-        {/* 탭 콘텐츠 */}
         <div className="px-8 py-6">
-          <TabContent
-            tab={activeTab}
-            careerGoal={careerGoal}
-            onCareerGoalChange={setCareerGoal}
-          />
+          {activeTab === '대시보드'
+            ? renderDashboard()
+            : <div className="max-w-3xl mx-auto">{renderCategoryTab(activeTab)}</div>}
         </div>
       </div>
     </div>
