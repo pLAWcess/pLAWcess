@@ -479,11 +479,13 @@ export default function QualitativePage() {
       (data.activities ?? []).map((a) => ({ ...a, category: a.category ?? DEFAULT_CATEGORY }))
     );
     setAnalysis(data.analysis);
-    // 새 분석 결과가 들어오면 모든 카드 자동 펼침 (사용자 마지막 토글은 잃지만 첫 분석 직후엔 자연스러움)
-    if (data.analysis?.isAnalyzed) {
-      const star = (data.analysis.starAnalysis?.activities ?? []) as StarItem[];
-      setExpandedSet(new Set(star.map((s) => s.activity_index)));
-    }
+  }, []);
+
+  // 분석이 방금 막 끝난 시점에만 카드 자동 펼침
+  const expandAllFromAnalysis = useCallback((data: QualitativeData) => {
+    if (!data.analysis?.isAnalyzed) return;
+    const star = (data.analysis.starAnalysis?.activities ?? []) as StarItem[];
+    setExpandedSet(new Set(star.map((s) => s.activity_index)));
   }, []);
 
   const stopPolling = useCallback(() => {
@@ -513,18 +515,24 @@ export default function QualitativePage() {
         applyData(data);
         const analyzedAtMs = data.analysis.analyzedAt ? new Date(data.analysis.analyzedAt).getTime() : 0;
         if (data.analysis.isAnalyzed && analyzedAtMs >= analysisStartRef.current) {
+          expandAllFromAnalysis(data);
           stopPolling();
         }
       } catch {
         // 일시적 네트워크 오류는 다음 tick에서 재시도
       }
     }, 5000);
-  }, [applyData, stopPolling]);
+  }, [applyData, stopPolling, expandAllFromAnalysis]);
 
   useEffect(() => {
     getQualitative(YEAR).then(applyData).catch(() => {});
     return () => stopPolling();
   }, [applyData, stopPolling]);
+
+  // 탭 이동 시 STAR 펼침 상태 초기화 (탭 진입 시 기본은 접힘)
+  useEffect(() => {
+    setExpandedSet(new Set());
+  }, [activeTab]);
 
   async function handleCareerGoalSave(next: CareerGoal) {
     const data = await patchQualitative(YEAR, { careerGoal: next });
@@ -548,6 +556,7 @@ export default function QualitativePage() {
     analyzeQualitative(YEAR)
       .then((data) => {
         applyData(data);
+        expandAllFromAnalysis(data);
         stopPolling();
       })
       .catch((err) => {
