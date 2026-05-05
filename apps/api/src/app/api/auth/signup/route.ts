@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
   const password_hash = await bcrypt.hash(password, 12);
 
   const user = await prisma.user.create({
-    data: { name, login_id: loginId, email, password_hash, current_role: "mentee" },
-    select: { user_id: true, name: true, login_id: true, email: true, current_role: true },
+    data: { name, login_id: loginId, email, password_hash, current_role: "mentee", military_status: "not_applicable" },
+    select: { user_id: true, name: true, login_id: true, email: true, current_role: true, military_status: true },
   });
 
   const token = signToken({ user_id: user.user_id, current_role: user.current_role });
