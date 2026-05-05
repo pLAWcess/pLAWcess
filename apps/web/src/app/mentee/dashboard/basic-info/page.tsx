@@ -52,7 +52,7 @@ export default function BasicInfoPage() {
           admissionYear: data.personal.admissionYear,
           academicStatus: data.personal.academicStatus,
           graduationYear: data.personal.graduationYear,
-          // militaryStatus는 DB 미지원 — 빈 값 유지
+          militaryStatus: data.personal.militaryStatus
         };
         const admission: AdmissionInfo = {
           가: {
@@ -88,7 +88,7 @@ export default function BasicInfoPage() {
           admissionYear: draft.admissionYear,
           academicStatus: draft.academicStatus,
           graduationYear: draft.graduationYear,
-          // militaryStatus는 DB 미지원 — 저장하지 않음
+          militaryStatus: draft.militaryStatus
         },
       });
       setPersonalInfo(draft);

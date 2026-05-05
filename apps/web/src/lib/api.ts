@@ -118,6 +118,7 @@ export type BasicInfoPersonal = {
   admissionYear: string;
   academicStatus: string;
   graduationYear: string;
+  militaryStatus: string;
 };
 
 export type BasicInfoAdmission = {
