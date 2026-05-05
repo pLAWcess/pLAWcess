@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
-  getQualitative, patchQualitative, analyzeQualitative,
+  getQualitative, patchQualitative, analyzeQualitative, deleteQualitativeActivity,
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
 } from '@/lib/api';
 
@@ -66,6 +66,13 @@ function IconChevron({ open, className = 'w-4 h-4' }: { open: boolean; className
   return (
     <svg className={`${className} transition-transform ${open ? '' : 'rotate-180'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 15l-6-6-6 6" />
+    </svg>
+  );
+}
+function IconTrash({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />
     </svg>
   );
 }
@@ -317,12 +324,16 @@ function ActivityCard({
   expanded,
   onToggle,
   onEdit,
+  onDelete,
+  deleting,
 }: {
   activity: ActivityForm;
   star?: StarItem;
   expanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   const period = activity.startDate
     ? `${activity.startDate} ~ ${activity.ongoing ? '현재' : (activity.endDate || '-')}`
@@ -334,7 +345,18 @@ function ActivityCard({
   return (
     <div className="flex flex-col gap-3">
       <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
-        <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            aria-label="활동 삭제"
+            title="활동 삭제"
+            className="shrink-0 p-2 -mr-2 -mt-1 rounded-md text-text-placeholder hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+          >
+            <IconTrash />
+          </button>
+        </div>
         <div className="flex items-center gap-4 mt-2 text-sm text-text-secondary">
           <span className="flex items-center gap-1.5"><IconBuilding /> {activity.organization || '-'}</span>
           <span className="flex items-center gap-1.5"><IconCalendar /> {period}</span>
@@ -515,6 +537,7 @@ export default function QualitativePage() {
   const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set());
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityForm | null>(null);
+  const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const analysisStartRef = useRef<number>(0);
@@ -658,6 +681,34 @@ export default function QualitativePage() {
     }
   }
 
+  async function deleteActivity(idx: number) {
+    if (deletingIdx !== null) return;
+    const target = serverActivities[idx];
+    if (!confirm(`"${target?.name || '이 활동'}"을(를) 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.`)) return;
+    setDeletingIdx(idx);
+    try {
+      const data = await deleteQualitativeActivity(YEAR, idx);
+      applyData(data);
+      // 펼쳐진 카드 인덱스도 정리: 삭제 인덱스 제거 + 그보다 큰 인덱스는 -1 시프트
+      setExpandedSet((prev) => {
+        const next = new Set<number>();
+        for (const i of prev) {
+          if (i === idx) continue;
+          next.add(i > idx ? i - 1 : i);
+        }
+        return next;
+      });
+      // 편집 중이던 카드면 편집 종료
+      if (editingIdx === idx) { setEditingIdx(null); setEditDraft(null); }
+      else if (editingIdx !== null && editingIdx > idx) { setEditingIdx(editingIdx - 1); }
+    } catch (err) {
+      console.error(err);
+      alert('활동 삭제에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setDeletingIdx(null);
+    }
+  }
+
   function toggleExpand(idx: number) {
     setExpandedSet((prev) => {
       const next = new Set(prev);
@@ -748,6 +799,8 @@ export default function QualitativePage() {
               expanded={expandedSet.has(x.idx)}
               onToggle={() => toggleExpand(x.idx)}
               onEdit={() => startEdit(x.idx)}
+              onDelete={() => deleteActivity(x.idx)}
+              deleting={deletingIdx === x.idx}
             />
           );
         })}

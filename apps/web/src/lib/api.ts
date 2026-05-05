@@ -231,3 +231,12 @@ export async function analyzeQualitative(year: string): Promise<QualitativeData 
   if (!res.ok) throw new Error("AI 분석 실패");
   return res.json();
 }
+
+export async function deleteQualitativeActivity(year: string, index: number): Promise<QualitativeData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}&index=${index}`,
+    { method: "DELETE", headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("활동 삭제 실패");
+  return res.json();
+}
