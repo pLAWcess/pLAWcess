@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
 
@@ -55,7 +56,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ year: str
     return NextResponse.json({ error: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const data: Record<string, unknown> = {};
+  const data: Prisma.CycleScheduleUpdateInput = {};
   try {
     for (const field of DATE_FIELDS) {
       if (field in body) {
