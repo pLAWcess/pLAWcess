@@ -378,6 +378,7 @@ model AdminMemo {
 // 7. cycle_schedules
 //    - 연도별 사업 스케줄 (멘토 모집, 멘티 신청, 매칭, 매칭 공지, 입시 결과 수집)
 //    - is_active=true 인 행은 한 번에 하나만 (앱 레벨 트랜잭션으로 보장)
+//      ※ 활성 0개 상태도 허용해야 하므로 DB partial unique index는 의도적으로 사용하지 않음
 //    - 모든 날짜 필드 nullable: admin이 항목별로 부분 입력 가능
 // ----------------------------------------------------------------
 model CycleSchedule {
