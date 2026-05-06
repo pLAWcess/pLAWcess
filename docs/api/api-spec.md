@@ -164,3 +164,80 @@
 ## `/api/mentee/grades` — POST
 
 (본 리팩토링 영향 없음 — KUPID 성적 크롤링)
+
+---
+
+## 사업 스케줄 (#104)
+
+### `GET /api/admin/cycle-schedules`
+
+연도별 사업 스케줄 전체 목록.
+
+- 권한: admin (`current_role === 'admin'`)
+- Response 200:
+  ```json
+  [
+    {
+      "process_year": 2027,
+      "is_active": true,
+      "mentor_recruit_start": "2026-03-01T00:00:00.000Z",
+      "mentor_recruit_end": "2026-03-31T00:00:00.000Z",
+      "mentee_apply_start": "2026-04-01T00:00:00.000Z",
+      "mentee_apply_end": "2026-07-20T00:00:00.000Z",
+      "matching_start": "2026-08-01T00:00:00.000Z",
+      "matching_end": "2026-08-15T00:00:00.000Z",
+      "match_announce_date": "2026-08-20T00:00:00.000Z",
+      "admission_result_start": "2026-11-01T00:00:00.000Z",
+      "admission_result_end": "2026-12-31T00:00:00.000Z",
+      "created_at": "2026-05-06T...",
+      "updated_at": "2026-05-06T..."
+    }
+  ]
+  ```
+- 정렬: `process_year DESC`
+- 401: 로그인 안 됨 / 403: admin 아님
+
+### `POST /api/admin/cycle-schedules`
+
+새 연도 스케줄 빈 행 생성.
+
+- 권한: admin
+- Body: `{ "process_year": 2028 }`
+- Response 201: 생성된 행
+- 400: process_year 누락 또는 범위 외 (2000~2100)
+- 409: 이미 존재하는 연도
+
+### `PATCH /api/admin/cycle-schedules/:year`
+
+특정 연도 수정 또는 활성화.
+
+- 권한: admin
+- Body (모두 optional, 명시한 필드만 수정. `null`은 명시적 비우기):
+  ```json
+  {
+    "mentor_recruit_start": "2026-03-01",
+    "mentor_recruit_end": "2026-03-31",
+    "mentee_apply_start": "2026-04-01",
+    "mentee_apply_end": "2026-07-20",
+    "matching_start": "2026-08-01",
+    "matching_end": "2026-08-15",
+    "match_announce_date": "2026-08-20",
+    "admission_result_start": "2026-11-01",
+    "admission_result_end": "2026-12-31",
+    "is_active": true
+  }
+  ```
+- `is_active: true` 포함 시 트랜잭션으로 다른 모든 연도 자동 비활성화 후 해당 연도만 활성화
+- Response 200: 갱신된 행
+- 400: 잘못된 날짜 형식 / 잘못된 연도 형식
+- 404: 해당 연도가 존재하지 않음
+
+### `GET /api/cycle-schedules/active`
+
+현재 활성 cycle 1개 반환. 멘티/멘토/admin 누구나 호출 가능.
+
+- 권한: 로그인 사용자 (JWT)
+- Response 200:
+  - 활성 cycle 있음: 단일 행 객체
+  - 활성 cycle 없음: `null`
+- 401: 로그인 안 됨
