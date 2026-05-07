@@ -9,6 +9,7 @@ const menteeNavItems = [
   { label: '정성 데이터', href: '/mentee/dashboard/qualitative' },
   { label: '프로세스 신청', href: '/mentee/applications' },
   { label: '합격 아카이브', href: '/mentee/archive' },
+  { label: '공지사항', href: '/announcements' },
 ];
 
 type NavItem = { label: string; href: string; match?: string; exact?: boolean };
@@ -19,6 +20,7 @@ const mentorNavItems: NavItem[] = [
   { label: '정량 데이터', href: '/mentor/dashboard/quantitative' },
   { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
   { label: '합격 아카이브', href: '/mentor/archive' },
+  { label: '공지사항', href: '/announcements' },
 ];
 
 const adminNavItems: NavItem[] = [
