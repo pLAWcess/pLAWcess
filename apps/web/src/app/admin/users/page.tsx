@@ -143,8 +143,8 @@ function UsersPageContent() {
           columns={[
             { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.user_id}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
             { key: 'studentId', label: '학번', sortable: true },
-            { key: 'college', label: '학부', sortable: true },
-            { key: 'major', label: '전공', sortable: true },
+            { key: 'college', label: '제1전공', sortable: true },
+            { key: 'major', label: '제2전공', sortable: true },
             { key: 'phone', label: '연락처' },
             { key: 'status', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.status} /> },
           ]}
