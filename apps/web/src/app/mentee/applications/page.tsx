@@ -1,8 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import ConcernCard from '@/components/concerns/ConcernCard';
+import { getActiveCycleSchedule, type CycleSchedule } from '@/lib/api';
+
+function formatDateKo(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 const STEPS = [
   { title: '신청서 작성 및 제출', desc: '희망 로스쿨과 시작일, 예산 등을 입력하고 신청서를 제출합니다.' },
@@ -26,10 +33,15 @@ const initialApplication: ApplicationData = {
 export default function ApplicationsPage() {
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
+  const [activeSchedule, setActiveSchedule] = useState<CycleSchedule | null>(null);
 
   const [appData, setAppData] = useState<ApplicationData>(initialApplication);
   const [draft, setDraft] = useState<ApplicationData>(initialApplication);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    getActiveCycleSchedule().then(setActiveSchedule).catch(() => {});
+  }, []);
 
   function handleSubmit() {
     if (!agreed) {
@@ -48,6 +60,31 @@ export default function ApplicationsPage() {
         <h1 className="text-2xl font-bold text-text-primary">프로세스 신청</h1>
         <p className="text-sm text-text-secondary mt-1">멘토링 프로세스를 신청하고 진행 상황을 확인하세요</p>
       </div>
+
+      {/* 사업 일정 카드 */}
+      {activeSchedule && (
+        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+          <h2 className="text-base font-semibold text-text-primary mb-4">
+            {activeSchedule.process_year}학년도 pLAWcess 일정
+          </h2>
+          <div className="space-y-3">
+            {([
+              { label: '멘토 모집', start: activeSchedule.mentor_recruit_start, end: activeSchedule.mentor_recruit_end },
+              { label: '멘티 신청', start: activeSchedule.mentee_apply_start, end: activeSchedule.mentee_apply_end },
+              { label: '멘티-멘토 매칭', start: activeSchedule.matching_start, end: activeSchedule.matching_end },
+              { label: '매칭 공지', start: activeSchedule.match_announce_date, end: null },
+              { label: '입시 결과 수집', start: activeSchedule.admission_result_start, end: activeSchedule.admission_result_end },
+            ] as { label: string; start: string | null; end: string | null }[]).map(({ label, start, end }) => (
+              <div key={label} className="flex items-center gap-4 text-sm">
+                <span className="w-28 shrink-0 text-text-secondary">{label}</span>
+                <span className="text-text-primary">
+                  {start ? (end ? `${formatDateKo(start)} ~ ${formatDateKo(end)}` : formatDateKo(start)) : '-'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 프로세스 안내 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
@@ -204,10 +241,19 @@ export default function ApplicationsPage() {
 
         {/* 안내 문구 */}
         <div className="mt-8 text-center text-sm text-text-secondary leading-relaxed">
-          <p>
-            <span className="text-brand font-medium">2027학년도 pLAWcess</span>는 2026년 7월 20일까지 입력된 정보를 기반으로 멘토-멘티 매칭이 이루어집니다.
-          </p>
-          <p>이전까지 모든 데이터를 입력해주시기 바랍니다.</p>
+          {activeSchedule ? (
+            <>
+              <p>
+                <span className="text-brand font-medium">{activeSchedule.process_year}학년도 pLAWcess</span>
+                {formatDateKo(activeSchedule.mentee_apply_end)
+                  ? <>는 {formatDateKo(activeSchedule.mentee_apply_end)}까지 입력된 정보를 기반으로 멘토-멘티 매칭이 이루어집니다.</>
+                  : <>의 신청 마감일이 아직 등록되지 않았습니다.</>}
+              </p>
+              {formatDateKo(activeSchedule.mentee_apply_end) && <p>이전까지 모든 데이터를 입력해주시기 바랍니다.</p>}
+            </>
+          ) : (
+            <p>현재 진행 중인 pLAWcess 사업의 신청 기간이 아직 등록되지 않았습니다.</p>
+          )}
         </div>
 
         {/* 제출 버튼 */}

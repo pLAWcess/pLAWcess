@@ -161,6 +161,71 @@ export async function patchBasicInfo(
 }
 
 // ----------------------------------------------------------------
+// Cycle Schedule
+// ----------------------------------------------------------------
+
+export type CycleSchedule = {
+  process_year: number;
+  is_active: boolean;
+  mentor_recruit_start: string | null;
+  mentor_recruit_end: string | null;
+  mentee_apply_start: string | null;
+  mentee_apply_end: string | null;
+  matching_start: string | null;
+  matching_end: string | null;
+  match_announce_date: string | null;
+  admission_result_start: string | null;
+  admission_result_end: string | null;
+};
+
+export async function getCycleSchedules(): Promise<CycleSchedule[]> {
+  const res = await fetch(`${API_BASE}/api/admin/cycle-schedules`, {
+    headers: headers(), credentials: "include",
+  });
+  if (!res.ok) throw new Error("스케줄 조회 실패");
+  return res.json();
+}
+
+export async function createCycleSchedule(process_year: number): Promise<CycleSchedule> {
+  const res = await fetch(`${API_BASE}/api/admin/cycle-schedules`, {
+    method: "POST", headers: headers(), credentials: "include",
+    body: JSON.stringify({ process_year }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "연도 생성 실패");
+  }
+  return res.json();
+}
+
+export async function patchCycleSchedule(
+  year: number,
+  body: Partial<Omit<CycleSchedule, "process_year">>
+): Promise<CycleSchedule> {
+  const res = await fetch(`${API_BASE}/api/admin/cycle-schedules/${year}`, {
+    method: "PATCH", headers: headers(), credentials: "include",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("스케줄 저장 실패");
+  return res.json();
+}
+
+export async function deleteCycleSchedule(year: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/cycle-schedules/${year}`, {
+    method: "DELETE", headers: headers(), credentials: "include",
+  });
+  if (!res.ok) throw new Error("연도 삭제 실패");
+}
+
+export async function getActiveCycleSchedule(): Promise<CycleSchedule | null> {
+  const res = await fetch(`${API_BASE}/api/cycle-schedules/active`, {
+    headers: headers(), credentials: "include",
+  });
+  if (!res.ok) throw new Error("활성 스케줄 조회 실패");
+  return res.json();
+}
+
+// ----------------------------------------------------------------
 // Qualitative
 // ----------------------------------------------------------------
 
