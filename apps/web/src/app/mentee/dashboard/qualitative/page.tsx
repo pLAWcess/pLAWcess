@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
-  getQualitative, patchQualitative, analyzeQualitative, deleteQualitativeActivity,
+  getQualitative, patchQualitative, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
+  type StoryOutline,
 } from '@/lib/api';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
@@ -491,11 +492,41 @@ function KeywordFrequencyCard({
   );
 }
 
-function AnalysisPending() {
+function AnalysisPending({ message }: { message?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-3 bg-white border border-dashed border-border rounded-xl">
       <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-      <p className="text-sm text-text-secondary">AI가 활동을 분석하고 있어요... (최대 1분 정도 걸립니다)</p>
+      <p className="text-sm text-text-secondary">{message ?? 'AI가 활동을 분석하고 있어요... (최대 1분 정도 걸립니다)'}</p>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------
+// AI 추천 자소서 흐름 카드
+// ----------------------------------------------------------------
+function StoryOutlineCard({ outline }: { outline: StoryOutline }) {
+  const sections: { label: string; text: string }[] = [
+    { label: '도입부', text: outline.intro },
+    ...outline.body.map((b, i) => ({
+      label: b.label ? `본론 ${i + 1} · ${b.label}` : `본론 ${i + 1}`,
+      text: b.text,
+    })),
+    { label: '결론', text: outline.conclusion },
+  ];
+  return (
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <h2 className="text-lg font-semibold text-text-primary mb-1">AI 추천 자소서 흐름</h2>
+      <p className="text-sm text-text-secondary mb-5">분석 결과를 바탕으로 자소서의 흐름을 제안해 드려요.</p>
+      <div className="flex flex-col gap-3">
+        {sections.map((s, i) => (
+          <div key={i} className="flex flex-col gap-2 px-5 py-4 rounded-lg bg-blue-50/40 border border-blue-100">
+            <span className="inline-block self-start px-2.5 py-1 text-xs font-semibold text-brand bg-white rounded-md border border-blue-100">
+              {s.label}
+            </span>
+            <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{s.text}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -533,14 +564,12 @@ export default function QualitativePage() {
   });
   const [analysis, setAnalysis] = useState<QualitativeData['analysis'] | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
   const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set());
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityForm | null>(null);
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
-
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const analysisStartRef = useRef<number>(0);
 
   const applyData = useCallback((data: QualitativeData) => {
     setCareerGoal((data.careerGoal as CareerGoal) || '');
@@ -550,53 +579,9 @@ export default function QualitativePage() {
     setAnalysis(data.analysis);
   }, []);
 
-  // 분석이 방금 막 끝난 시점에만 카드 자동 펼침
-  const expandAllFromAnalysis = useCallback((data: QualitativeData) => {
-    if (!data.analysis?.isAnalyzed) return;
-    const star = (data.analysis.starAnalysis?.activities ?? []) as StarItem[];
-    setExpandedSet(new Set(star.map((s) => s.activity_index)));
-  }, []);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    setAnalyzing(false);
-  }, []);
-
-  // 분석 진행 안전망: 120초 지나도 결과 없으면 폴링 종료
-  const POLL_TIMEOUT_MS = 120_000;
-
-  const startPolling = useCallback(() => {
-    analysisStartRef.current = Date.now();
-    setAnalyzing(true);
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      // 타임아웃 도달 → 강제 중단
-      if (Date.now() - analysisStartRef.current > POLL_TIMEOUT_MS) {
-        stopPolling();
-        alert('AI 분석이 예상보다 오래 걸리고 있어요. 잠시 후 다시 시도해주세요.');
-        return;
-      }
-      try {
-        const data = await getQualitative(YEAR);
-        applyData(data);
-        const analyzedAtMs = data.analysis.analyzedAt ? new Date(data.analysis.analyzedAt).getTime() : 0;
-        if (data.analysis.isAnalyzed && analyzedAtMs >= analysisStartRef.current) {
-          expandAllFromAnalysis(data);
-          stopPolling();
-        }
-      } catch {
-        // 일시적 네트워크 오류는 다음 tick에서 재시도
-      }
-    }, 5000);
-  }, [applyData, stopPolling, expandAllFromAnalysis]);
-
   useEffect(() => {
     getQualitative(YEAR).then(applyData).catch(() => {});
-    return () => stopPolling();
-  }, [applyData, stopPolling]);
+  }, [applyData]);
 
   // 탭 이동 시 STAR 펼침 상태 초기화 (탭 진입 시 기본은 접힘)
   useEffect(() => {
@@ -620,19 +605,32 @@ export default function QualitativePage() {
     setDrafts((d) => ({ ...d, [category]: d[category].filter((_, i) => i !== index) }));
   }
 
-  function triggerAnalysis() {
-    startPolling();
-    analyzeQualitative(YEAR)
-      .then((data) => {
-        applyData(data);
-        expandAllFromAnalysis(data);
-        stopPolling();
-      })
-      .catch((err) => {
-        console.error(err);
-        stopPolling();
-        alert('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
-      });
+  async function triggerSingleAnalysis(idx: number) {
+    setAnalyzingIdx(idx);
+    try {
+      const res = await analyzeQualitativeActivity(YEAR, idx);
+      applyData(res.data);
+      setExpandedSet((p) => new Set([...p, idx]));
+    } catch (err) {
+      console.error(err);
+      alert('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setAnalyzingIdx(null);
+    }
+  }
+
+  async function handleSummarize() {
+    if (summarizing) return;
+    setSummarizing(true);
+    try {
+      const data = await summarizeQualitative(YEAR);
+      applyData(data);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : '통합 분석에 실패했어요.');
+    } finally {
+      setSummarizing(false);
+    }
   }
 
   async function submitDraft(category: CategoryTab, index: number) {
@@ -644,7 +642,8 @@ export default function QualitativePage() {
       const saved = await patchQualitative(YEAR, { activities: next });
       applyData(saved);
       removeDraft(category, index);
-      triggerAnalysis();
+      const newIdx = next.length - 1;
+      triggerSingleAnalysis(newIdx);
     } catch (err) {
       console.error(err);
       alert('저장에 실패했어요. 잠시 후 다시 시도해주세요.');
@@ -670,9 +669,10 @@ export default function QualitativePage() {
       const next = serverActivities.map((a, i) => (i === editingIdx ? editDraft : a));
       const saved = await patchQualitative(YEAR, { activities: next });
       applyData(saved);
+      const idx = editingIdx;
       setEditingIdx(null);
       setEditDraft(null);
-      triggerAnalysis();
+      triggerSingleAnalysis(idx);
     } catch (err) {
       console.error(err);
       alert('수정에 실패했어요. 잠시 후 다시 시도해주세요.');
@@ -738,8 +738,9 @@ export default function QualitativePage() {
 
     // 사이드바: Gemini가 의미적으로 병합·집계한 최상위 키워드 (count 내림차순 가정)
     const serverKeywords: KeywordCount[] = (analysis?.aiKeywords ?? []) as KeywordCount[];
+    const storyOutline = analysis?.storyOutline ?? null;
 
-    if (serverActivities.length === 0 && !analyzing) {
+    if (serverActivities.length === 0) {
       return (
         <div className="flex flex-col gap-6 max-w-3xl mx-auto">
           <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
@@ -752,14 +753,13 @@ export default function QualitativePage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="flex flex-col gap-6 min-w-0">
           <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
-          {analyzing && <AnalysisPending />}
-          {serverActivities.length > 0 && (
-            <ActivityListTable
-              activities={serverActivities}
-              starByIdx={findStar}
-              keywordFreq={rowFreq}
-            />
-          )}
+          {summarizing && <AnalysisPending message="AI가 활동 전체를 종합 분석하고 있어요..." />}
+          <ActivityListTable
+            activities={serverActivities}
+            starByIdx={findStar}
+            keywordFreq={rowFreq}
+          />
+          {storyOutline && <StoryOutlineCard outline={storyOutline} />}
         </div>
         <div className="flex flex-col gap-6">
           <KeywordFrequencyCard
@@ -804,7 +804,7 @@ export default function QualitativePage() {
             />
           );
         })}
-        {analyzing && <AnalysisPending />}
+        {analyzingIdx !== null && <AnalysisPending />}
         {draftList.map((form, i) => (
           <ActivityFormCard
             key={`draft-${i}`}
@@ -819,6 +819,14 @@ export default function QualitativePage() {
       </div>
     );
   }
+
+  const summaryOutdated = analysis?.summaryOutdated ?? false;
+  const allActivitiesAnalyzed =
+    serverActivities.length > 0 &&
+    (analysis?.activitiesAnalyzed ?? []).length === serverActivities.length &&
+    (analysis?.activitiesAnalyzed ?? []).every(Boolean);
+  const canSummarize = serverActivities.length > 0 && allActivitiesAnalyzed && !summarizing;
+  const showSummaryBar = activeTab === '대시보드' && serverActivities.length > 0;
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
@@ -847,6 +855,32 @@ export default function QualitativePage() {
           })}
         </div>
       </div>
+
+      {showSummaryBar && (
+        <div className="flex items-center gap-4">
+          {summaryOutdated ? (
+            <div className="flex-1 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+              {allActivitiesAnalyzed
+                ? '활동이 변경되었습니다. 다시 분석해 핵심 키워드와 자소서 흐름을 갱신해보세요.'
+                : '아직 분석되지 않은 활동이 있어요. 각 활동의 "저장 및 분석"을 먼저 완료해주세요.'}
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
+          <button
+            onClick={handleSummarize}
+            disabled={!canSummarize}
+            title={!allActivitiesAnalyzed ? '모든 활동의 단일 분석을 먼저 완료해주세요.' : undefined}
+            className={`shrink-0 px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              summaryOutdated && allActivitiesAnalyzed
+                ? 'bg-brand ring-2 ring-brand-light hover:bg-brand-dark'
+                : 'bg-brand hover:bg-brand-dark'
+            }`}
+          >
+            {summarizing ? '분석 중...' : summaryOutdated ? '다시 분석' : '분석'}
+          </button>
+        </div>
+      )}
 
       {activeTab === '대시보드' ? renderDashboard() : renderCategoryTab(activeTab)}
     </div>
