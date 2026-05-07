@@ -13,8 +13,6 @@ export const USER_FIELDS = new Set<string>([
   "undergrad_school_name",
   "undergrad_first_major", "undergrad_second_major",
   "undergrad_entry_year", "undergrad_graduation_year",
-  // 로스쿨
-  "current_lawschool", "graduated_lawschool", "lawschool_grade",
 ]);
 
 export const MENTEE_RECORD_FIELDS = new Set<string>([
@@ -32,6 +30,7 @@ export const MENTEE_RECORD_FIELDS = new Set<string>([
 
 export const MENTOR_RECORD_FIELDS = new Set<string>([
   "academic_status",
+  "lawschool_name", "lawschool_grade",
   "has_law_class", "law_class_subjects",
   "is_special_admission",
   "personal_statement_summary",

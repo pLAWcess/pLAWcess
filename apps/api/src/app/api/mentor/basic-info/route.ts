@@ -47,14 +47,15 @@ export async function GET(req: NextRequest) {
         undergrad_second_major: true,
         undergrad_entry_year: true,
         undergrad_graduation_year: true,
-        current_lawschool: true,
-        graduated_lawschool: true,
-        lawschool_grade: true,
       },
     }),
     prisma.mentorRecord.findUnique({
       where: { user_id_process_year: { user_id: userId, process_year: processYear } },
-      select: { academic_status: true },
+      select: {
+        academic_status: true,
+        lawschool_name: true,
+        lawschool_grade: true,
+      },
     }),
   ]);
 
@@ -74,9 +75,8 @@ export async function GET(req: NextRequest) {
       admissionYear: yearToLabel(user.undergrad_entry_year),
       graduationYear: yearToLabel(user.undergrad_graduation_year),
       academicStatus: statusToLabel(record?.academic_status),
-      currentLawschool: user.current_lawschool ?? "",
-      graduatedLawschool: user.graduated_lawschool ?? "",
-      lawschoolGrade: user.lawschool_grade ?? null,
+      lawschool: record?.lawschool_name ?? "",
+      lawschoolGrade: record?.lawschool_grade ?? null,
     },
   });
 }
@@ -96,8 +96,7 @@ export async function PATCH(req: NextRequest) {
 
   let body: {
     personal?: PersonalPatchInput & {
-      currentLawschool?: string;
-      graduatedLawschool?: string;
+      lawschool?: string;
       lawschoolGrade?: number | null;
     };
   };
@@ -110,8 +109,7 @@ export async function PATCH(req: NextRequest) {
   const flat: Record<string, unknown> = body.personal ? flattenPersonal(body.personal) : {};
   if (body.personal) {
     const p = body.personal;
-    if (p.currentLawschool !== undefined) flat.current_lawschool = p.currentLawschool || null;
-    if (p.graduatedLawschool !== undefined) flat.graduated_lawschool = p.graduatedLawschool || null;
+    if (p.lawschool !== undefined) flat.lawschool_name = p.lawschool || null;
     if (p.lawschoolGrade !== undefined) flat.lawschool_grade = p.lawschoolGrade;
   }
 

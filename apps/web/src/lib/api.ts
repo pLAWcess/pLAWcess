@@ -167,9 +167,8 @@ export async function patchBasicInfo(
 // ----------------------------------------------------------------
 
 export type MentorBasicInfoPersonal = BasicInfoPersonal & {
-  currentLawschool: string;
-  graduatedLawschool: string;
-  lawschoolGrade: number | null;
+  lawschool: string;             // 소속 로스쿨 (MentorRecord)
+  lawschoolGrade: number | null; // 기수 (MentorRecord)
 };
 
 export type MentorBasicInfoData = {

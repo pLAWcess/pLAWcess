@@ -27,7 +27,7 @@ export default function MentorBasicInfoPage() {
         setPersonalInfo({
           ...emptyMentorPersonalInfo,
           name: data.personal.name,
-          affiliation: data.personal.currentLawschool,  // "소속 로스쿨" ← currentLawschool
+          affiliation: data.personal.lawschool,  // "소속 로스쿨" ← MentorRecord.lawschool_name
           birthDate: data.personal.birthDate,
           gender: data.personal.gender,
           lawSchoolGrade: data.personal.lawschoolGrade ? `${data.personal.lawschoolGrade}학년도` : '',
@@ -63,7 +63,7 @@ export default function MentorBasicInfoPage() {
           major2: draft.major2,
           admissionYear: draft.admissionYear,
           graduationYear: draft.graduationYear,
-          currentLawschool: draft.affiliation,  // FE affiliation ("소속 로스쿨") → BE currentLawschool
+          lawschool: draft.affiliation,  // FE affiliation ("소속 로스쿨") → BE MentorRecord.lawschool_name
           lawschoolGrade: Number.isFinite(gradeNum) ? gradeNum : null,
         },
       });
