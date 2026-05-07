@@ -10,7 +10,7 @@ const API_BASE = '';
 
 const NAV_ITEMS = [
   { href: '/about', label: '서비스 소개' },
-  { href: null, label: '이용 가이드' },
+  { href: '/guide', label: '이용 가이드' },
   { href: '/faq', label: 'FAQ' },
   { href: '/announcements', label: '공지사항' },
 ];
@@ -48,30 +48,19 @@ export default function LandingNavbar() {
 
       {/* Center: Nav items */}
       <nav className="flex items-center gap-6" aria-label="주요 메뉴">
-        {NAV_ITEMS.map(({ href, label }) =>
-          href ? (
-            <Link
-              key={label}
-              href={href}
-              className={`text-sm font-medium transition-colors ${
-                pathname === href
-                  ? 'text-text-primary'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {label}
-            </Link>
-          ) : (
-            <span
-              key={label}
-              className="text-sm font-medium text-text-secondary/50 cursor-not-allowed flex items-center gap-1"
-              title="준비 중입니다"
-            >
-              {label}
-              <span className="text-[10px] bg-border text-text-secondary/60 rounded px-1 py-0.5 leading-none">준비 중</span>
-            </span>
-          )
-        )}
+        {NAV_ITEMS.map(({ href, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`text-sm font-medium transition-colors ${
+              pathname === href
+                ? 'text-text-primary'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
         {/* {process.env.NODE_ENV === 'development' && ( */}
 
           <>
