@@ -62,6 +62,11 @@ const SELECT_FIELDS = {
   ai_analyzed_at: true,
 } as const;
 
+type StarAnalysisJson = {
+  activities?: Array<{ activity_index: number; [k: string]: unknown }>;
+  [k: string]: unknown;
+};
+
 // ----------------------------------------------------------------
 // GET /api/mentee/qualitative?year=2026학년도
 // ----------------------------------------------------------------
@@ -122,4 +127,69 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json(buildResponse(record));
+}
+
+// ----------------------------------------------------------------
+// DELETE /api/mentee/qualitative?year=2026학년도&index=N
+// 활동 배열에서 해당 index 제거 + STAR 분석에서도 제거하고 후속 인덱스 -1 시프트
+// ai_input_hash는 무효화 (다음 분석 호출 시 새로 돌도록)
+// ai_keywords는 그대로 두되 사용자가 재분석하면 갱신됨
+// ----------------------------------------------------------------
+export async function DELETE(req: NextRequest) {
+  const userId = getUserId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  const processYear = getProcessYear(req);
+
+  const indexParam = req.nextUrl.searchParams.get("index");
+  if (indexParam == null) {
+    return NextResponse.json({ error: "index 파라미터가 필요합니다." }, { status: 400 });
+  }
+  const index = parseInt(indexParam, 10);
+  if (Number.isNaN(index) || index < 0) {
+    return NextResponse.json({ error: "index가 올바르지 않습니다." }, { status: 400 });
+  }
+
+  const record = await prisma.menteeRecord.findUnique({
+    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+    select: SELECT_FIELDS,
+  });
+
+  if (!record) {
+    return NextResponse.json({ error: "정성 데이터가 없습니다." }, { status: 404 });
+  }
+
+  const activities = (record.qualitative_activities ?? []) as ActivityForm[];
+  if (index >= activities.length) {
+    return NextResponse.json({ error: "해당 인덱스의 활동이 없습니다." }, { status: 404 });
+  }
+
+  const newActivities = activities.filter((_, i) => i !== index);
+
+  // STAR 분석에서도 해당 활동 제거하고 인덱스 시프트
+  const oldStar = record.star_analysis as StarAnalysisJson | null;
+  let newStar: StarAnalysisJson | null = null;
+  if (oldStar?.activities && Array.isArray(oldStar.activities)) {
+    const filtered = oldStar.activities
+      .filter((s) => s.activity_index !== index)
+      .map((s) => ({
+        ...s,
+        activity_index: s.activity_index > index ? s.activity_index - 1 : s.activity_index,
+      }));
+    newStar = { ...oldStar, activities: filtered };
+  }
+
+  const updated = await prisma.menteeRecord.update({
+    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+    data: {
+      qualitative_activities: newActivities as unknown as Prisma.InputJsonValue,
+      star_analysis: (newStar ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+      ai_input_hash: null,
+    },
+    select: SELECT_FIELDS,
+  });
+
+  return NextResponse.json(buildResponse(updated));
 }
