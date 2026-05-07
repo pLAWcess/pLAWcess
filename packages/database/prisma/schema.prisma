@@ -174,9 +174,15 @@ model MenteeRecord {
   toefl_score               Int?
   teps_score                Int?
 
-  target_school_ga      String?           @db.VarChar(100)  // 가군 희망 학교
-  target_school_na      String?           @db.VarChar(100)  // 나군 희망 학교
-  is_special_admission  Boolean           @default(false)
+  // 희망 로스쿨 — 가/나 군 × 1·2지망 4슬롯, 슬롯별 학교 + 특별전형 여부
+  target_school_ga_first    String?       @db.VarChar(100)  // 가군 1지망
+  is_special_ga_first       Boolean       @default(false)
+  target_school_ga_second   String?       @db.VarChar(100)  // 가군 2지망
+  is_special_ga_second      Boolean       @default(false)
+  target_school_na_first    String?       @db.VarChar(100)  // 나군 1지망
+  is_special_na_first       Boolean       @default(false)
+  target_school_na_second   String?       @db.VarChar(100)  // 나군 2지망
+  is_special_na_second      Boolean       @default(false)
 
   // 3단계: 자소서·정성 (사용자 직접 입력)
   qualitative_activities Json?    // { volunteer, conference, thesis, club, external }
