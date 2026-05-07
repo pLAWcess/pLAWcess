@@ -138,7 +138,6 @@ function ApplicationsPageContent() {
   const [draft, setDraft] = useState<ScheduleDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [addingYear, setAddingYear] = useState(false);
-  const [newYear, setNewYear] = useState('');
 
   useEffect(() => {
     getCycleSchedules().then((list) => {
@@ -186,17 +185,17 @@ function ApplicationsPageContent() {
   }
 
   async function handleAddYear() {
-    const y = parseInt(newYear, 10);
-    if (isNaN(y)) return;
+    const maxYear = schedules.length > 0 ? Math.max(...schedules.map((s) => s.process_year)) : new Date().getFullYear();
+    const nextYear = maxYear + 1;
+    setAddingYear(true);
     try {
-      const created = await createCycleSchedule(y);
+      const created = await createCycleSchedule(nextYear);
       setSchedules((prev) => [created, ...prev]);
       setSelectedYear(created.process_year);
-      setNewYear('');
-      setAddingYear(false);
-      startEdit();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : '연도 생성 실패');
+    } finally {
+      setAddingYear(false);
     }
   }
 
@@ -236,28 +235,13 @@ function ApplicationsPageContent() {
             </button>
           )}
           {/* 새 연도 추가 */}
-          {addingYear ? (
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                value={newYear}
-                onChange={(e) => setNewYear(e.target.value)}
-                placeholder="연도"
-                className="w-20 px-2 py-1.5 text-sm border border-border rounded-md focus:outline-none focus:border-brand"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAddYear(); if (e.key === 'Escape') setAddingYear(false); }}
-                autoFocus
-              />
-              <button onClick={handleAddYear} className="px-3 py-1.5 text-xs text-white bg-brand rounded-md hover:bg-brand-dark">추가</button>
-              <button onClick={() => setAddingYear(false)} className="px-3 py-1.5 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50">취소</button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingYear(true)}
-              className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
-            >
-              + 새 연도 추가
-            </button>
-          )}
+          <button
+            onClick={handleAddYear}
+            disabled={addingYear}
+            className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            + 새 연도 추가
+          </button>
         </div>
       </div>
 
