@@ -191,8 +191,10 @@ export async function createCycleSchedule(process_year: number): Promise<CycleSc
     method: "POST", headers: headers(), credentials: "include",
     body: JSON.stringify({ process_year }),
   });
-  if (res.status === 409) throw new Error("이미 존재하는 연도입니다.");
-  if (!res.ok) throw new Error("연도 생성 실패");
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "연도 생성 실패");
+  }
   return res.json();
 }
 
@@ -206,6 +208,13 @@ export async function patchCycleSchedule(
   });
   if (!res.ok) throw new Error("스케줄 저장 실패");
   return res.json();
+}
+
+export async function deleteCycleSchedule(year: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/cycle-schedules/${year}`, {
+    method: "DELETE", headers: headers(), credentials: "include",
+  });
+  if (!res.ok) throw new Error("연도 삭제 실패");
 }
 
 export async function getActiveCycleSchedule(): Promise<CycleSchedule | null> {

@@ -92,3 +92,22 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ year: str
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ year: string }> }) {
+  const guard = requireAdminInline(req);
+  if (guard.error) return guard.error;
+
+  const { year: yearStr } = await ctx.params;
+  const year = Number.parseInt(yearStr, 10);
+  if (!Number.isInteger(year)) {
+    return NextResponse.json({ error: "잘못된 연도 형식입니다." }, { status: 400 });
+  }
+
+  const existing = await prisma.cycleSchedule.findUnique({ where: { process_year: year } });
+  if (!existing) {
+    return NextResponse.json({ error: "해당 연도의 스케줄이 없습니다." }, { status: 404 });
+  }
+
+  await prisma.cycleSchedule.delete({ where: { process_year: year } });
+  return new NextResponse(null, { status: 204 });
+}

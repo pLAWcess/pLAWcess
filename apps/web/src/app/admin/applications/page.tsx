@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { getCycleSchedules, createCycleSchedule, patchCycleSchedule, type CycleSchedule } from '@/lib/api';
+import { getCycleSchedules, createCycleSchedule, patchCycleSchedule, deleteCycleSchedule, type CycleSchedule } from '@/lib/api';
 
 type ApplicationStatus = 'approved' | 'pending' | 'revision';
 
@@ -148,6 +148,19 @@ function ApplicationsPageContent() {
 
   const current = schedules.find((s) => s.process_year === selectedYear) ?? null;
 
+  const dateErrors = useMemo(() => {
+    if (!draft) return {};
+    const errors: Partial<Record<string, string>> = {};
+    for (const { label, start, end } of SCHEDULE_ROWS) {
+      if (!end) continue;
+      const s = draft[start], e = draft[end];
+      if (s && e && e < s) errors[label] = '종료일이 시작일보다 빠릅니다';
+    }
+    return errors;
+  }, [draft]);
+
+  const hasDateError = Object.keys(dateErrors).length > 0;
+
   function startEdit() {
     if (!current) return;
     setDraft({
@@ -184,9 +197,23 @@ function ApplicationsPageContent() {
     ));
   }
 
+  async function handleDelete() {
+    if (!selectedYear || !current) return;
+    if (!confirm(`${selectedYear}년 스케줄을 삭제할까요?`)) return;
+    try {
+      await deleteCycleSchedule(selectedYear);
+      const next = schedules.filter((s) => s.process_year !== selectedYear);
+      setSchedules(next);
+      setSelectedYear(next.length > 0 ? next[0].process_year : null);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '삭제 실패');
+    }
+  }
+
   async function handleAddYear() {
-    const maxYear = schedules.length > 0 ? Math.max(...schedules.map((s) => s.process_year)) : new Date().getFullYear();
-    const nextYear = maxYear + 1;
+    const nextYear = schedules.length > 0
+      ? Math.max(...schedules.map((s) => s.process_year)) + 1
+      : new Date().getFullYear();
     setAddingYear(true);
     try {
       const created = await createCycleSchedule(nextYear);
@@ -234,6 +261,15 @@ function ApplicationsPageContent() {
               이 연도를 멘티에게 노출
             </button>
           )}
+          {/* 연도 삭제 */}
+          {current && (
+            <button
+              onClick={handleDelete}
+              className="px-3 py-2 text-xs text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
+            >
+              연도 삭제
+            </button>
+          )}
           {/* 새 연도 추가 */}
           <button
             onClick={handleAddYear}
@@ -258,7 +294,7 @@ function ApplicationsPageContent() {
                 >취소</button>
                 <button
                   onClick={saveEdit}
-                  disabled={saving}
+                  disabled={saving || hasDateError}
                   className="px-3 py-1.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark disabled:opacity-50 transition-colors"
                 >{saving ? '저장 중...' : '완료'}</button>
               </div>
@@ -284,7 +320,7 @@ function ApplicationsPageContent() {
               <li key={label} className="grid grid-cols-[180px_1fr] items-center py-4 gap-4">
                 <span className="text-sm font-medium text-text-primary">{label}</span>
                 {isEditingSchedule && draft ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <input
                       type="date"
                       value={toDateInput(draft[start])}
@@ -298,9 +334,12 @@ function ApplicationsPageContent() {
                           type="date"
                           value={toDateInput(draft[end])}
                           onChange={(e) => setDraft((d) => d ? { ...d, [end]: e.target.value || null } : d)}
-                          className="px-3 py-1.5 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand"
+                          className={`px-3 py-1.5 text-sm border rounded-md bg-white focus:outline-none ${dateErrors[label] ? 'border-red-400 focus:border-red-500' : 'border-border-input focus:border-brand'}`}
                         />
                       </>
+                    )}
+                    {dateErrors[label] && (
+                      <span className="text-xs text-red-500">{dateErrors[label]}</span>
                     )}
                   </div>
                 ) : (
