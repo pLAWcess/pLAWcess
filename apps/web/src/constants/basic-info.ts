@@ -6,15 +6,15 @@ export type PersonalInfo = {
   major1: string;
   major2: string;
   admissionYear: string;
-  militaryStatus: string;   // DB 미지원 — 로컬 상태로만 유지
+  militaryStatus: string;
   academicStatus: string;
   graduationYear: string;
 };
 
 export type AdmissionEntry = { school: string; type: string };
 export type AdmissionInfo = {
-  가: { first: AdmissionEntry; second: AdmissionEntry };  // second는 DB 미지원
-  나: { first: AdmissionEntry; second: AdmissionEntry };  // second는 DB 미지원
+  가: { first: AdmissionEntry; second: AdmissionEntry };
+  나: { first: AdmissionEntry; second: AdmissionEntry };
 };
 
 export const emptyPersonalInfo: PersonalInfo = {
