@@ -112,11 +112,6 @@ model User {
   undergrad_entry_year       Int?
   undergrad_graduation_year  Int?
 
-  // 로스쿨 (시간 불변)
-  current_lawschool   String? @db.VarChar(100)
-  graduated_lawschool String? @db.VarChar(100)
-  lawschool_grade     Int?
-
   // 계정
   account_status  AccountStatus   @default(active)
   current_role    CurrentRole     @default(none)
@@ -242,6 +237,10 @@ model MentorRecord {
   strengths_weaknesses       String?           @db.Text
   career_goal                String?           @db.Text
   is_special_admission       Boolean           @default(false)
+
+  // 멘토 본인 로스쿨 정보 (cycle 시점 기준)
+  lawschool_name             String?           @db.VarChar(100)  // 소속 로스쿨
+  lawschool_grade            Int?                                 // 기수 (입학년도)
 
   // 신청 시점 학적 스냅샷 (멘토 본인의 로스쿨 학적)
   academic_status            AcademicStatus?
