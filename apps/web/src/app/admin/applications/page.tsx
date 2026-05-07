@@ -2,18 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-
-type ScheduleItem = { label: string; period: string };
-
-const SCHEDULE_BY_YEAR: Record<string, ScheduleItem[]> = {
-  '2024': [
-    { label: '멘토 모집', period: '2024년 3월 1일 ~ 2024년 3월 31일' },
-    { label: '멘티 신청', period: '2024년 4월 1일 ~ 2024년 4월 30일' },
-    { label: '멘티-멘토 매칭', period: '2024년 5월 1일 ~ 2024년 5월 15일' },
-    { label: '매칭 공지', period: '2024년 5월 20일' },
-    { label: '입시 결과 수집', period: '2024년 11월 1일 ~ 2024년 12월 31일' },
-  ],
-};
+import { getCycleSchedules, createCycleSchedule, patchCycleSchedule, type CycleSchedule } from '@/lib/api';
 
 type ApplicationStatus = 'approved' | 'pending' | 'revision';
 
@@ -94,8 +83,34 @@ function SearchIcon() {
   );
 }
 
-const YEARS = ['2024', '2025', '2026'];
 type Tab = 'mentee' | 'mentor';
+
+type ScheduleDraft = Pick<CycleSchedule,
+  'mentor_recruit_start' | 'mentor_recruit_end' |
+  'mentee_apply_start' | 'mentee_apply_end' |
+  'matching_start' | 'matching_end' |
+  'match_announce_date' |
+  'admission_result_start' | 'admission_result_end'
+>;
+
+const SCHEDULE_ROWS: { label: string; start: keyof ScheduleDraft; end?: keyof ScheduleDraft }[] = [
+  { label: '멘토 모집', start: 'mentor_recruit_start', end: 'mentor_recruit_end' },
+  { label: '멘티 신청', start: 'mentee_apply_start', end: 'mentee_apply_end' },
+  { label: '멘티-멘토 매칭', start: 'matching_start', end: 'matching_end' },
+  { label: '매칭 공지', start: 'match_announce_date' },
+  { label: '입시 결과 수집', start: 'admission_result_start', end: 'admission_result_end' },
+];
+
+function toDateInput(iso: string | null): string {
+  if (!iso) return '';
+  return iso.slice(0, 10);
+}
+
+function formatDateKo(iso: string | null): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 export default function AdminApplicationsPage() {
   return (
@@ -117,60 +132,205 @@ function ApplicationsPageContent() {
     router.replace(`${pathname}?${next.toString()}`);
   };
 
-  const [year, setYear] = useState('2024');
+  const [schedules, setSchedules] = useState<CycleSchedule[]>([]);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [draft, setDraft] = useState<ScheduleDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [addingYear, setAddingYear] = useState(false);
+  const [newYear, setNewYear] = useState('');
 
-  const schedule = SCHEDULE_BY_YEAR[year] ?? [];
+  useEffect(() => {
+    getCycleSchedules().then((list) => {
+      setSchedules(list);
+      if (list.length > 0) setSelectedYear(list[0].process_year);
+    }).catch(() => {});
+  }, []);
+
+  const current = schedules.find((s) => s.process_year === selectedYear) ?? null;
+
+  function startEdit() {
+    if (!current) return;
+    setDraft({
+      mentor_recruit_start: current.mentor_recruit_start,
+      mentor_recruit_end: current.mentor_recruit_end,
+      mentee_apply_start: current.mentee_apply_start,
+      mentee_apply_end: current.mentee_apply_end,
+      matching_start: current.matching_start,
+      matching_end: current.matching_end,
+      match_announce_date: current.match_announce_date,
+      admission_result_start: current.admission_result_start,
+      admission_result_end: current.admission_result_end,
+    });
+    setIsEditingSchedule(true);
+  }
+
+  async function saveEdit() {
+    if (!draft || !selectedYear) return;
+    setSaving(true);
+    try {
+      const updated = await patchCycleSchedule(selectedYear, draft);
+      setSchedules((prev) => prev.map((s) => s.process_year === selectedYear ? updated : s));
+      setIsEditingSchedule(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleActive() {
+    if (!selectedYear || !current || current.is_active) return;
+    const updated = await patchCycleSchedule(selectedYear, { is_active: true });
+    setSchedules((prev) => prev.map((s) =>
+      s.process_year === selectedYear ? updated : { ...s, is_active: false }
+    ));
+  }
+
+  async function handleAddYear() {
+    const y = parseInt(newYear, 10);
+    if (isNaN(y)) return;
+    try {
+      const created = await createCycleSchedule(y);
+      setSchedules((prev) => [created, ...prev]);
+      setSelectedYear(created.process_year);
+      setNewYear('');
+      setAddingYear(false);
+      startEdit();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '연도 생성 실패');
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
       {/* 페이지 헤더 */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
           <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
         </div>
-        <select
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-          className="px-4 py-2 pr-8 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
-        >
-          {YEARS.map((y) => (
-            <option key={y} value={y}>{y}년</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          {/* 연도 선택 */}
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedYear ?? ''}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="px-4 py-2 pr-8 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
+            >
+              {schedules.map((s) => (
+                <option key={s.process_year} value={s.process_year}>{s.process_year}년</option>
+              ))}
+            </select>
+            {current?.is_active && (
+              <span className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />활성
+              </span>
+            )}
+          </div>
+          {/* 활성화 토글 */}
+          {current && !current.is_active && (
+            <button
+              onClick={toggleActive}
+              className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
+            >
+              이 연도를 멘티에게 노출
+            </button>
+          )}
+          {/* 새 연도 추가 */}
+          {addingYear ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                value={newYear}
+                onChange={(e) => setNewYear(e.target.value)}
+                placeholder="연도"
+                className="w-20 px-2 py-1.5 text-sm border border-border rounded-md focus:outline-none focus:border-brand"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddYear(); if (e.key === 'Escape') setAddingYear(false); }}
+                autoFocus
+              />
+              <button onClick={handleAddYear} className="px-3 py-1.5 text-xs text-white bg-brand rounded-md hover:bg-brand-dark">추가</button>
+              <button onClick={() => setAddingYear(false)} className="px-3 py-1.5 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50">취소</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingYear(true)}
+              className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
+            >
+              + 새 연도 추가
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 사업 스케줄 */}
       <section className="bg-white border border-border rounded-xl px-8 py-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-semibold text-text-primary">pLAWcess 사업 스케줄</h2>
-          <button
-            onClick={() => setIsEditingSchedule((v) => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            {isEditingSchedule ? '완료' : '수정'}
-          </button>
+          {current && (
+            isEditingSchedule ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsEditingSchedule(false)}
+                  className="px-3 py-1.5 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
+                >취소</button>
+                <button
+                  onClick={saveEdit}
+                  disabled={saving}
+                  className="px-3 py-1.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark disabled:opacity-50 transition-colors"
+                >{saving ? '저장 중...' : '완료'}</button>
+              </div>
+            ) : (
+              <button
+                onClick={startEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                수정
+              </button>
+            )
+          )}
         </div>
-        <ul className="divide-y divide-border">
-          {schedule.map(({ label, period }) => (
-            <li key={label} className="grid grid-cols-[180px_1fr] items-center py-5">
-              <span className="text-sm font-medium text-text-primary">{label}</span>
-              {isEditingSchedule ? (
-                <input
-                  defaultValue={period}
-                  className="px-3 py-1.5 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand"
-                />
-              ) : (
-                <span className="text-sm text-text-secondary">{period}</span>
-              )}
-            </li>
-          ))}
-        </ul>
+        {!current ? (
+          <p className="text-sm text-text-secondary py-4">등록된 스케줄이 없습니다.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {SCHEDULE_ROWS.map(({ label, start, end }) => (
+              <li key={label} className="grid grid-cols-[180px_1fr] items-center py-4 gap-4">
+                <span className="text-sm font-medium text-text-primary">{label}</span>
+                {isEditingSchedule && draft ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={toDateInput(draft[start])}
+                      onChange={(e) => setDraft((d) => d ? { ...d, [start]: e.target.value || null } : d)}
+                      className="px-3 py-1.5 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand"
+                    />
+                    {end && (
+                      <>
+                        <span className="text-sm text-text-secondary">~</span>
+                        <input
+                          type="date"
+                          value={toDateInput(draft[end])}
+                          onChange={(e) => setDraft((d) => d ? { ...d, [end]: e.target.value || null } : d)}
+                          className="px-3 py-1.5 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand"
+                        />
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-text-secondary">
+                    {end
+                      ? `${formatDateKo(current[start])} ~ ${formatDateKo(current[end])}`
+                      : formatDateKo(current[start])
+                    }
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* 탭 */}

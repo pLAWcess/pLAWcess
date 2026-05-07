@@ -1,8 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import ConcernCard from '@/components/concerns/ConcernCard';
+import { getActiveCycleSchedule, type CycleSchedule } from '@/lib/api';
+
+function formatDateKo(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 const STEPS = [
   { title: '신청서 작성 및 제출', desc: '희망 로스쿨과 시작일, 예산 등을 입력하고 신청서를 제출합니다.' },
@@ -26,10 +33,15 @@ const initialApplication: ApplicationData = {
 export default function ApplicationsPage() {
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
+  const [activeSchedule, setActiveSchedule] = useState<CycleSchedule | null>(null);
 
   const [appData, setAppData] = useState<ApplicationData>(initialApplication);
   const [draft, setDraft] = useState<ApplicationData>(initialApplication);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    getActiveCycleSchedule().then(setActiveSchedule).catch(() => {});
+  }, []);
 
   function handleSubmit() {
     if (!agreed) {
@@ -204,10 +216,19 @@ export default function ApplicationsPage() {
 
         {/* 안내 문구 */}
         <div className="mt-8 text-center text-sm text-text-secondary leading-relaxed">
-          <p>
-            <span className="text-brand font-medium">2027학년도 pLAWcess</span>는 2026년 7월 20일까지 입력된 정보를 기반으로 멘토-멘티 매칭이 이루어집니다.
-          </p>
-          <p>이전까지 모든 데이터를 입력해주시기 바랍니다.</p>
+          {activeSchedule ? (
+            <>
+              <p>
+                <span className="text-brand font-medium">{activeSchedule.process_year}학년도 pLAWcess</span>
+                {formatDateKo(activeSchedule.mentee_apply_end)
+                  ? <>는 {formatDateKo(activeSchedule.mentee_apply_end)}까지 입력된 정보를 기반으로 멘토-멘티 매칭이 이루어집니다.</>
+                  : <>의 신청 마감일이 아직 등록되지 않았습니다.</>}
+              </p>
+              {formatDateKo(activeSchedule.mentee_apply_end) && <p>이전까지 모든 데이터를 입력해주시기 바랍니다.</p>}
+            </>
+          ) : (
+            <p>현재 진행 중인 pLAWcess 사업의 신청 기간이 아직 등록되지 않았습니다.</p>
+          )}
         </div>
 
         {/* 제출 버튼 */}
