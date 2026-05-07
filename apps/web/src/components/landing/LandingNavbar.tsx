@@ -5,11 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getUser, clearAllCache } from '@/lib/api';
 
-const API_BASE = '';
-
-
 const NAV_ITEMS = [
   { href: '/about', label: '서비스 소개' },
+  { href: '/guide', label: '이용 가이드' },
   { href: '/faq', label: 'FAQ' },
   { href: '/announcements', label: '공지사항' },
 ];
@@ -18,18 +16,14 @@ export default function LandingNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [loggedIn, setLoggedIn] = useState(false);
-  const [, setRole] = useState<string>('none');
 
   useEffect(() => {
     const user = getUser();
-    if (user) {
-      setLoggedIn(true);
-      setRole(user.current_role);
-    }
+    if (user) setLoggedIn(true);
   }, []);
 
   async function handleLogout() {
-    await fetch(`${API_BASE}/api/auth/logout`, {
+    await fetch('/api/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });

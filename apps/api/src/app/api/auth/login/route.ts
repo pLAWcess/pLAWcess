@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findFirst({
     where: queryKey,
-    select: { user_id: true, name: true, login_id: true, email: true, current_role: true, account_status: true, password_hash: true },
+    select: { user_id: true, name: true, login_id: true, email: true, current_role: true, account_status: true, military_status: true, password_hash: true },
   });
 
   if (!user || !user.password_hash) {
