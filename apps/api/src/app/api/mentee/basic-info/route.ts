@@ -21,6 +21,10 @@ function getProcessYear(req: NextRequest): number {
   return match ? parseInt(match[0]) : new Date().getFullYear();
 }
 
+type AdmissionSlotInput = { school?: string; isSpecial?: boolean };
+type AdmissionGroupInput = { first?: AdmissionSlotInput; second?: AdmissionSlotInput };
+type AdmissionInput = { 가?: AdmissionGroupInput; 나?: AdmissionGroupInput };
+
 // ----------------------------------------------------------------
 // GET /api/mentee/basic-info?year=2026학년도
 // 응답: User(신상) + MenteeRecord(사이클 학적·희망학교) 합성
@@ -52,9 +56,14 @@ export async function GET(req: NextRequest) {
       where: { user_id_process_year: { user_id: userId, process_year: processYear } },
       select: {
         academic_status: true,
-        target_school_ga: true,
-        target_school_na: true,
-        is_special_admission: true,
+        target_school_ga_first: true,
+        is_special_ga_first: true,
+        target_school_ga_second: true,
+        is_special_ga_second: true,
+        target_school_na_first: true,
+        is_special_na_first: true,
+        target_school_na_second: true,
+        is_special_na_second: true,
       },
     }),
   ]);
@@ -77,16 +86,21 @@ export async function GET(req: NextRequest) {
       academicStatus: statusToLabel(record?.academic_status),
     },
     admission: {
-      가: { first: record?.target_school_ga ?? "" },
-      나: { first: record?.target_school_na ?? "" },
-      isSpecialAdmission: record?.is_special_admission ?? false,
+      가: {
+        first:  { school: record?.target_school_ga_first  ?? "", isSpecial: record?.is_special_ga_first  ?? false },
+        second: { school: record?.target_school_ga_second ?? "", isSpecial: record?.is_special_ga_second ?? false },
+      },
+      나: {
+        first:  { school: record?.target_school_na_first  ?? "", isSpecial: record?.is_special_na_first  ?? false },
+        second: { school: record?.target_school_na_second ?? "", isSpecial: record?.is_special_na_second ?? false },
+      },
     },
   });
 }
 
 // ----------------------------------------------------------------
 // PATCH /api/mentee/basic-info?year=2026학년도
-// Body: { personal?: {...}, admission?: {...} }   ← FE 호환성 유지
+// Body: { personal?: {...}, admission?: { 가?: { first?/second?: { school?, isSpecial? } }, 나?: ... } }
 // 내부: 평탄화 → splitPayload → User.update + MenteeRecord.upsert (트랜잭션)
 // ----------------------------------------------------------------
 export async function PATCH(req: NextRequest) {
@@ -99,11 +113,7 @@ export async function PATCH(req: NextRequest) {
 
   let body: {
     personal?: PersonalPatchInput;
-    admission?: {
-      가?: { first?: string };
-      나?: { first?: string };
-      isSpecialAdmission?: boolean;
-    };
+    admission?: AdmissionInput;
   };
   try {
     body = await req.json();
@@ -114,10 +124,25 @@ export async function PATCH(req: NextRequest) {
   // 1) 중첩 본문 → 평탄화 + DB 컬럼명 + 라벨 변환
   const flat: Record<string, unknown> = body.personal ? flattenPersonal(body.personal) : {};
   if (body.admission) {
-    const { 가: ga, 나: na, isSpecialAdmission } = body.admission;
-    if (ga?.first !== undefined) flat.target_school_ga = ga.first || null;
-    if (na?.first !== undefined) flat.target_school_na = na.first || null;
-    if (isSpecialAdmission !== undefined) flat.is_special_admission = isSpecialAdmission;
+    const groups: Array<{ key: "가" | "나"; col: "ga" | "na" }> = [
+      { key: "가", col: "ga" },
+      { key: "나", col: "na" },
+    ];
+    const ranks: Array<"first" | "second"> = ["first", "second"];
+    for (const { key, col } of groups) {
+      const groupData = body.admission[key];
+      if (!groupData) continue;
+      for (const r of ranks) {
+        const slot = groupData[r];
+        if (!slot) continue;
+        if (slot.school !== undefined) {
+          flat[`target_school_${col}_${r}`] = slot.school || null;
+        }
+        if (slot.isSpecial !== undefined) {
+          flat[`is_special_${col}_${r}`] = slot.isSpecial;
+        }
+      }
+    }
   }
 
   // 2) User / MenteeRecord 분기
