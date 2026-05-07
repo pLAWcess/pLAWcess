@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
-type AccountStatus = 'active' | 'pending' | 'inactive';
+type AccountStatus = 'active' | 'inactive';
 
 type Mentee = {
   user_id: string;
@@ -29,15 +29,15 @@ type Mentor = {
 const MENTEES: Mentee[] = [
   { user_id: '1', name: '김민준', studentId: '2020123456', college: '인문대학', major: '법학과', phone: '010-1234-5678', status: 'active' },
   { user_id: '2', name: '이서연', studentId: '2019234567', college: '사회과학대학', major: '정치외교학과', phone: '010-2345-6789', status: 'active' },
-  { user_id: '3', name: '박지호', studentId: '2021345678', college: '상경대학', major: '경제학과', phone: '010-3456-7890', status: 'pending' },
+  { user_id: '3', name: '박지호', studentId: '2021345678', college: '상경대학', major: '경제학과', phone: '010-3456-7890', status: 'inactive' },
   { user_id: '4', name: '정태양', studentId: '2020567890', college: '인문대학', major: '법학과', phone: '010-5678-9012', status: 'inactive' },
   { user_id: '5', name: '강하늘', studentId: '2019678901', college: '사회과학대학', major: '행정학과', phone: '010-6789-0123', status: 'active' },
-  { user_id: '6', name: '임나래', studentId: '2021789012', college: '인문대학', major: '법학과', phone: '010-7890-1234', status: 'pending' },
+  { user_id: '6', name: '임나래', studentId: '2021789012', college: '인문대학', major: '법학과', phone: '010-7890-1234', status: 'inactive' },
   { user_id: '7', name: '윤도현', studentId: '2020345612', college: '공과대학', major: '컴퓨터학과', phone: '010-1357-2468', status: 'active' },
   { user_id: '8', name: '조예린', studentId: '2019456712', college: '경영대학', major: '경영학과', phone: '010-2468-1357', status: 'active' },
   { user_id: '9', name: '한승호', studentId: '2021567823', college: '인문대학', major: '법학과', phone: '010-3579-2468', status: 'inactive' },
   { user_id: '10', name: '서민지', studentId: '2020678934', college: '사회과학대학', major: '사회학과', phone: '010-4680-1357', status: 'active' },
-  { user_id: '11', name: '권우석', studentId: '2019789045', college: '상경대학', major: '경제학과', phone: '010-5791-2468', status: 'pending' },
+  { user_id: '11', name: '권우석', studentId: '2019789045', college: '상경대학', major: '경제학과', phone: '010-5791-2468', status: 'inactive' },
   { user_id: '12', name: '문가연', studentId: '2021890156', college: '인문대학', major: '법학과', phone: '010-6802-3579', status: 'active' },
 ];
 
@@ -45,19 +45,18 @@ const MENTORS: Mentor[] = [
   { user_id: '101', name: '최수진', studentId: '2018456789', lawSchool: '서울대학교 로스쿨', cohort: '7기', phone: '010-4567-8901', status: 'active' },
   { user_id: '102', name: '오승민', studentId: '2017890123', lawSchool: '연세대학교 로스쿨', cohort: '8기', phone: '010-8901-2345', status: 'active' },
   { user_id: '103', name: '한지우', studentId: '2016901234', lawSchool: '고려대학교 로스쿨', cohort: '9기', phone: '010-9012-3456', status: 'active' },
-  { user_id: '104', name: '윤서아', studentId: '2018012345', lawSchool: '서울대학교 로스쿨', cohort: '7기', phone: '010-0123-4567', status: 'pending' },
+  { user_id: '104', name: '윤서아', studentId: '2018012345', lawSchool: '서울대학교 로스쿨', cohort: '7기', phone: '010-0123-4567', status: 'inactive' },
   { user_id: '105', name: '배현우', studentId: '2017123456', lawSchool: '성균관대학교 로스쿨', cohort: '8기', phone: '010-1122-3344', status: 'active' },
   { user_id: '106', name: '신예원', studentId: '2016234567', lawSchool: '한양대학교 로스쿨', cohort: '9기', phone: '010-2233-4455', status: 'inactive' },
   { user_id: '107', name: '장민호', studentId: '2018345678', lawSchool: '이화여대 로스쿨', cohort: '7기', phone: '010-3344-5566', status: 'active' },
 ];
 
-const STATUS_LABELS: Record<AccountStatus, string> = { active: '활성', pending: '대기', inactive: '비활성' };
+const STATUS_LABELS: Record<AccountStatus, string> = { active: '활성', inactive: '비활성' };
 const PAGE_SIZE = 5;
 
 function StatusBadge({ status }: { status: AccountStatus }) {
   const styles: Record<AccountStatus, string> = {
-    active: 'bg-brand text-white',
-    pending: 'border border-border-input text-text-secondary',
+    active: 'bg-green-500 text-white',
     inactive: 'bg-gray-200 text-text-secondary',
   };
   return (
@@ -143,8 +142,8 @@ function UsersPageContent() {
           columns={[
             { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.user_id}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
             { key: 'studentId', label: '학번', sortable: true },
-            { key: 'college', label: '학부', sortable: true },
-            { key: 'major', label: '전공', sortable: true },
+            { key: 'college', label: '제1전공', sortable: true },
+            { key: 'major', label: '제2전공', sortable: true },
             { key: 'phone', label: '연락처' },
             { key: 'status', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.status} /> },
           ]}
@@ -264,7 +263,6 @@ function MemberPanel<T extends { user_id: string; status: AccountStatus }>({
         >
           <option value="all">전체 상태</option>
           <option value="active">활성</option>
-          <option value="pending">대기</option>
           <option value="inactive">비활성</option>
         </select>
       </div>

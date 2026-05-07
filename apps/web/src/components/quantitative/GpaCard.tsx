@@ -11,9 +11,9 @@ type Props = {
   onSave?: (data: GpaData) => Promise<void>;
 };
 
-const fields: { label: string; key: keyof GpaData }[] = [
-  { label: '전체 평점 평균', key: 'overall' },
-  { label: '전공 평점 평균', key: 'major' },
+const fields: { label: string; key: keyof GpaData; showMax?: boolean }[] = [
+  { label: '전체 평점 평균', key: 'overall', showMax: true },
+  { label: '전공 평점 평균', key: 'major', showMax: true },
   { label: '환산점수', key: 'converted' },
 ];
 
@@ -61,10 +61,10 @@ export default function GpaCard({ initialData, onSave }: Props) {
         }
       </div>
       <div className="grid grid-cols-3 gap-8">
-        {fields.map(({ label, key }) => (
+        {fields.map(({ label, key, showMax }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-text-secondary">{label}</span>
-            <div className="h-7 flex items-center">
+            <div className="h-7 flex items-center gap-1">
               {isEditing ? (
                 <input
                   type="text"
@@ -79,7 +79,9 @@ export default function GpaCard({ initialData, onSave }: Props) {
                   className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
                 />
               ) : (
-                <span className="text-base font-semibold text-text-primary">{toDisplay(data[key])}</span>
+                <span className="text-base font-semibold text-text-primary">
+                  {toDisplay(data[key])}{showMax && data[key] != null && <span className="text-sm font-normal text-text-secondary"> / 4.5</span>}
+                </span>
               )}
             </div>
           </div>
