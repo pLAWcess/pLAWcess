@@ -190,10 +190,11 @@ function ApplicationsPageContent() {
   }
 
   async function toggleActive() {
-    if (!selectedYear || !current || current.is_active) return;
-    const updated = await patchCycleSchedule(selectedYear, { is_active: true });
+    if (!selectedYear || !current) return;
+    const newActive = !current.is_active;
+    const updated = await patchCycleSchedule(selectedYear, { is_active: newActive });
     setSchedules((prev) => prev.map((s) =>
-      s.process_year === selectedYear ? updated : { ...s, is_active: false }
+      s.process_year === selectedYear ? updated : newActive ? { ...s, is_active: false } : s
     ));
   }
 
@@ -252,14 +253,23 @@ function ApplicationsPageContent() {
               </span>
             )}
           </div>
-          {/* 활성화 토글 */}
-          {current && !current.is_active && (
-            <button
-              onClick={toggleActive}
-              className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
-            >
-              이 연도를 멘티에게 노출
-            </button>
+          {/* 활성화 / 비활성화 토글 */}
+          {current && (
+            current.is_active ? (
+              <button
+                onClick={toggleActive}
+                className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
+              >
+                노출 비활성화
+              </button>
+            ) : (
+              <button
+                onClick={toggleActive}
+                className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
+              >
+                이 일정을 멘티/멘토에게 노출
+              </button>
+            )
           )}
           {/* 연도 삭제 */}
           {current && (
