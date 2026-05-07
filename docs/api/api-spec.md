@@ -128,7 +128,7 @@
 
 ## `/api/mentor/basic-info` — GET / PATCH
 
-멘토 기본정보. `User`(신상 + 로스쿨) + `MentorRecord`(학적 스냅샷) 합성.
+멘토 기본정보. `User`(신상) + `MentorRecord`(학적 스냅샷 + 소속 로스쿨·기수) 합성.
 
 **Query:** `?year=2026`
 
@@ -146,20 +146,20 @@
     "admissionYear": "2019",
     "graduationYear": "2024",
     "academicStatus": "재학",
-    "currentLawschool": "string",
-    "graduatedLawschool": "",
-    "lawschoolGrade": 17
+    "lawschool": "string",
+    "lawschoolGrade": 2024
   }
 }
 ```
+
+`lawschool` (소속 로스쿨) 와 `lawschoolGrade` (기수, 입학년도 정수)는 cycle별 `MentorRecord`에 저장됨.
 
 **PATCH Body** (모든 필드 선택적):
 ```json
 {
   "personal": {
-    "currentLawschool": "string",
-    "graduatedLawschool": "string",
-    "lawschoolGrade": 17,
+    "lawschool": "string",
+    "lawschoolGrade": 2024,
     "academicStatus": "재학"
   }
 }
