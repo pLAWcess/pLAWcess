@@ -25,6 +25,7 @@ export type StarItem = {
 export type KeywordCount = {
   keyword: string;
   count: number;
+  sources: string[];  // 이 통합 키워드로 묶인 활동별 raw 키워드 표기 (병합 전 원본)
 };
 
 export type StoryOutline = {
@@ -179,6 +180,13 @@ const SUMMARY_SYSTEM_INSTRUCTION = `너는 대한민국 주요 로스쿨 입시 
 - 최종 출력은 count 내림차순으로 정렬한다.
 - count가 1인 (한 활동에만 등장하는) 키워드도 포함한다. 다만 활동별 keywords에서 도출되지 않은 새 키워드를 만들어내지 말 것.
 - 모든 활동이 분석 불가 상태(빈 keywords)이면 최상위 keywords도 빈 배열 [].
+- **각 keyword 항목에 sources 배열(string[])을 반드시 포함**한다.
+  - sources에는 이 통합 키워드로 병합된 모든 활동별 raw 키워드를 입력에 등장한 표기 그대로 나열한다.
+  - 통합 키워드(keyword)의 표기와 동일한 raw가 활동별 keywords에 있다면 그것도 sources에 포함한다.
+  - sources에 등장한 raw 키워드들이 등장하는 서로 다른 활동의 수가 정확히 count와 일치해야 한다.
+  - 예: keyword="인권보호", count=3, sources=["인권보호", "국제인권규범", "가정폭력 피해자 보호"]
+    → 활동 A의 raw keywords에 "인권보호", 활동 B에 "가정폭력 피해자 보호", 활동 C에 "국제인권규범"이 있을 때.
+  - 활동별 keywords에 등장하지 않은 표기를 sources에 절대 추가하지 말 것.
 
 [임무 2: storyOutline — 자소서 흐름]
 지원자의 진로와 STAR 분석 결과를 기반으로 자소서의 흐름을 도입부·본론·결론으로 제시한다.
@@ -209,8 +217,9 @@ const SUMMARY_RESPONSE_SCHEMA = {
         properties: {
           keyword: { type: Type.STRING },
           count: { type: Type.INTEGER },
+          sources: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
-        required: ["keyword", "count"],
+        required: ["keyword", "count", "sources"],
       },
     },
     storyOutline: {

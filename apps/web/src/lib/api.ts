@@ -255,6 +255,7 @@ export type StarItem = {
 export type KeywordCount = {
   keyword: string;
   count: number;
+  sources?: string[];  // 이 통합 키워드로 묶인 raw 키워드 목록 (구버전 데이터에는 없을 수 있음)
 };
 
 export type StoryOutline = {

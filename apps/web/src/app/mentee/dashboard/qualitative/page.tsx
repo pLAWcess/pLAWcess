@@ -428,19 +428,26 @@ function ActivityCard({
 
 // ----------------------------------------------------------------
 // 대시보드: 활동 목록 표
+// 사이드바에서 통합 키워드를 선택하면, 해당 통합으로 묶이는 raw 키워드만 하이라이트.
+// 모든 raw 키워드는 hover 시 어떤 통합 키워드에 속하는지 툴팁으로 표시.
 // ----------------------------------------------------------------
 function ActivityListTable({
   activities,
   starByIdx,
-  keywordFreq,
+  rawToUnified,
+  selectedUnified,
 }: {
   activities: ActivityForm[];
   starByIdx: (idx: number) => StarItem | undefined;
-  keywordFreq: Map<string, number>;
+  rawToUnified: Map<string, KeywordCount>;
+  selectedUnified: string | null;
 }) {
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
-      <h2 className="text-lg font-semibold text-text-primary mb-4">활동 목록</h2>
+      <h2 className="text-lg font-semibold text-text-primary mb-1">활동 목록</h2>
+      <p className="text-xs text-text-secondary mb-3">
+        오른쪽 키워드를 누르면 의미가 같은 활동별 키워드가 강조돼요.
+      </p>
       <hr className="border-border mb-2" />
       <table className="w-full">
         <thead>
@@ -462,16 +469,23 @@ function ActivityListTable({
                   <div className="flex flex-wrap gap-1.5">
                     {keywords.length === 0 && <span className="text-xs text-text-placeholder">분석 대기 중</span>}
                     {keywords.map((k, i) => {
-                      const count = keywordFreq.get(k) ?? 1;
-                      const highlight = count >= 2;
+                      const unified = rawToUnified.get(k);
+                      const highlighted = !!selectedUnified && unified?.keyword === selectedUnified;
+                      const dimmed = !!selectedUnified && !highlighted;
+                      const tooltip = unified ? `→ ${unified.keyword} · ${unified.count}회` : undefined;
                       return (
                         <span
                           key={i}
-                          className={`px-2.5 py-1 text-xs rounded-md ${
-                            highlight ? 'bg-brand text-white font-medium' : 'bg-gray-100 text-gray-600'
+                          title={tooltip}
+                          className={`px-2.5 py-1 text-xs rounded-md transition-all ${
+                            highlighted
+                              ? 'bg-brand text-white font-medium ring-2 ring-brand/30'
+                              : dimmed
+                                ? 'bg-gray-50 text-text-placeholder'
+                                : 'bg-gray-100 text-gray-600'
                           }`}
                         >
-                          {k}{highlight ? ` (${count})` : ''}
+                          {k}
                         </span>
                       );
                     })}
@@ -492,32 +506,57 @@ function ActivityListTable({
 function KeywordFrequencyCard({
   keywords,
   totalActivities,
+  selectedKeyword,
+  onSelectKeyword,
 }: {
   keywords: KeywordCount[];
   totalActivities: number;
+  selectedKeyword: string | null;
+  onSelectKeyword: (keyword: string) => void;
 }) {
   const max = keywords[0]?.count ?? 1;
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm px-6 py-6">
-      <h2 className="text-base font-semibold text-blue-700 mb-5">핵심 키워드 분석</h2>
-      <div className="flex flex-col gap-4">
+      <h2 className="text-base font-semibold text-blue-700 mb-1">핵심 키워드 분석</h2>
+      <p className="text-xs text-text-secondary mb-4">키워드를 누르면 활동별 원본 키워드가 강조돼요.</p>
+      <div className="flex flex-col gap-2">
         {keywords.length === 0 && (
           <p className="text-sm text-text-placeholder">분석 결과가 없습니다.</p>
         )}
-        {keywords.map(({ keyword, count }, i) => (
-          <div key={`${keyword}-${i}`}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-sm text-text-primary">{keyword}</span>
-              <span className="px-2 py-0.5 text-xs rounded bg-brand-light text-brand font-medium">{count}회</span>
-            </div>
-            <div className="h-2 bg-page-bg rounded-full overflow-hidden">
-              <div
-                className="h-full bg-brand rounded-full transition-all"
-                style={{ width: `${(count / max) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
+        {keywords.map(({ keyword, count }, i) => {
+          const selected = selectedKeyword === keyword;
+          return (
+            <button
+              key={`${keyword}-${i}`}
+              type="button"
+              onClick={() => onSelectKeyword(keyword)}
+              className={`w-full text-left rounded-lg px-3 py-2 transition-all ${
+                selected
+                  ? 'bg-brand-light ring-2 ring-brand/40'
+                  : 'hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`text-sm ${selected ? 'text-brand font-semibold' : 'text-text-primary'}`}>
+                  {keyword}
+                </span>
+                <span
+                  className={`px-2 py-0.5 text-xs rounded font-medium ${
+                    selected ? 'bg-white text-brand border border-brand/30' : 'bg-brand-light text-brand'
+                  }`}
+                >
+                  {count}회
+                </span>
+              </div>
+              <div className="h-2 bg-page-bg rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand rounded-full transition-all"
+                  style={{ width: `${(count / max) * 100}%` }}
+                />
+              </div>
+            </button>
+          );
+        })}
       </div>
       <hr className="border-border my-5" />
       <div className="flex flex-col items-start">
@@ -654,6 +693,7 @@ export default function QualitativePage() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityForm | null>(null);
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+  const [selectedUnified, setSelectedUnified] = useState<string | null>(null);
 
   const applyData = useCallback((data: QualitativeData) => {
     setCareerGoal((data.careerGoal as CareerGoal) || '');
@@ -812,17 +852,19 @@ export default function QualitativePage() {
 
   // ----- 렌더 -----
   function renderDashboard() {
-    // 활동별 keywords 합산 → 행 하이라이트용 (raw 문자열 매칭)
-    const rowFreq = new Map<string, number>();
-    for (const star of allStarItems) {
-      for (const k of star.keywords ?? []) {
-        rowFreq.set(k, (rowFreq.get(k) ?? 0) + 1);
-      }
-    }
-
     // 사이드바: Gemini가 의미적으로 병합·집계한 최상위 키워드 (count 내림차순 가정)
     const serverKeywords: KeywordCount[] = (analysis?.aiKeywords ?? []) as KeywordCount[];
     const storyOutline = analysis?.storyOutline ?? null;
+
+    // raw 키워드 → 통합 키워드 역방향 맵
+    // sources가 비어있는 구버전 데이터는 keyword 자체로 fallback
+    const rawToUnified = new Map<string, KeywordCount>();
+    for (const kc of serverKeywords) {
+      const sources = kc.sources && kc.sources.length > 0 ? kc.sources : [kc.keyword];
+      for (const src of sources) {
+        rawToUnified.set(src, kc);
+      }
+    }
 
     if (serverActivities.length === 0) {
       return (
@@ -853,7 +895,8 @@ export default function QualitativePage() {
             <ActivityListTable
               activities={serverActivities}
               starByIdx={findStar}
-              keywordFreq={rowFreq}
+              rawToUnified={rawToUnified}
+              selectedUnified={selectedUnified}
             />
             {storyOutline && <StoryOutlineCard outline={storyOutline} />}
           </div>
@@ -861,6 +904,8 @@ export default function QualitativePage() {
             <KeywordFrequencyCard
               keywords={serverKeywords}
               totalActivities={serverActivities.length}
+              selectedKeyword={selectedUnified}
+              onSelectKeyword={(kw) => setSelectedUnified((prev) => (prev === kw ? null : kw))}
             />
           </div>
           {summarizing && <LoadingOverlay message="AI가 활동 전체를 종합 분석하고 있어요..." />}
