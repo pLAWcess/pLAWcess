@@ -207,7 +207,7 @@ function ActivityFormCard({
             className="border-b border-border-input bg-transparent text-base text-text-primary py-2 placeholder:text-text-placeholder focus:outline-none focus:border-brand disabled:text-text-placeholder"
           />
         </div>
-        <label className="flex items-center gap-2 pb-2 cursor-pointer">
+        <label className="flex items-center gap-2 pb-2 cursor-pointer whitespace-nowrap">
           <input type="checkbox" checked={form.ongoing}
             onChange={(e) => onChange({ ...form, ongoing: e.target.checked, endDate: e.target.checked ? '' : form.endDate })}
             className="w-4 h-4 rounded border-border-input accent-brand" />

@@ -86,7 +86,7 @@ function ActivityFormCard({
             className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand disabled:text-text-placeholder"
           />
         </div>
-        <label className="flex items-center gap-2 pb-2 cursor-pointer">
+        <label className="flex items-center gap-2 pb-2 cursor-pointer whitespace-nowrap">
           <input
             type="checkbox"
             checked={form.ongoing}
