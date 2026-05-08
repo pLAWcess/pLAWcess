@@ -69,12 +69,6 @@ export const MAJOR_OPTIONS = [
   '기타',
 ];
 
-// 학부 입학·졸업년도: 1990 ~ 현재+5
-const CURRENT_YEAR = new Date().getFullYear();
-export const UNDERGRAD_YEAR_OPTIONS = Array.from(
-  { length: CURRENT_YEAR + 5 - 1990 + 1 },
-  (_, i) => `${CURRENT_YEAR + 5 - i}`,
-);
 
 export const fieldRows: {
   label: string;
@@ -99,7 +93,7 @@ export const fieldRows: {
     { label: '학부 제2전공', key: 'major2', type: 'autocomplete', options: MAJOR_OPTIONS },
   ],
   [
-    { label: '학부 입학년도', key: 'admissionYear', type: 'select', options: UNDERGRAD_YEAR_OPTIONS },
-    { label: '학부 졸업년도', key: 'graduationYear', type: 'select', options: UNDERGRAD_YEAR_OPTIONS },
+    { label: '학부 입학년도', key: 'admissionYear', type: 'text' },
+    { label: '학부 졸업년도', key: 'graduationYear', type: 'text' },
   ],
 ];
