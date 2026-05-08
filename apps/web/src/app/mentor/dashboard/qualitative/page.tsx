@@ -66,7 +66,7 @@ function ActivityFormCard({
       </div>
 
       {/* 시작일 / 종료일 / 진행중 */}
-      <div className="grid grid-cols-[1fr_1fr_auto] gap-8 items-end mb-6">
+      <div className="grid grid-cols-2 gap-8 mb-6">
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-text-primary">시작일 <span className="text-red-500">*</span></label>
           <input
@@ -77,7 +77,18 @@ function ActivityFormCard({
           />
         </div>
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-text-primary">종료일</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-text-primary">종료일</label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.ongoing}
+                onChange={(e) => onChange({ ...form, ongoing: e.target.checked, endDate: e.target.checked ? '' : form.endDate })}
+                className="w-4 h-4 rounded border-border-input accent-brand"
+              />
+              <span className="text-sm text-text-secondary">진행중</span>
+            </label>
+          </div>
           <input
             type="date"
             value={form.endDate}
@@ -86,15 +97,6 @@ function ActivityFormCard({
             className="border-b border-border-input bg-transparent text-sm text-text-primary py-2 focus:outline-none focus:border-brand disabled:text-text-placeholder"
           />
         </div>
-        <label className="flex items-center gap-2 pb-2 cursor-pointer whitespace-nowrap">
-          <input
-            type="checkbox"
-            checked={form.ongoing}
-            onChange={(e) => onChange({ ...form, ongoing: e.target.checked, endDate: e.target.checked ? '' : form.endDate })}
-            className="w-4 h-4 rounded border-border-input accent-brand"
-          />
-          <span className="text-sm text-text-secondary">진행중</span>
-        </label>
       </div>
 
       {/* 작성 내용 */}
