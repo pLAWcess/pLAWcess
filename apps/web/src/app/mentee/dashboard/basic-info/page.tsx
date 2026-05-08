@@ -27,7 +27,15 @@ export default function BasicInfoPage() {
   const [draft, setDraft] = useState<PersonalInfo>(emptyPersonalInfo);
   const [isEditing, setIsEditing] = useState(false);
   const [birthDateError, setBirthDateError] = useState('');
+  const [yearErrors, setYearErrors] = useState<Partial<Record<keyof PersonalInfo, string>>>({});
   const [personalSaving, setPersonalSaving] = useState(false);
+
+  const YEAR_FIELDS: (keyof PersonalInfo)[] = ['admissionYear', 'graduationYear'];
+
+  function validateYear(val: string): string {
+    if (val === '') return '';
+    return /^\d{4}$/.test(val) ? '' : '연도는 숫자 4자리로 입력해주세요 (예: 2021)';
+  }
 
   const [admissionInfo, setAdmissionInfo] = useState<AdmissionInfo>(emptyAdmissionInfo);
   const [admissionDraft, setAdmissionDraft] = useState<AdmissionInfo>(emptyAdmissionInfo);
@@ -77,6 +85,13 @@ export default function BasicInfoPage() {
       return;
     }
     setBirthDateError('');
+    const newYearErrors: Partial<Record<keyof PersonalInfo, string>> = {};
+    for (const field of YEAR_FIELDS) {
+      const err = validateYear(draft[field]);
+      if (err) newYearErrors[field] = err;
+    }
+    setYearErrors(newYearErrors);
+    if (Object.keys(newYearErrors).length > 0) return;
     setPersonalSaving(true);
     try {
       await patchBasicInfo(YEAR, {
@@ -100,9 +115,15 @@ export default function BasicInfoPage() {
     }
   }
 
-  function handleCancel() { setBirthDateError(''); setIsEditing(false); }
+  function handleCancel() { setBirthDateError(''); setYearErrors({}); setIsEditing(false); }
   function handleChange(key: keyof PersonalInfo, value: string) {
     setDraft((prev) => ({ ...prev, [key]: value }));
+    if (key === 'birthDate') {
+      setBirthDateError(value !== '' && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(value) ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)' : '');
+    }
+    if (YEAR_FIELDS.includes(key)) {
+      setYearErrors((prev) => ({ ...prev, [key]: validateYear(value) }));
+    }
   }
 
   async function handleAdmissionSave() {
@@ -185,7 +206,7 @@ export default function BasicInfoPage() {
             </div>
           </div>
           {isEditing
-            ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={personalSaving} />
+            ? <EditButtons onCancel={handleCancel} onSave={handleSave} saving={personalSaving} disabled={!!birthDateError || Object.values(yearErrors).some(Boolean)} />
             : <EditButton onClick={() => { setDraft(personalInfo); setIsEditing(true); }} />
           }
         </div>
@@ -198,7 +219,15 @@ export default function BasicInfoPage() {
             >
               {row.map(({ label, key, type, options }, colIdx) => (
                 <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
-                  <span className="text-sm text-text-secondary">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-text-secondary shrink-0">{label}</span>
+                    {key === 'birthDate' && birthDateError && (
+                      <p className="text-xs text-red-500 flex-1 text-center">{birthDateError}</p>
+                    )}
+                    {yearErrors[key] && (
+                      <p className="text-xs text-red-500 flex-1 text-center">{yearErrors[key]}</p>
+                    )}
+                  </div>
                   <div className="h-6">
                     {isEditing ? (
                       type === 'select' ? (
@@ -220,9 +249,6 @@ export default function BasicInfoPage() {
                       </span>
                     )}
                   </div>
-                  {key === 'birthDate' && birthDateError && (
-                    <p className="text-xs text-red-500">{birthDateError}</p>
-                  )}
                 </div>
               ))}
             </div>

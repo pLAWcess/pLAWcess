@@ -18,7 +18,15 @@ export default function MentorBasicInfoPage() {
   const [draft, setDraft] = useState<MentorPersonalInfo>(emptyMentorPersonalInfo);
   const [isEditing, setIsEditing] = useState(false);
   const [birthDateError, setBirthDateError] = useState('');
+  const [yearErrors, setYearErrors] = useState<Partial<Record<keyof MentorPersonalInfo, string>>>({});
   const [saving, setSaving] = useState(false);
+
+  const YEAR_FIELDS: (keyof MentorPersonalInfo)[] = ['admissionYear', 'graduationYear'];
+
+  function validateYear(val: string): string {
+    if (val === '') return '';
+    return /^\d{4}$/.test(val) ? '' : '연도는 숫자 4자리로 입력해주세요 (예: 2021)';
+  }
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -50,6 +58,13 @@ export default function MentorBasicInfoPage() {
       return;
     }
     setBirthDateError('');
+    const newYearErrors: Partial<Record<keyof MentorPersonalInfo, string>> = {};
+    for (const field of YEAR_FIELDS) {
+      const err = validateYear(draft[field]);
+      if (err) newYearErrors[field] = err;
+    }
+    setYearErrors(newYearErrors);
+    if (Object.keys(newYearErrors).length > 0) return;
     setSaving(true);
     try {
       // "2024학년도" → 2024 (Int) | "" → null
@@ -79,11 +94,18 @@ export default function MentorBasicInfoPage() {
 
   function handleCancel() {
     setBirthDateError('');
+    setYearErrors({});
     setIsEditing(false);
   }
 
   function handleChange(key: keyof MentorPersonalInfo, value: string) {
     setDraft((prev) => ({ ...prev, [key]: value }));
+    if (key === 'birthDate') {
+      setBirthDateError(value !== '' && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(value) ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)' : '');
+    }
+    if (YEAR_FIELDS.includes(key)) {
+      setYearErrors((prev) => ({ ...prev, [key]: validateYear(value) }));
+    }
   }
 
   if (loading) {
@@ -132,7 +154,7 @@ export default function MentorBasicInfoPage() {
             </div>
           </div>
           {isEditing
-            ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={saving} />
+            ? <EditButtons onCancel={handleCancel} onSave={handleSave} saving={saving} disabled={!!birthDateError || Object.values(yearErrors).some(Boolean)} />
             : <EditButton onClick={() => { setDraft(personalInfo); setIsEditing(true); }} />
           }
         </div>
@@ -145,7 +167,15 @@ export default function MentorBasicInfoPage() {
             >
               {row.map(({ label, key, type, options }, colIdx) => (
                 <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
-                  <span className="text-sm text-text-secondary">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-text-secondary shrink-0">{label}</span>
+                    {key === 'birthDate' && birthDateError && (
+                      <p className="text-xs text-red-500 flex-1 text-center">{birthDateError}</p>
+                    )}
+                    {yearErrors[key] && (
+                      <p className="text-xs text-red-500 flex-1 text-center">{yearErrors[key]}</p>
+                    )}
+                  </div>
                   <div className="h-6">
                     {isEditing ? (
                       type === 'select' ? (
@@ -165,9 +195,6 @@ export default function MentorBasicInfoPage() {
                       <span className="text-base text-text-primary">{personalInfo[key]}</span>
                     )}
                   </div>
-                  {key === 'birthDate' && birthDateError && (
-                    <p className="text-xs text-red-500">{birthDateError}</p>
-                  )}
                 </div>
               ))}
             </div>
