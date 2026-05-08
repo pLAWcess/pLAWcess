@@ -11,11 +11,13 @@ type Props = {
   onSave?: (data: GpaData) => Promise<void>;
 };
 
-const fields: { label: string; key: keyof GpaData; showMax?: boolean }[] = [
-  { label: '전체 평점 평균', key: 'overall', showMax: true },
-  { label: '전공 평점 평균', key: 'major', showMax: true },
-  { label: '환산점수', key: 'converted' },
-];
+const GPA_MAX = 4.5;
+
+function calcConverted(overall: number | null): number | null {
+  if (overall == null) return null;
+  const raw = 100 - (GPA_MAX - overall) * 10;
+  return Math.round(raw * 10) / 10;
+}
 
 function toDisplay(val: number | null): string {
   return val == null ? '-' : String(val);
@@ -28,10 +30,9 @@ function toStr(val: number | null): string {
 export default function GpaCard({ initialData, onSave }: Props) {
   const [data, setData] = useState<GpaData>(initialData);
   const [draft, setDraft] = useState<GpaData>(initialData);
-  const [draftStr, setDraftStr] = useState<Record<string, string>>({
+  const [draftStr, setDraftStr] = useState({
     overall: toStr(initialData.overall),
     major: toStr(initialData.major),
-    converted: toStr(initialData.converted),
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,15 +41,24 @@ export default function GpaCard({ initialData, onSave }: Props) {
   const [kupidId, setKupidId] = useState('');
   const [kupidPw, setKupidPw] = useState('');
 
+  const draftConverted = calcConverted(draft.overall);
+
   async function handleSave() {
     setIsSaving(true);
     try {
-      if (onSave) await onSave(draft);
-      setData(draft);
+      const saveData: GpaData = { ...draft, converted: draftConverted };
+      if (onSave) await onSave(saveData);
+      setData(saveData);
       setIsEditing(false);
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function handleCancel() {
+    setDraft(data);
+    setDraftStr({ overall: toStr(data.overall), major: toStr(data.major) });
+    setIsEditing(false);
   }
 
   return (
@@ -56,36 +66,79 @@ export default function GpaCard({ initialData, onSave }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">GPA</h2>
         {isEditing
-          ? <EditButtons onCancel={() => { setDraft(data); setDraftStr({ overall: toStr(data.overall), major: toStr(data.major), converted: toStr(data.converted) }); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
-          : <EditButton onClick={() => { setDraft(data); setDraftStr({ overall: toStr(data.overall), major: toStr(data.major), converted: toStr(data.converted) }); setIsEditing(true); }} />
+          ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={isSaving} />
+          : <EditButton onClick={() => { setDraft(data); setDraftStr({ overall: toStr(data.overall), major: toStr(data.major) }); setIsEditing(true); }} />
         }
       </div>
+
       <div className="grid grid-cols-3 gap-8">
-        {fields.map(({ label, key, showMax }) => (
-          <div key={key} className="flex flex-col gap-2">
-            <span className="text-sm text-text-secondary">{label}</span>
-            <div className="h-7 flex items-center gap-1">
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={draftStr[key] ?? ''}
-                  onChange={(e: { target: { value: string } }) => {
-                    const val = e.target.value;
-                    if (/^-?\d*\.?\d*$/.test(val) || val === '') {
-                      setDraftStr(prev => ({ ...prev, [key]: val }));
-                      setDraft(prev => ({ ...prev, [key]: val === '' || val === '.' ? null : Number(val) }));
-                    }
-                  }}
-                  className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
-                />
-              ) : (
-                <span className="text-base font-semibold text-text-primary">
-                  {toDisplay(data[key])}{showMax && data[key] != null && <span className="text-sm font-normal text-text-secondary"> / 4.5</span>}
-                </span>
-              )}
-            </div>
+        {/* 전체 평점 평균 */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-text-secondary">전체 평점 평균</span>
+          <div className="h-7 flex items-center">
+            {isEditing ? (
+              <input
+                type="text"
+                value={draftStr.overall}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                    setDraftStr(prev => ({ ...prev, overall: val }));
+                    setDraft(prev => ({ ...prev, overall: val === '' || val === '.' ? null : Number(val) }));
+                  }
+                }}
+                className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
+              />
+            ) : (
+              <span className="text-base font-semibold text-text-primary">
+                {toDisplay(data.overall)}
+                {data.overall != null && <span className="text-sm font-normal text-text-secondary"> / {GPA_MAX}</span>}
+              </span>
+            )}
           </div>
-        ))}
+        </div>
+
+        {/* 전공 평점 평균 */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-text-secondary">전공 평점 평균</span>
+          <div className="h-7 flex items-center">
+            {isEditing ? (
+              <input
+                type="text"
+                value={draftStr.major}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                    setDraftStr(prev => ({ ...prev, major: val }));
+                    setDraft(prev => ({ ...prev, major: val === '' || val === '.' ? null : Number(val) }));
+                  }
+                }}
+                className="w-full h-7 border-b border-border-input bg-transparent text-base font-semibold text-text-primary focus:outline-none focus:border-brand"
+              />
+            ) : (
+              <span className="text-base font-semibold text-text-primary">
+                {toDisplay(data.major)}
+                {data.major != null && <span className="text-sm font-normal text-text-secondary"> / {GPA_MAX}</span>}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 환산점수 (자동 계산, 읽기 전용) */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-text-secondary">환산점수</span>
+          <div className="h-7 flex items-center">
+            <span className="text-base font-semibold text-text-primary">
+              {isEditing
+                ? (draftConverted != null ? String(draftConverted) : '-')
+                : toDisplay(data.converted)
+              }
+              {((isEditing ? draftConverted : data.converted) != null) && (
+                <span className="text-sm font-normal text-text-secondary"> / 100</span>
+              )}
+            </span>
+          </div>
+        </div>
       </div>
 
       {!showKupid && (
