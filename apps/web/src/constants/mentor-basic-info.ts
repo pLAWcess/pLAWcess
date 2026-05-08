@@ -79,8 +79,8 @@ export const UNDERGRAD_YEAR_OPTIONS = Array.from(
 export const fieldRows: {
   label: string;
   key: keyof Omit<MentorPersonalInfo, 'name'>;
-  type: 'text' | 'select';
-  options?: string[];
+  type: 'text' | 'select' | 'autocomplete';
+  options?: readonly string[];
 }[][] = [
   [
     { label: '생년월일', key: 'birthDate', type: 'text' },
@@ -95,8 +95,8 @@ export const fieldRows: {
     { label: '병역여부', key: 'militaryStatus', type: 'select', options: MILITARY_STATUS_OPTIONS },
   ],
   [
-    { label: '학부 제1전공', key: 'major1', type: 'select', options: MAJOR_OPTIONS },
-    { label: '학부 제2전공', key: 'major2', type: 'select', options: MAJOR_OPTIONS },
+    { label: '학부 제1전공', key: 'major1', type: 'autocomplete', options: MAJOR_OPTIONS },
+    { label: '학부 제2전공', key: 'major2', type: 'autocomplete', options: MAJOR_OPTIONS },
   ],
   [
     { label: '학부 입학년도', key: 'admissionYear', type: 'select', options: UNDERGRAD_YEAR_OPTIONS },

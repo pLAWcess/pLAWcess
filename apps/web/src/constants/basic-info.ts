@@ -79,14 +79,42 @@ export const LAW_SCHOOLS: readonly LawSchool[] = [
 
 export const TYPE_OPTIONS = ['일반전형', '특별전형'];
 
-export const fieldRows: { label: string; key: keyof Omit<PersonalInfo, 'name' | 'affiliation'>; type: 'text' | 'select'; options?: string[] }[][] = [
+// 고려대학교 학과 목록
+export const MAJOR_OPTIONS: readonly string[] = [
+  // 인문대학
+  '국어국문학과', '영어영문학과', '한국사학과', '사학과', '철학과',
+  '독어독문학과', '불어불문학과', '중어중문학과', '일어일문학과', '노어노문학과',
+  '한문학과', '언어학과', '사회학과',
+  // 사회과학대학
+  '정치외교학과', '경제학과', '심리학부', '행정학과', '통계학과',
+  // 경영대학
+  '경영학과',
+  // 미디어학부
+  '미디어학부',
+  // 이과대학
+  '수학과', '물리학과', '화학과', '지구환경과학과', '생명과학부',
+  // 공과대학
+  '화공생명공학과', '신소재공학부', '건축사회환경공학부', '건축학과',
+  '기계공학부', '산업경영공학부', '전기전자공학부', '컴퓨터학과', '인공지능학과',
+  // 국제대학
+  '국제학부',
+  // 생명환경과학대학
+  '식품공학과', '환경생태공학부', '식품자원경제학과', '생명공학부', '생명과학과',
+  // 보건과학대학
+  '보건환경융합과학부', '바이오시스템의과학부', '바이오의공학부',
+  // 기타
+  '스마트보안학부', '융합에너지공학과',
+  '공공거버넌스와 리더십'
+];
+
+export const fieldRows: { label: string; key: keyof Omit<PersonalInfo, 'name' | 'affiliation'>; type: 'text' | 'select' | 'autocomplete'; options?: readonly string[] }[][] = [
   [
     { label: '생년월일', key: 'birthDate', type: 'text' },
     { label: '성별', key: 'gender', type: 'select', options: ['남성', '여성', '기타'] },
   ],
   [
-    { label: '제1전공', key: 'major1', type: 'text' },
-    { label: '제2전공', key: 'major2', type: 'text' },
+    { label: '제1전공', key: 'major1', type: 'autocomplete', options: MAJOR_OPTIONS },
+    { label: '제2전공', key: 'major2', type: 'autocomplete', options: MAJOR_OPTIONS },
   ],
   [
     { label: '입학년도', key: 'admissionYear', type: 'text' },

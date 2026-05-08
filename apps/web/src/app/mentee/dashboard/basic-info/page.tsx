@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import SelectField from '@/components/ui/SelectField';
+import AutocompleteField from '@/components/ui/AutocompleteField';
 import SchoolPickerModal from '@/components/ui/SchoolPickerModal';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
@@ -201,7 +202,9 @@ export default function BasicInfoPage() {
                   <div className="h-6">
                     {isEditing ? (
                       type === 'select' ? (
-                        <SelectField value={draft[key]} options={options!} onChange={(val) => handleChange(key, val)} />
+                        <SelectField value={draft[key]} options={options as string[]} onChange={(val) => handleChange(key, val)} />
+                      ) : type === 'autocomplete' ? (
+                        <AutocompleteField value={draft[key]} options={options!} onChange={(val) => handleChange(key, val)} placeholder="학과 검색" />
                       ) : (
                         <input
                           type={type}
