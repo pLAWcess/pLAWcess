@@ -151,7 +151,7 @@ export default function MentorBasicInfoPage() {
                       type === 'select' ? (
                         <SelectField value={draft[key]} options={options as string[]} onChange={(val) => handleChange(key, val)} />
                       ) : type === 'autocomplete' ? (
-                        <AutocompleteField value={draft[key]} options={options!} onChange={(val) => handleChange(key, val)} placeholder="학과 검색" />
+                        <AutocompleteField value={draft[key]} options={options!} onChange={(val) => handleChange(key, val)} placeholder={key === 'affiliation' ? '로스쿨 검색' : '학과 검색'} />
                       ) : (
                         <input
                           type={type}

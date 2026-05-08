@@ -87,7 +87,7 @@ export const fieldRows: {
     { label: '성별', key: 'gender', type: 'select', options: GENDER_OPTIONS },
   ],
   [
-    { label: '소속 로스쿨', key: 'affiliation', type: 'select', options: LAW_SCHOOL_NAMES },
+    { label: '소속 로스쿨', key: 'affiliation', type: 'autocomplete', options: LAW_SCHOOL_NAMES },
     { label: '로스쿨 기수', key: 'lawSchoolGrade', type: 'select', options: LAW_SCHOOL_GRADES },
   ],
   [
