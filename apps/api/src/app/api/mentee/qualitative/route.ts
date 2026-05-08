@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
+import { hashAnalysisInput } from "@/lib/hash";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -33,39 +34,86 @@ type ActivityForm = {
   content: string;
 };
 
-function buildResponse(record: {
-  career_goal: string | null;
-  qualitative_activities: Prisma.JsonValue | null;
-  star_analysis: Prisma.JsonValue | null;
-  ai_keywords: Prisma.JsonValue | null;
-  is_ai_analyzed: boolean;
-  ai_analyzed_at: Date | null;
-} | null) {
-  return {
-    careerGoal: record?.career_goal ? CAREER_LABEL[record.career_goal] ?? "" : "",
-    activities: (record?.qualitative_activities ?? []) as ActivityForm[],
-    analysis: {
-      isAnalyzed: record?.is_ai_analyzed ?? false,
-      analyzedAt: record?.ai_analyzed_at?.toISOString() ?? null,
-      starAnalysis: (record?.star_analysis ?? null) as Prisma.JsonValue,
-      aiKeywords: (record?.ai_keywords ?? null) as Prisma.JsonValue,
-    },
-  };
-}
+type StarAnalysisJson = {
+  activities?: Array<{ activity_index: number; [k: string]: unknown }>;
+  [k: string]: unknown;
+};
 
 const SELECT_FIELDS = {
   career_goal: true,
   qualitative_activities: true,
   star_analysis: true,
   ai_keywords: true,
+  ai_story_outline: true,
   is_ai_analyzed: true,
   ai_analyzed_at: true,
+  ai_summary_hash: true,
+  star_input_hashes: true,
 } as const;
 
-type StarAnalysisJson = {
-  activities?: Array<{ activity_index: number; [k: string]: unknown }>;
-  [k: string]: unknown;
-};
+type FullRecord = {
+  career_goal: string | null;
+  qualitative_activities: Prisma.JsonValue | null;
+  star_analysis: Prisma.JsonValue | null;
+  ai_keywords: Prisma.JsonValue | null;
+  ai_story_outline: Prisma.JsonValue | null;
+  is_ai_analyzed: boolean;
+  ai_analyzed_at: Date | null;
+  ai_summary_hash: string | null;
+  star_input_hashes: Prisma.JsonValue | null;
+} | null;
+
+function computeActivitiesAnalyzed(
+  activities: ActivityForm[],
+  hashes: Record<string, string>
+): boolean[] {
+  return activities.map((a, i) => {
+    const stored = hashes[String(i)];
+    if (!stored) return false;
+    const current = hashAnalysisInput({ activity: a, activity_index: i });
+    return stored === current;
+  });
+}
+
+function computeSummaryOutdated(
+  activities: ActivityForm[],
+  careerGoal: string | null,
+  starAnalysis: StarAnalysisJson | null,
+  storedHash: string | null
+): boolean {
+  if (!storedHash) return true;
+  const current = hashAnalysisInput({
+    activities,
+    career_goal: careerGoal,
+    star_analysis: starAnalysis ?? { activities: [] },
+  });
+  return current !== storedHash;
+}
+
+function buildResponse(record: FullRecord) {
+  const activities = (record?.qualitative_activities ?? []) as ActivityForm[];
+  const hashes = (record?.star_input_hashes ?? {}) as Record<string, string>;
+  const starAnalysis = (record?.star_analysis ?? null) as StarAnalysisJson | null;
+
+  return {
+    careerGoal: record?.career_goal ? CAREER_LABEL[record.career_goal] ?? "" : "",
+    activities,
+    analysis: {
+      isAnalyzed: record?.is_ai_analyzed ?? false,
+      analyzedAt: record?.ai_analyzed_at?.toISOString() ?? null,
+      starAnalysis,
+      aiKeywords: (record?.ai_keywords ?? null) as Prisma.JsonValue,
+      storyOutline: (record?.ai_story_outline ?? null) as Prisma.JsonValue,
+      summaryOutdated: computeSummaryOutdated(
+        activities,
+        record?.career_goal ?? null,
+        starAnalysis,
+        record?.ai_summary_hash ?? null
+      ),
+      activitiesAnalyzed: computeActivitiesAnalyzed(activities, hashes),
+    },
+  };
+}
 
 // ----------------------------------------------------------------
 // GET /api/mentee/qualitative?year=2026학년도
@@ -132,8 +180,8 @@ export async function PATCH(req: NextRequest) {
 // ----------------------------------------------------------------
 // DELETE /api/mentee/qualitative?year=2026학년도&index=N
 // 활동 배열에서 해당 index 제거 + STAR 분석에서도 제거하고 후속 인덱스 -1 시프트
-// ai_input_hash는 무효화 (다음 분석 호출 시 새로 돌도록)
-// ai_keywords는 그대로 두되 사용자가 재분석하면 갱신됨
+// star_input_hashes 도 동일하게 시프트
+// ai_summary_hash 무효화 (통합 분석 outdated)
 // ----------------------------------------------------------------
 export async function DELETE(req: NextRequest) {
   const userId = getUserId(req);
@@ -181,12 +229,23 @@ export async function DELETE(req: NextRequest) {
     newStar = { ...oldStar, activities: filtered };
   }
 
+  // star_input_hashes 시프트
+  const oldHashes = (record.star_input_hashes ?? {}) as Record<string, string>;
+  const newHashes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(oldHashes)) {
+    const i = parseInt(k, 10);
+    if (Number.isNaN(i) || i === index) continue;
+    const newKey = i > index ? String(i - 1) : String(i);
+    newHashes[newKey] = v;
+  }
+
   const updated = await prisma.menteeRecord.update({
     where: { user_id_process_year: { user_id: userId, process_year: processYear } },
     data: {
       qualitative_activities: newActivities as unknown as Prisma.InputJsonValue,
       star_analysis: (newStar ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-      ai_input_hash: null,
+      star_input_hashes: newHashes as unknown as Prisma.InputJsonValue,
+      ai_summary_hash: null,
     },
     select: SELECT_FIELDS,
   });

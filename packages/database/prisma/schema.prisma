@@ -185,12 +185,13 @@ model MenteeRecord {
   career_goal            CareerGoal?  // 변호사 / 검사 / 판사 (정성 대시보드 선택)
 
   // AI 분석 결과 (LLM Output)
-  star_analysis          Json?    // STAR 구조화 결과
-  ai_story_outline       String?  @db.Text  // AI 추천 스토리라인
-  ai_keywords            Json?    // ["논리적 사고", "문제해결력"] — 확장성 위해 Json 권장
-  is_ai_analyzed         Boolean  @default(false) // 분석 완료 여부 (빠른 필터링용)
-  ai_analyzed_at         DateTime?               // 분석 완료 시각
-  ai_input_hash          String?  @db.VarChar(64) // 마지막 분석 입력 SHA256 — 동일 입력 재분석 차단용
+  star_analysis          Json?    // STAR 구조화 결과 — 단일 활동 분석 결과 누적
+  ai_story_outline       Json?    // AI 추천 자소서 흐름: { intro, body: { label, text }[], conclusion }
+  ai_keywords            Json?    // KeywordCount[] — 의미 병합·집계된 상위 키워드
+  is_ai_analyzed         Boolean  @default(false) // 통합 분석 완료 여부
+  ai_analyzed_at         DateTime?               // 통합 분석 완료 시각
+  ai_summary_hash        String?  @db.VarChar(64) // 통합 분석(키워드+자소서) 캐시 hash
+  star_input_hashes      Json?    // 활동별 단일 STAR 분석 캐시: { "0": hash, "1": hash, ... }
 
   // 4단계: 기타 고민
   strengths_weaknesses  String?           @db.Text

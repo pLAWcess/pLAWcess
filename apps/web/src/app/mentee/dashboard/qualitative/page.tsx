@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
-  getQualitative, patchQualitative, analyzeQualitative, deleteQualitativeActivity,
+  getQualitative, patchQualitative, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
+  type StoryOutline,
 } from '@/lib/api';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
@@ -74,6 +75,39 @@ function IconTrash({ className = 'w-4 h-4' }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />
     </svg>
+  );
+}
+function IconSparkles({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
+      <path d="M19 15l.6 1.4L21 17l-1.4.6L19 19l-.6-1.4L17 17l1.4-.6L19 15z" />
+      <path d="M5 16l.6 1.4L7 18l-1.4.6L5 20l-.6-1.4L3 18l1.4-.6L5 16z" />
+    </svg>
+  );
+}
+
+function formatRelativeTime(iso: string | null): string {
+  if (!iso) return '';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return '방금 전';
+  const min = Math.floor(ms / 60_000);
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  return `${day}일 전`;
+}
+
+// ----------------------------------------------------------------
+// 분석 진행 중 오버레이 — 대상 영역을 반투명으로 덮어 스피너 노출
+// ----------------------------------------------------------------
+function LoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] rounded-xl flex flex-col items-center justify-center gap-3 z-10">
+      <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      <p className="text-sm font-medium text-text-secondary">{message}</p>
+    </div>
   );
 }
 
@@ -326,6 +360,7 @@ function ActivityCard({
   onEdit,
   onDelete,
   deleting,
+  isAnalyzing,
 }: {
   activity: ActivityForm;
   star?: StarItem;
@@ -334,6 +369,7 @@ function ActivityCard({
   onEdit: () => void;
   onDelete: () => void;
   deleting: boolean;
+  isAnalyzing?: boolean;
 }) {
   const period = activity.startDate
     ? `${activity.startDate} ~ ${activity.ongoing ? '현재' : (activity.endDate || '-')}`
@@ -343,7 +379,7 @@ function ActivityCard({
   const isAiSummary = !!star?.summary;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 relative">
       <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
@@ -385,25 +421,33 @@ function ActivityCard({
         </div>
       </div>
       {expanded && star && <StarGrid item={star} />}
+      {isAnalyzing && <LoadingOverlay message="AI가 활동을 분석하고 있어요..." />}
     </div>
   );
 }
 
 // ----------------------------------------------------------------
 // 대시보드: 활동 목록 표
+// 사이드바에서 통합 키워드를 선택하면, 해당 통합으로 묶이는 raw 키워드만 하이라이트.
+// 모든 raw 키워드는 hover 시 어떤 통합 키워드에 속하는지 툴팁으로 표시.
 // ----------------------------------------------------------------
 function ActivityListTable({
   activities,
   starByIdx,
-  keywordFreq,
+  rawToUnified,
+  selectedUnified,
 }: {
   activities: ActivityForm[];
   starByIdx: (idx: number) => StarItem | undefined;
-  keywordFreq: Map<string, number>;
+  rawToUnified: Map<string, KeywordCount>;
+  selectedUnified: string | null;
 }) {
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
-      <h2 className="text-lg font-semibold text-text-primary mb-4">활동 목록</h2>
+      <h2 className="text-lg font-semibold text-text-primary mb-1">활동 목록</h2>
+      <p className="text-xs text-text-secondary mb-3">
+        오른쪽 키워드를 누르면 의미가 같은 활동별 키워드가 강조돼요.
+      </p>
       <hr className="border-border mb-2" />
       <table className="w-full">
         <thead>
@@ -425,16 +469,23 @@ function ActivityListTable({
                   <div className="flex flex-wrap gap-1.5">
                     {keywords.length === 0 && <span className="text-xs text-text-placeholder">분석 대기 중</span>}
                     {keywords.map((k, i) => {
-                      const count = keywordFreq.get(k) ?? 1;
-                      const highlight = count >= 2;
+                      const unified = rawToUnified.get(k);
+                      const highlighted = !!selectedUnified && unified?.keyword === selectedUnified;
+                      const dimmed = !!selectedUnified && !highlighted;
+                      const tooltip = unified ? `→ ${unified.keyword} · ${unified.count}회` : undefined;
                       return (
                         <span
                           key={i}
-                          className={`px-2.5 py-1 text-xs rounded-md ${
-                            highlight ? 'bg-brand text-white font-medium' : 'bg-gray-100 text-gray-600'
+                          title={tooltip}
+                          className={`px-2.5 py-1 text-xs rounded-md transition-all ${
+                            highlighted
+                              ? 'bg-brand text-white font-medium ring-2 ring-brand/30'
+                              : dimmed
+                                ? 'bg-gray-50 text-text-placeholder'
+                                : 'bg-gray-100 text-gray-600'
                           }`}
                         >
-                          {k}{highlight ? ` (${count})` : ''}
+                          {k}
                         </span>
                       );
                     })}
@@ -455,32 +506,57 @@ function ActivityListTable({
 function KeywordFrequencyCard({
   keywords,
   totalActivities,
+  selectedKeyword,
+  onSelectKeyword,
 }: {
   keywords: KeywordCount[];
   totalActivities: number;
+  selectedKeyword: string | null;
+  onSelectKeyword: (keyword: string) => void;
 }) {
   const max = keywords[0]?.count ?? 1;
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm px-6 py-6">
-      <h2 className="text-base font-semibold text-blue-700 mb-5">핵심 키워드 분석</h2>
-      <div className="flex flex-col gap-4">
+      <h2 className="text-base font-semibold text-blue-700 mb-1">핵심 키워드 분석</h2>
+      <p className="text-xs text-text-secondary mb-4">키워드를 누르면 활동별 원본 키워드가 강조돼요.</p>
+      <div className="flex flex-col gap-2">
         {keywords.length === 0 && (
           <p className="text-sm text-text-placeholder">분석 결과가 없습니다.</p>
         )}
-        {keywords.map(({ keyword, count }, i) => (
-          <div key={`${keyword}-${i}`}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-sm text-text-primary">{keyword}</span>
-              <span className="px-2 py-0.5 text-xs rounded bg-brand-light text-brand font-medium">{count}회</span>
-            </div>
-            <div className="h-2 bg-page-bg rounded-full overflow-hidden">
-              <div
-                className="h-full bg-brand rounded-full transition-all"
-                style={{ width: `${(count / max) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
+        {keywords.map(({ keyword, count }, i) => {
+          const selected = selectedKeyword === keyword;
+          return (
+            <button
+              key={`${keyword}-${i}`}
+              type="button"
+              onClick={() => onSelectKeyword(keyword)}
+              className={`w-full text-left rounded-lg px-3 py-2 transition-all ${
+                selected
+                  ? 'bg-brand-light ring-2 ring-brand/40'
+                  : 'hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`text-sm ${selected ? 'text-brand font-semibold' : 'text-text-primary'}`}>
+                  {keyword}
+                </span>
+                <span
+                  className={`px-2 py-0.5 text-xs rounded font-medium ${
+                    selected ? 'bg-white text-brand border border-brand/30' : 'bg-brand-light text-brand'
+                  }`}
+                >
+                  {count}회
+                </span>
+              </div>
+              <div className="h-2 bg-page-bg rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand rounded-full transition-all"
+                  style={{ width: `${(count / max) * 100}%` }}
+                />
+              </div>
+            </button>
+          );
+        })}
       </div>
       <hr className="border-border my-5" />
       <div className="flex flex-col items-start">
@@ -491,11 +567,89 @@ function KeywordFrequencyCard({
   );
 }
 
-function AnalysisPending() {
+// ----------------------------------------------------------------
+// 대시보드: 통합 분석 카드 (아이콘 + 설명 + 상태 + 버튼)
+// ----------------------------------------------------------------
+type SummaryState = 'pending' | 'fresh' | 'outdated' | 'incomplete';
+
+function SummaryAnalysisCard({
+  state,
+  analyzedAt,
+  onAnalyze,
+  loading,
+}: {
+  state: SummaryState;
+  analyzedAt: string | null;
+  onAnalyze: () => void;
+  loading: boolean;
+}) {
+  const buttonDisabled = loading || state === 'incomplete' || state === 'fresh';
+  const buttonLabel = loading ? '분석 중...' : state === 'pending' ? '분석' : '다시 분석';
+
+  let status: React.ReactNode;
+  if (state === 'fresh' && analyzedAt) {
+    status = <span className="text-text-secondary">분석 완료 · {formatRelativeTime(analyzedAt)}</span>;
+  } else if (state === 'outdated') {
+    status = <span className="text-amber-700 font-medium">활동이 변경되었습니다. 다시 분석해 결과를 갱신해보세요.</span>;
+  } else if (state === 'incomplete') {
+    status = <span className="text-amber-700 font-medium">분석되지 않은 활동이 있어요. 각 활동의 &lsquo;저장 및 분석&rsquo;을 먼저 완료해주세요.</span>;
+  } else {
+    status = <span className="text-text-secondary">아직 분석되지 않았어요. 분석 버튼을 눌러 시작해보세요.</span>;
+  }
+
+  const borderClass = state === 'outdated' ? 'border-amber-200' : 'border-border';
+
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-3 bg-white border border-dashed border-border rounded-xl">
-      <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-      <p className="text-sm text-text-secondary">AI가 활동을 분석하고 있어요... (최대 1분 정도 걸립니다)</p>
+    <div className={`bg-white rounded-xl border ${borderClass} shadow-sm px-6 py-5`}>
+      <div className="flex items-start gap-5">
+        <div className="shrink-0 w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center text-brand">
+          <IconSparkles className="w-6 h-6" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-semibold text-text-primary">AI 종합 분석</h3>
+          <p className="text-sm text-text-secondary mt-1 leading-relaxed">
+            모든 활동을 통합해 의미가 비슷한 핵심 키워드를 병합·집계하고, 자소서의 도입부·본론·결론 흐름을 제안해드려요.
+          </p>
+          <p className="text-xs mt-2.5">{status}</p>
+        </div>
+        <button
+          onClick={onAnalyze}
+          disabled={buttonDisabled}
+          className="shrink-0 self-center px-5 py-2.5 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {buttonLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------
+// AI 추천 자소서 흐름 카드
+// ----------------------------------------------------------------
+function StoryOutlineCard({ outline }: { outline: StoryOutline }) {
+  const sections: { label: string; text: string }[] = [
+    { label: '도입부', text: outline.intro },
+    ...outline.body.map((b, i) => ({
+      label: b.label ? `본론 ${i + 1} · ${b.label}` : `본론 ${i + 1}`,
+      text: b.text,
+    })),
+    { label: '결론', text: outline.conclusion },
+  ];
+  return (
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <h2 className="text-lg font-semibold text-text-primary mb-1">AI 추천 자소서 흐름</h2>
+      <p className="text-sm text-text-secondary mb-5">분석 결과를 바탕으로 자소서의 흐름을 제안해 드려요.</p>
+      <div className="flex flex-col gap-3">
+        {sections.map((s, i) => (
+          <div key={i} className="flex flex-col gap-2 px-5 py-4 rounded-lg bg-blue-50/40 border border-blue-100">
+            <span className="inline-block self-start px-2.5 py-1 text-xs font-semibold text-brand bg-white rounded-md border border-blue-100">
+              {s.label}
+            </span>
+            <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{s.text}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -533,14 +687,13 @@ export default function QualitativePage() {
   });
   const [analysis, setAnalysis] = useState<QualitativeData['analysis'] | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
   const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set());
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityForm | null>(null);
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
-
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const analysisStartRef = useRef<number>(0);
+  const [selectedUnified, setSelectedUnified] = useState<string | null>(null);
 
   const applyData = useCallback((data: QualitativeData) => {
     setCareerGoal((data.careerGoal as CareerGoal) || '');
@@ -550,53 +703,9 @@ export default function QualitativePage() {
     setAnalysis(data.analysis);
   }, []);
 
-  // 분석이 방금 막 끝난 시점에만 카드 자동 펼침
-  const expandAllFromAnalysis = useCallback((data: QualitativeData) => {
-    if (!data.analysis?.isAnalyzed) return;
-    const star = (data.analysis.starAnalysis?.activities ?? []) as StarItem[];
-    setExpandedSet(new Set(star.map((s) => s.activity_index)));
-  }, []);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    setAnalyzing(false);
-  }, []);
-
-  // 분석 진행 안전망: 120초 지나도 결과 없으면 폴링 종료
-  const POLL_TIMEOUT_MS = 120_000;
-
-  const startPolling = useCallback(() => {
-    analysisStartRef.current = Date.now();
-    setAnalyzing(true);
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      // 타임아웃 도달 → 강제 중단
-      if (Date.now() - analysisStartRef.current > POLL_TIMEOUT_MS) {
-        stopPolling();
-        alert('AI 분석이 예상보다 오래 걸리고 있어요. 잠시 후 다시 시도해주세요.');
-        return;
-      }
-      try {
-        const data = await getQualitative(YEAR);
-        applyData(data);
-        const analyzedAtMs = data.analysis.analyzedAt ? new Date(data.analysis.analyzedAt).getTime() : 0;
-        if (data.analysis.isAnalyzed && analyzedAtMs >= analysisStartRef.current) {
-          expandAllFromAnalysis(data);
-          stopPolling();
-        }
-      } catch {
-        // 일시적 네트워크 오류는 다음 tick에서 재시도
-      }
-    }, 5000);
-  }, [applyData, stopPolling, expandAllFromAnalysis]);
-
   useEffect(() => {
     getQualitative(YEAR).then(applyData).catch(() => {});
-    return () => stopPolling();
-  }, [applyData, stopPolling]);
+  }, [applyData]);
 
   // 탭 이동 시 STAR 펼침 상태 초기화 (탭 진입 시 기본은 접힘)
   useEffect(() => {
@@ -620,19 +729,32 @@ export default function QualitativePage() {
     setDrafts((d) => ({ ...d, [category]: d[category].filter((_, i) => i !== index) }));
   }
 
-  function triggerAnalysis() {
-    startPolling();
-    analyzeQualitative(YEAR)
-      .then((data) => {
-        applyData(data);
-        expandAllFromAnalysis(data);
-        stopPolling();
-      })
-      .catch((err) => {
-        console.error(err);
-        stopPolling();
-        alert('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
-      });
+  async function triggerSingleAnalysis(idx: number) {
+    setAnalyzingIdx(idx);
+    try {
+      const res = await analyzeQualitativeActivity(YEAR, idx);
+      applyData(res.data);
+      setExpandedSet((p) => new Set([...p, idx]));
+    } catch (err) {
+      console.error(err);
+      alert('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setAnalyzingIdx(null);
+    }
+  }
+
+  async function handleSummarize() {
+    if (summarizing) return;
+    setSummarizing(true);
+    try {
+      const data = await summarizeQualitative(YEAR);
+      applyData(data);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : '통합 분석에 실패했어요.');
+    } finally {
+      setSummarizing(false);
+    }
   }
 
   async function submitDraft(category: CategoryTab, index: number) {
@@ -644,7 +766,8 @@ export default function QualitativePage() {
       const saved = await patchQualitative(YEAR, { activities: next });
       applyData(saved);
       removeDraft(category, index);
-      triggerAnalysis();
+      const newIdx = next.length - 1;
+      triggerSingleAnalysis(newIdx);
     } catch (err) {
       console.error(err);
       alert('저장에 실패했어요. 잠시 후 다시 시도해주세요.');
@@ -670,9 +793,10 @@ export default function QualitativePage() {
       const next = serverActivities.map((a, i) => (i === editingIdx ? editDraft : a));
       const saved = await patchQualitative(YEAR, { activities: next });
       applyData(saved);
+      const idx = editingIdx;
       setEditingIdx(null);
       setEditDraft(null);
-      triggerAnalysis();
+      triggerSingleAnalysis(idx);
     } catch (err) {
       console.error(err);
       alert('수정에 실패했어요. 잠시 후 다시 시도해주세요.');
@@ -728,18 +852,21 @@ export default function QualitativePage() {
 
   // ----- 렌더 -----
   function renderDashboard() {
-    // 활동별 keywords 합산 → 행 하이라이트용 (raw 문자열 매칭)
-    const rowFreq = new Map<string, number>();
-    for (const star of allStarItems) {
-      for (const k of star.keywords ?? []) {
-        rowFreq.set(k, (rowFreq.get(k) ?? 0) + 1);
+    // 사이드바: Gemini가 의미적으로 병합·집계한 최상위 키워드 (count 내림차순 가정)
+    const serverKeywords: KeywordCount[] = (analysis?.aiKeywords ?? []) as KeywordCount[];
+    const storyOutline = analysis?.storyOutline ?? null;
+
+    // raw 키워드 → 통합 키워드 역방향 맵
+    // sources가 비어있는 구버전 데이터는 keyword 자체로 fallback
+    const rawToUnified = new Map<string, KeywordCount>();
+    for (const kc of serverKeywords) {
+      const sources = kc.sources && kc.sources.length > 0 ? kc.sources : [kc.keyword];
+      for (const src of sources) {
+        rawToUnified.set(src, kc);
       }
     }
 
-    // 사이드바: Gemini가 의미적으로 병합·집계한 최상위 키워드 (count 내림차순 가정)
-    const serverKeywords: KeywordCount[] = (analysis?.aiKeywords ?? []) as KeywordCount[];
-
-    if (serverActivities.length === 0 && !analyzing) {
+    if (serverActivities.length === 0) {
       return (
         <div className="flex flex-col gap-6 max-w-3xl mx-auto">
           <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
@@ -748,24 +875,40 @@ export default function QualitativePage() {
       );
     }
 
+    let summaryState: SummaryState;
+    if (!allActivitiesAnalyzed) summaryState = 'incomplete';
+    else if (!analysis?.isAnalyzed) summaryState = 'pending';
+    else if (analysis.summaryOutdated) summaryState = 'outdated';
+    else summaryState = 'fresh';
+
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-        <div className="flex flex-col gap-6 min-w-0">
-          <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
-          {analyzing && <AnalysisPending />}
-          {serverActivities.length > 0 && (
+      <div className="flex flex-col gap-6">
+        <SummaryAnalysisCard
+          state={summaryState}
+          analyzedAt={analysis?.analyzedAt ?? null}
+          onAnalyze={handleSummarize}
+          loading={summarizing}
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative">
+          <div className="flex flex-col gap-6 min-w-0">
+            <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
             <ActivityListTable
               activities={serverActivities}
               starByIdx={findStar}
-              keywordFreq={rowFreq}
+              rawToUnified={rawToUnified}
+              selectedUnified={selectedUnified}
             />
-          )}
-        </div>
-        <div className="flex flex-col gap-6">
-          <KeywordFrequencyCard
-            keywords={serverKeywords}
-            totalActivities={serverActivities.length}
-          />
+            {storyOutline && <StoryOutlineCard outline={storyOutline} />}
+          </div>
+          <div className="flex flex-col gap-6">
+            <KeywordFrequencyCard
+              keywords={serverKeywords}
+              totalActivities={serverActivities.length}
+              selectedKeyword={selectedUnified}
+              onSelectKeyword={(kw) => setSelectedUnified((prev) => (prev === kw ? null : kw))}
+            />
+          </div>
+          {summarizing && <LoadingOverlay message="AI가 활동 전체를 종합 분석하고 있어요..." />}
         </div>
       </div>
     );
@@ -801,10 +944,10 @@ export default function QualitativePage() {
               onEdit={() => startEdit(x.idx)}
               onDelete={() => deleteActivity(x.idx)}
               deleting={deletingIdx === x.idx}
+              isAnalyzing={analyzingIdx === x.idx}
             />
           );
         })}
-        {analyzing && <AnalysisPending />}
         {draftList.map((form, i) => (
           <ActivityFormCard
             key={`draft-${i}`}
@@ -819,6 +962,11 @@ export default function QualitativePage() {
       </div>
     );
   }
+
+  const allActivitiesAnalyzed =
+    serverActivities.length > 0 &&
+    (analysis?.activitiesAnalyzed ?? []).length === serverActivities.length &&
+    (analysis?.activitiesAnalyzed ?? []).every(Boolean);
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">

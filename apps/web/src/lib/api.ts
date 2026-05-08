@@ -255,6 +255,13 @@ export type StarItem = {
 export type KeywordCount = {
   keyword: string;
   count: number;
+  sources?: string[];  // 이 통합 키워드로 묶인 raw 키워드 목록 (구버전 데이터에는 없을 수 있음)
+};
+
+export type StoryOutline = {
+  intro: string;
+  body: { label: string; text: string }[];
+  conclusion: string;
 };
 
 export type QualitativeData = {
@@ -265,7 +272,16 @@ export type QualitativeData = {
     analyzedAt: string | null;
     starAnalysis: { activities: StarItem[]; keywords?: KeywordCount[] } | null;
     aiKeywords: KeywordCount[] | null;
+    storyOutline: StoryOutline | null;
+    summaryOutdated: boolean;
+    activitiesAnalyzed: boolean[];
   };
+};
+
+export type SingleAnalyzeResponse = {
+  skipped: boolean;
+  star: StarItem;
+  data: QualitativeData;
 };
 
 export async function getQualitative(year: string): Promise<QualitativeData> {
@@ -289,12 +305,29 @@ export async function patchQualitative(
   return res.json();
 }
 
-export async function analyzeQualitative(year: string): Promise<QualitativeData & { skipped: boolean }> {
+export async function analyzeQualitativeActivity(
+  year: string,
+  index: number
+): Promise<SingleAnalyzeResponse> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/qualitative/analyze?year=${encodeURIComponent(year)}`,
+    `${API_BASE}/api/mentee/qualitative/analyze/${index}?year=${encodeURIComponent(year)}`,
     { method: "POST", headers: headers(), credentials: "include" }
   );
   if (!res.ok) throw new Error("AI 분석 실패");
+  return res.json();
+}
+
+export async function summarizeQualitative(
+  year: string
+): Promise<QualitativeData & { skipped: boolean }> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative/summary?year=${encodeURIComponent(year)}`,
+    { method: "POST", headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "AI 통합 분석 실패");
+  }
   return res.json();
 }
 
