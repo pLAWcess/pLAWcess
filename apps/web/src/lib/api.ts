@@ -262,6 +262,24 @@ export async function getActiveCycleSchedule(): Promise<CycleSchedule | null> {
   return res.json();
 }
 
+export type SubmitApplicationResult = {
+  success: true;
+  application_id: string;
+  submitted_at: string | null;
+};
+
+export async function submitMenteeApplication(year: string): Promise<SubmitApplicationResult> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/applications/submit?year=${encodeURIComponent(year)}`,
+    { method: "POST", headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "신청서 제출 실패");
+  }
+  return res.json();
+}
+
 // ----------------------------------------------------------------
 // Qualitative
 // ----------------------------------------------------------------

@@ -3,12 +3,20 @@
 import { useState, useEffect } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import ConcernCard from '@/components/concerns/ConcernCard';
-import { getActiveCycleSchedule, type CycleSchedule } from '@/lib/api';
+import { getActiveCycleSchedule, submitMenteeApplication, type CycleSchedule } from '@/lib/api';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+function isDeadlinePassed(menteeApplyEnd: string | null): boolean {
+  if (!menteeApplyEnd) return false;
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const todayIso = kstNow.toISOString().slice(0, 10);
+  const endIso = new Date(menteeApplyEnd).toISOString().slice(0, 10);
+  return todayIso > endIso;
 }
 
 const STEPS = [
@@ -34,6 +42,7 @@ export default function ApplicationsPage() {
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
   const [activeSchedule, setActiveSchedule] = useState<CycleSchedule | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [appData, setAppData] = useState<ApplicationData>(initialApplication);
   const [draft, setDraft] = useState<ApplicationData>(initialApplication);
@@ -43,14 +52,26 @@ export default function ApplicationsPage() {
     getActiveCycleSchedule().then(setActiveSchedule).catch(() => {});
   }, []);
 
-  function handleSubmit() {
+  const isClosed = isDeadlinePassed(activeSchedule?.mentee_apply_end ?? null);
+  const isNotRegistered = !activeSchedule || !activeSchedule.mentee_apply_end;
+
+  async function handleSubmit() {
+    if (isClosed || isNotRegistered) return;
     if (!agreed) {
       setShowConsentError(true);
       return;
     }
     setShowConsentError(false);
-    // TODO: 백엔드 연결 시 신청서 제출 API 호출
-    alert('신청서가 제출되었습니다.');
+    setIsSubmitting(true);
+    try {
+      const year = String(activeSchedule?.process_year ?? new Date().getFullYear());
+      await submitMenteeApplication(year);
+      alert('신청서가 제출되었습니다.');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '신청서 제출에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -241,37 +262,41 @@ export default function ApplicationsPage() {
 
         {/* 안내 문구 */}
         <div className="mt-8 text-center text-sm text-text-secondary leading-relaxed">
-          {activeSchedule ? (
-            <>
-              <p>
-                <span className="text-brand font-medium">{activeSchedule.process_year}학년도 pLAWcess</span>
-                {formatDateKo(activeSchedule.mentee_apply_end)
-                  ? <>는 {formatDateKo(activeSchedule.mentee_apply_end)}까지 입력된 정보를 기반으로 멘토-멘티 매칭이 이루어집니다.</>
-                  : <>의 신청 마감일이 아직 등록되지 않았습니다.</>}
-              </p>
-              {formatDateKo(activeSchedule.mentee_apply_end) && <p>이전까지 모든 데이터를 입력해주시기 바랍니다.</p>}
-            </>
-          ) : (
+          {isNotRegistered ? (
             <p>현재 진행 중인 pLAWcess 사업의 신청 기간이 아직 등록되지 않았습니다.</p>
-          )}
+          ) : !isClosed ? (
+            <>
+              <p>모든 내용을 꼼꼼히 확인한 후 신청해주시기 바랍니다.</p>
+              <p className="mt-1">매칭은 <span className="text-brand font-medium">{formatDateKo(activeSchedule!.mentee_apply_end)}</span>까지 등록된 정량 및 정성 데이터를 기준으로 진행되므로, 마감 전까지 정보 등록을 완료해주시기 바랍니다.</p>
+            </>
+          ) : null}
         </div>
 
         {/* 제출 버튼 */}
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={handleSubmit}
-            className={`flex items-center gap-2 px-6 py-2.5 text-sm rounded-md transition-colors ${
-              agreed
-                ? 'bg-brand text-white hover:bg-brand-dark'
-                : 'bg-border text-text-placeholder cursor-not-allowed'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
-            </svg>
-            신청서 제출
-          </button>
-        </div>
+        {isClosed ? (
+          <div className="flex justify-center mt-6">
+            <p className="text-sm text-red-500 font-medium">신청 기간이 마감되어 신청이 불가합니다.</p>
+          </div>
+        ) : (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={handleSubmit}
+              disabled={isNotRegistered || isSubmitting}
+              className={`flex items-center gap-2 px-6 py-2.5 text-sm rounded-md transition-colors ${
+                isNotRegistered || isSubmitting
+                  ? 'bg-border text-text-placeholder cursor-not-allowed'
+                  : agreed
+                    ? 'bg-brand text-white hover:bg-brand-dark'
+                    : 'bg-border text-text-placeholder cursor-not-allowed'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+              </svg>
+              {isSubmitting ? '제출 중...' : '신청서 제출'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
