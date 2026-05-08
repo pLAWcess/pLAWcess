@@ -169,6 +169,33 @@
 
 ---
 
+## `/api/mentee/applications/submit` — POST (#135)
+
+멘티 신청서 제출 — `MenteeRecord.record_status` 를 `draft` → `submitted` 로 전환하고 `Application` 행을 생성한다.
+
+**Query:** `?year=2026`
+
+**Body:** 없음
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "application_id": "uuid",
+  "submitted_at": "2026-05-08T06:12:01.549Z"
+}
+```
+
+**Errors:**
+- 401: 로그인 안 됨
+- 403: 신청 기간 마감 — `{ "error": "신청 기간이 마감되었습니다." }`. 활성 cycle 의 `mentee_apply_end` 가 한국 시간 기준 어제 이전이면 발생. 활성 cycle 없거나 `mentee_apply_end` null 이면 통과
+- 404: `MenteeRecord` 부재 — `{ "error": "신청서를 찾을 수 없습니다. 먼저 기본정보를 작성해주세요." }`
+- 409: 이미 제출됨 — `{ "error": "이미 제출된 신청서입니다." }`. `record_status === "submitted"` 또는 `Application` unique 제약(`[user_id, process_year, role]`) 위반 시
+
+내부 동작: `prisma.$transaction` 으로 (a) `MenteeRecord.record_status = "submitted"` 갱신 + (b) `Application` 행 생성(`role: "mentee"`, `application_status: "submitted"`, `submitted_at: NOW()`).
+
+---
+
 ## `/api/mentee/quantitative` — GET / PATCH
 
 (본 리팩토링 영향 없음 — 별도 문서화는 추후 작업)
