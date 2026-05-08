@@ -121,11 +121,11 @@ export type BasicInfoPersonal = {
   militaryStatus: string;
 };
 
+// 가/나 × 1·2지망 4슬롯, 슬롯별 학교 + 특별전형 boolean
+export type AdmissionSlot = { school: string; isSpecial: boolean };
 export type BasicInfoAdmission = {
-  // DB에 저장되는 필드: 가/나군 제1지망 학교, 특별전형 여부
-  가: { first: string };
-  나: { first: string };
-  isSpecialAdmission: boolean;
+  가: { first: AdmissionSlot; second: AdmissionSlot };
+  나: { first: AdmissionSlot; second: AdmissionSlot };
 };
 
 export type BasicInfoData = {
@@ -142,14 +142,16 @@ export async function getBasicInfo(year: string): Promise<BasicInfoData> {
   return res.json();
 }
 
+type AdmissionSlotPatch = { school?: string; isSpecial?: boolean };
+type AdmissionGroupPatch = { first?: AdmissionSlotPatch; second?: AdmissionSlotPatch };
+
 export async function patchBasicInfo(
   year: string,
   body: {
     personal?: Partial<Omit<BasicInfoPersonal, "name" | "affiliation">>;
     admission?: {
-      가?: { first?: string };
-      나?: { first?: string };
-      isSpecialAdmission?: boolean;
+      가?: AdmissionGroupPatch;
+      나?: AdmissionGroupPatch;
     };
   }
 ): Promise<void> {
@@ -158,6 +160,41 @@ export async function patchBasicInfo(
     { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
   );
   if (!res.ok) throw new Error("기본정보 저장 실패");
+}
+
+// ----------------------------------------------------------------
+// Mentor Basic Info
+// ----------------------------------------------------------------
+
+export type MentorBasicInfoPersonal = BasicInfoPersonal & {
+  lawschool: string;             // 소속 로스쿨 (MentorRecord)
+  lawschoolGrade: number | null; // 기수 (MentorRecord)
+};
+
+export type MentorBasicInfoData = {
+  personal: MentorBasicInfoPersonal;
+};
+
+export async function getMentorBasicInfo(year: string): Promise<MentorBasicInfoData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentor/basic-info?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("멘토 기본정보 조회 실패");
+  return res.json();
+}
+
+export async function patchMentorBasicInfo(
+  year: string,
+  body: {
+    personal?: Partial<Omit<MentorBasicInfoPersonal, "name">>;
+  }
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/mentor/basic-info?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
+  );
+  if (!res.ok) throw new Error("멘토 기본정보 저장 실패");
 }
 
 // ----------------------------------------------------------------

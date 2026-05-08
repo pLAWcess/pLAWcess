@@ -26,9 +26,6 @@ export async function GET(req: NextRequest) {
       undergrad_second_major: true,
       undergrad_entry_year: true,
       undergrad_graduation_year: true,
-      current_lawschool: true,
-      graduated_lawschool: true,
-      lawschool_grade: true,
     },
   });
 

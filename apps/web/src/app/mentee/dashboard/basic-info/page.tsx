@@ -7,12 +7,13 @@ import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
   type PersonalInfo,
   type AdmissionInfo,
+  type AdmissionEntry,
   emptyPersonalInfo,
   emptyAdmissionInfo,
   TYPE_OPTIONS,
   fieldRows,
 } from '@/constants/basic-info';
-import { getBasicInfo, patchBasicInfo } from '@/lib/api';
+import { getBasicInfo, patchBasicInfo, type AdmissionSlot } from '@/lib/api';
 
 const YEAR = '2026학년도';
 
@@ -54,15 +55,13 @@ export default function BasicInfoPage() {
           graduationYear: data.personal.graduationYear,
           militaryStatus: data.personal.militaryStatus
         };
+        const fromApi = (s: AdmissionSlot): AdmissionEntry => ({
+          school: s.school,
+          type: s.isSpecial ? '특별전형' : '일반전형',
+        });
         const admission: AdmissionInfo = {
-          가: {
-            first: { school: data.admission.가.first, type: data.admission.isSpecialAdmission ? '특별전형' : '일반전형' },
-            second: emptyAdmissionInfo.가.second,  // DB 미지원
-          },
-          나: {
-            first: { school: data.admission.나.first, type: data.admission.isSpecialAdmission ? '특별전형' : '일반전형' },
-            second: emptyAdmissionInfo.나.second,  // DB 미지원
-          },
+          가: { first: fromApi(data.admission.가.first), second: fromApi(data.admission.가.second) },
+          나: { first: fromApi(data.admission.나.first), second: fromApi(data.admission.나.second) },
         };
         setPersonalInfo(personal);
         setAdmissionInfo(admission);
@@ -108,12 +107,14 @@ export default function BasicInfoPage() {
   async function handleAdmissionSave() {
     setAdmissionSaving(true);
     try {
+      const toApi = (e: AdmissionEntry): AdmissionSlot => ({
+        school: e.school,
+        isSpecial: e.type === '특별전형',
+      });
       await patchBasicInfo(YEAR, {
         admission: {
-          가: { first: admissionDraft.가.first.school },
-          나: { first: admissionDraft.나.first.school },
-          // 제1지망 type 기준으로 is_special_admission 결정 (가군 기준)
-          isSpecialAdmission: admissionDraft.가.first.type === '특별전형',
+          가: { first: toApi(admissionDraft.가.first), second: toApi(admissionDraft.가.second) },
+          나: { first: toApi(admissionDraft.나.first), second: toApi(admissionDraft.나.second) },
         },
       });
       setAdmissionInfo(admissionDraft);

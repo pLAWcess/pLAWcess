@@ -8,7 +8,7 @@ import {
   emptyMentorPersonalInfo,
   fieldRows,
 } from '@/constants/mentor-basic-info';
-import { getBasicInfo, patchBasicInfo } from '@/lib/api';
+import { getMentorBasicInfo, patchMentorBasicInfo } from '@/lib/api';
 
 const YEAR = '2026학년도';
 
@@ -21,22 +21,22 @@ export default function MentorBasicInfoPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
-  // 멘티 시절 작성한 기본정보를 멘티 API에서 그대로 로드
   useEffect(() => {
-    getBasicInfo(YEAR)
+    getMentorBasicInfo(YEAR)
       .then((data) => {
         setPersonalInfo({
           ...emptyMentorPersonalInfo,
           name: data.personal.name,
-          affiliation: data.personal.affiliation,
+          affiliation: data.personal.lawschool,  // "소속 로스쿨" ← MentorRecord.lawschool_name
           birthDate: data.personal.birthDate,
           gender: data.personal.gender,
+          lawSchoolGrade: data.personal.lawschoolGrade ? `${data.personal.lawschoolGrade}학년도` : '',
           academicStatus: data.personal.academicStatus,
+          militaryStatus: data.personal.militaryStatus,
           major1: data.personal.major1,
           major2: data.personal.major2,
           admissionYear: data.personal.admissionYear,
           graduationYear: data.personal.graduationYear,
-          // lawSchoolGrade, militaryStatus는 멘티 API 미지원 — 빈 값 유지
         });
       })
       .catch(() => setLoadError('기본정보를 불러오지 못했습니다.'))
@@ -51,16 +51,20 @@ export default function MentorBasicInfoPage() {
     setBirthDateError('');
     setSaving(true);
     try {
-      await patchBasicInfo(YEAR, {
+      // "2024학년도" → 2024 (Int) | "" → null
+      const gradeNum = draft.lawSchoolGrade ? parseInt(draft.lawSchoolGrade, 10) : null;
+      await patchMentorBasicInfo(YEAR, {
         personal: {
           birthDate: draft.birthDate,
           gender: draft.gender,
           academicStatus: draft.academicStatus,
+          militaryStatus: draft.militaryStatus,
           major1: draft.major1,
           major2: draft.major2,
           admissionYear: draft.admissionYear,
           graduationYear: draft.graduationYear,
-          // lawSchoolGrade, militaryStatus는 멘티 API 미지원 — 저장 안 함
+          lawschool: draft.affiliation,  // FE affiliation ("소속 로스쿨") → BE MentorRecord.lawschool_name
+          lawschoolGrade: Number.isFinite(gradeNum) ? gradeNum : null,
         },
       });
       setPersonalInfo(draft);
