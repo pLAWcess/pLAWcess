@@ -31,7 +31,7 @@ export default function MentorBasicInfoPage() {
           affiliation: data.personal.lawschool,  // "소속 로스쿨" ← MentorRecord.lawschool_name
           birthDate: data.personal.birthDate,
           gender: data.personal.gender,
-          lawSchoolGrade: data.personal.lawschoolGrade ? `${data.personal.lawschoolGrade}학년도` : '',
+          lawSchoolGrade: data.personal.lawschoolGrade ? `${data.personal.lawschoolGrade}기` : '',
           academicStatus: data.personal.academicStatus,
           militaryStatus: data.personal.militaryStatus,
           major1: data.personal.major1,

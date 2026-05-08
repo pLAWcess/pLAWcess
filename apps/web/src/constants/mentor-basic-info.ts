@@ -73,7 +73,7 @@ export const MAJOR_OPTIONS = [
 const CURRENT_YEAR = new Date().getFullYear();
 export const UNDERGRAD_YEAR_OPTIONS = Array.from(
   { length: CURRENT_YEAR + 5 - 1990 + 1 },
-  (_, i) => `${1990 + i}`,
+  (_, i) => `${CURRENT_YEAR + 5 - i}`,
 );
 
 export const fieldRows: {
