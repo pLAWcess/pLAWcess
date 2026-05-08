@@ -9,7 +9,6 @@ import {
   yearToLabel,
 } from "@/lib/labels";
 import { splitPayload, MENTEE_RECORD_FIELDS, flattenPersonal, PersonalPatchInput } from "@/lib/payload-split";
-import { checkMenteeApplicationDeadline } from "@/lib/deadline";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -109,9 +108,6 @@ export async function PATCH(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
-
-  const blocked = await checkMenteeApplicationDeadline();
-  if (blocked) return blocked;
 
   const processYear = getProcessYear(req);
 
