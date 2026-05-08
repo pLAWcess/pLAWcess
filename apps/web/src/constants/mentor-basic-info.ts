@@ -33,7 +33,7 @@ export const GENDER_OPTIONS = ['남성', '여성', '기타'];
 export const LAW_SCHOOL_NAMES = LAW_SCHOOLS.map((s) => s.name);
 
 // 로스쿨 기수: 2009학년도 ~ 향후 20년
-export const LAW_SCHOOL_GRADES = Array.from({ length: 20 }, (_, i) => `${2009 + i}학년도`);
+export const LAW_SCHOOL_GRADES = Array.from({ length: 17 }, (_, i) => `${i + 1}기`);
 
 export const ACADEMIC_STATUS_OPTIONS = ['재학', '휴학', '졸업'];
 
