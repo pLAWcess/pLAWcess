@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getUser, clearAllCache } from '@/lib/api';
+import { getUser, saveUser, clearAllCache, type AuthUser } from '@/lib/api';
+import UserMenu from '@/components/layout/UserMenu';
 
 const NAV_ITEMS = [
   { href: '/about', label: '서비스 소개' },
@@ -15,12 +16,35 @@ const NAV_ITEMS = [
 export default function LandingNavbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    const user = getUser();
-    if (user) setLoggedIn(true);
+    const cached = getUser();
+    if (cached) {
+      setUser(cached);
+    } else {
+      fetchUser();
+    }
   }, []);
+
+  async function fetchUser() {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const userData: AuthUser = {
+        user_id: data.user.user_id,
+        name: data.user.name,
+        login_id: data.user.login_id ?? null,
+        email: data.user.email,
+        current_role: data.user.current_role,
+      };
+      saveUser(userData);
+      setUser(userData);
+    } catch {
+      // 미로그인 상태
+    }
+  }
 
   async function handleLogout() {
     await fetch('/api/auth/logout', {
@@ -28,7 +52,7 @@ export default function LandingNavbar() {
       credentials: 'include',
     });
     clearAllCache();
-    setLoggedIn(false);
+    setUser(null);
     router.push('/');
   }
 
@@ -81,13 +105,8 @@ export default function LandingNavbar() {
 
       {/* Right: Action buttons */}
       <div className="flex items-center gap-3">
-        {loggedIn ? (
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
-          >
-            로그아웃
-          </button>
+        {user ? (
+          <UserMenu user={user} onLogout={handleLogout} />
         ) : (
           <>
             <Link
