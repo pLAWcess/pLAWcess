@@ -220,6 +220,19 @@ export default function SignupPage() {
                   required
                   className={inputClass}
                 />
+              
+              </Field>
+              {/* 학부생 학번 */}
+              <Field label="학부생 학번" htmlFor="studentId">
+                <input
+                  id="studentId"
+                  type="text"
+                  value={form.studentId}
+                  onChange={(e) => update('studentId', e.target.value)}
+                  placeholder="학번을 입력하세요"
+                  required
+                  className={inputClass}
+                />
               </Field>
 
               {/* 아이디 */}
@@ -352,19 +365,6 @@ export default function SignupPage() {
                     SMS 인증
                   </button>
                 </div>
-              </Field>
-
-              {/* 학부생 학번 */}
-              <Field label="학부생 학번" htmlFor="studentId">
-                <input
-                  id="studentId"
-                  type="text"
-                  value={form.studentId}
-                  onChange={(e) => update('studentId', e.target.value)}
-                  placeholder="학번을 입력하세요"
-                  required
-                  className={inputClass}
-                />
               </Field>
 
               {/* 학부 재학증명서 업로드 */}
