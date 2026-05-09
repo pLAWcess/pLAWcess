@@ -6,14 +6,14 @@ export default function AnnouncementDetail({ id, backPath }: { id: string; backP
 
   if (!announcement) {
     return (
-      <div className="max-w-3xl mx-auto w-full">
+      <div className="page-container w-full">
         <p className="text-sm text-text-secondary">공지사항을 찾을 수 없습니다.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6 page-container w-full">
       <Link
         href={backPath}
         className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors w-fit"

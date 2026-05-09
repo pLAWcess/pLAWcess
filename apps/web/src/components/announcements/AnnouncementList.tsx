@@ -3,7 +3,7 @@ import { MOCK_ANNOUNCEMENTS } from './data';
 
 export default function AnnouncementList({ basePath }: { basePath: string }) {
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6 page-container w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">공지사항</h1>
         <p className="text-sm text-text-secondary mt-1">pLAWcess 운영팀의 공지사항을 확인하세요</p>

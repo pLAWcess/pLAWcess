@@ -11,7 +11,7 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
   {
     id: '1',
     title: '2026학년도 멘토 모집 안내',
-    body: '2026학년도 pLAWcess 멘토 모집을 시작합니다. 자유전공학부 출신 법학대학원 합격자라면 누구나 지원 가능합니다.',
+    body: '2026학년도 pLAWcess 멘토 모집을 시작합니다. 자유전공학부 출신 법학전문대학원 합격자라면 누구나 지원 가능합니다.',
     created_at: '2026-04-10T00:00:00Z',
     author: '관리자',
   },
