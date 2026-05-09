@@ -5,7 +5,7 @@ import DashboardShell from '@/components/layout/DashboardShell';
 
 const COOKIE_NAME = 'plawcess_token';
 
-export default async function MenteeSettingsLayout({ children }: { children: React.ReactNode }) {
+export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
 
