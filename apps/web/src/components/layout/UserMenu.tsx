@@ -41,7 +41,7 @@ export default function UserMenu({ user, onLogout }: Props) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-md hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-md hover:bg-gray-100 transition-colors text-base"
         aria-haspopup="menu"
         aria-expanded={open}
       >
