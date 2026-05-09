@@ -43,12 +43,12 @@ export default function DeleteAccountModal({ open, isLoading, onClose, onConfirm
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="회원 탈퇴"
+        aria-label="Withdraw"
         className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text-primary">회원 탈퇴</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Withdraw</h2>
           <button
             type="button"
             onClick={handleClose}
@@ -113,7 +113,7 @@ export default function DeleteAccountModal({ open, isLoading, onClose, onConfirm
             disabled={!password || isSubmitting || isLoading}
             className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isSubmitting || isLoading ? '처리 중...' : '탈퇴'}
+            {isSubmitting || isLoading ? '처리 중...' : 'Withdraw'}
           </button>
         </div>
       </div>
