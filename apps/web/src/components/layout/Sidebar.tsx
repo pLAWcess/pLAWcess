@@ -31,7 +31,12 @@ const adminNavItems: NavItem[] = [
   { label: '멘토 계정 생성', href: '/admin/mentors/create', match: '/admin/mentors' },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   const navItems: NavItem[] = pathname.startsWith('/mentor')
@@ -40,29 +45,52 @@ export default function Sidebar() {
     ? adminNavItems
     : menteeNavItems;
 
+  const navContent = (
+    <nav className="flex flex-col gap-1 px-2">
+      {navItems.map((item) => {
+        const matchPath = item.match ?? item.href;
+        const isActive = item.exact
+          ? pathname === matchPath
+          : pathname === matchPath || pathname.startsWith(matchPath + '/');
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onClose}
+            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              isActive
+                ? 'bg-brand-light text-brand'
+                : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+            }`}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
   return (
-    <aside className="w-44 bg-white border-r border-border flex flex-col py-6 shrink-0">
-      <nav className="flex flex-col gap-1 px-2">
-        {navItems.map((item) => {
-          const matchPath = item.match ?? item.href;
-          const isActive = item.exact
-            ? pathname === matchPath
-            : pathname === matchPath || pathname.startsWith(matchPath + '/');
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-brand-light text-brand'
-                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
-              }`}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
+    <>
+      {/* 모바일 오버레이 */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* 사이드바 */}
+      <aside
+        className={`
+          fixed top-16 left-0 h-[calc(100vh-4rem)] z-50 w-44 bg-white border-r border-border flex flex-col py-6 shrink-0
+          transition-transform duration-200
+          md:static md:top-auto md:h-auto md:translate-x-0 md:z-auto
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        {navContent}
+      </aside>
+    </>
   );
 }
