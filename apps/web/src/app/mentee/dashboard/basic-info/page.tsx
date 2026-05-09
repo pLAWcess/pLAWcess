@@ -166,7 +166,7 @@ export default function BasicInfoPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+      <div className="flex flex-col gap-6 page-container w-full">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>
           <p className="text-sm text-text-secondary mt-1">기본 프로필과 희망 학교 정보를 입력해주세요</p>
@@ -177,7 +177,7 @@ export default function BasicInfoPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6 page-container w-full">
       {/* 페이지 타이틀 */}
       <div>
         <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>

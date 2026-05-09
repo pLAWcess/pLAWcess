@@ -55,7 +55,7 @@ export default function MentorQuantitativePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6 page-container w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">정량 데이터</h1>
         <p className="text-sm text-text-secondary mt-1">

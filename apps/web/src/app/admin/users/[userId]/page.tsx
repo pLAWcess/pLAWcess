@@ -97,7 +97,7 @@ function UserDetailView({ initial }: { initial: UserDetail }) {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6 w-full">
       {/* 페이지 타이틀 */}
       <div className="flex items-center gap-3">
         <button

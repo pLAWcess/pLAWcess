@@ -62,7 +62,7 @@ export default function AdminAnnouncementsCreatePage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-8 w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">공지사항 작성</h1>
         <p className="mt-1 text-sm text-text-secondary">새 공지사항을 작성하고 게시된 공지를 관리합니다</p>

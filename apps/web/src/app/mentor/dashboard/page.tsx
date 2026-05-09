@@ -36,7 +36,7 @@ export default function MentorDashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-8 page-container w-full">
       <div>
         <h1 className="text-xl font-bold text-text-primary">멘토 대시보드</h1>
         <p className="mt-1 text-sm text-text-secondary">매칭된 멘티 목록입니다.</p>

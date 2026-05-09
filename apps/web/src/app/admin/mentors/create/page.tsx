@@ -51,7 +51,7 @@ export default function AdminUsersPage() {
   ] as const;
 
   return (
-    <div className="flex flex-col gap-10 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-10 w-full">
       {/* 생성 폼 */}
       <section>
         <h1 className="text-xl font-bold text-text-primary mb-6">멘토 계정 생성</h1>

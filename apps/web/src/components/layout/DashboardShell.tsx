@@ -10,7 +10,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-auto bg-page-bg">
-          <div className="px-10 py-8">{children}</div>
+          {children}
         </main>
       </div>
     </div>

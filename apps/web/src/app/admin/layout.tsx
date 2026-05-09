@@ -25,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <DashboardShell>
-      <div className="max-w-6xl mx-auto w-full">{children}</div>
+      <div className="page-container w-full">{children}</div>
     </DashboardShell>
   );
 }

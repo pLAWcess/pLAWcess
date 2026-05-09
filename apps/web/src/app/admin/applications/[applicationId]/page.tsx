@@ -105,7 +105,7 @@ export default function AdminApplicationDetailPage({ params }: { params: Promise
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-5 w-full">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
