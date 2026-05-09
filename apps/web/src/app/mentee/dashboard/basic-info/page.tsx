@@ -168,7 +168,7 @@ export default function BasicInfoPage() {
     return (
       <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">개인정보</h1>
+          <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>
           <p className="text-sm text-text-secondary mt-1">기본 프로필과 희망 학교 정보를 입력해주세요</p>
         </div>
         <div className="text-sm text-text-secondary py-10 text-center">불러오는 중...</div>
@@ -180,7 +180,7 @@ export default function BasicInfoPage() {
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
       {/* 페이지 타이틀 */}
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">개인정보</h1>
+        <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>
         <p className="text-sm text-text-secondary mt-1">기본 프로필과 희망 학교 정보를 입력해주세요</p>
       </div>
 
@@ -190,7 +190,7 @@ export default function BasicInfoPage() {
         </div>
       )}
 
-      {/* 개인정보 카드 */}
+      {/* 기본정보 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm">
         <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
           <div className="flex items-center gap-4">
