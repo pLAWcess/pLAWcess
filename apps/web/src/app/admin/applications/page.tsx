@@ -641,7 +641,7 @@ function ApplicationEditModal<T extends ApplicationRow>({
         role="dialog"
         aria-modal="true"
         aria-label={`${kindLabel} 신청 검토`}
-        className="relative bg-white rounded-2xl shadow-xl w-full max-3 flex flex-col max-h-[90vh]"
+        className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]"
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">

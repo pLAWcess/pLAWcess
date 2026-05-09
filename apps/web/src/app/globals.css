@@ -33,11 +33,11 @@
   --color-border-input: #D1D5DB;
 }
 
-@layer components {
-  .page-container {
-    @apply max-w-5xl mx-auto px-10 py-8;
-  }
-}
+@layer components {                                                                          
+  .page-container {                                                                          
+    @apply max-w-5xl mx-auto;                                                                
+  }                                                                                          
+}     
 
 body {
   background: var(--background);
