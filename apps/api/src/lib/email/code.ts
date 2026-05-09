@@ -65,6 +65,26 @@ export async function findLatestActiveVerification(email: string, purpose: Purpo
   });
 }
 
+/**
+ * IP 기반 rate limit (find-id 등) — in-process 카운터.
+ * 멀티 인스턴스 환경에서는 인스턴스당 한도가 됨 (spec 위험 항목).
+ */
+const ipCounter = new Map<string, { count: number; resetAt: number }>();
+
+export function assertIpRateLimit(ip: string, key: string, hourlyLimit: number): void {
+  const now = Date.now();
+  const k = `${key}:${ip}`;
+  const entry = ipCounter.get(k);
+  if (!entry || entry.resetAt < now) {
+    ipCounter.set(k, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    return;
+  }
+  if (entry.count >= hourlyLimit) {
+    throw new RateLimitError("시간당 시도 한도를 초과했습니다.");
+  }
+  entry.count += 1;
+}
+
 export function getClientIp(headers: Headers): string {
   return headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? headers.get("x-real-ip") ?? "unknown";
 }
