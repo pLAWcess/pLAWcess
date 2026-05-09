@@ -218,7 +218,7 @@ function ActivityFormCard({
       </div>
 
       <div className="flex flex-col gap-2 mb-6">
-        <label className="text-sm text-text-secondary">작성 내용 <span className="text-red-500">*</span></label>
+        <label className="text-sm text-text-secondary">활동 내용 <span className="text-red-500">*</span></label>
         <textarea value={form.content} onChange={(e) => onChange({ ...form, content: e.target.value })}
           placeholder="활동 내용을 상세히 작성해주세요" rows={4}
           className="border border-border rounded-lg bg-transparent text-base text-text-primary p-3 placeholder:text-text-placeholder focus:outline-none focus:border-brand resize-none" />
