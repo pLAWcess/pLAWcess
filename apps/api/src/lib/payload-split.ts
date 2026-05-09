@@ -17,11 +17,9 @@ export const USER_FIELDS = new Set<string>([
 
 export const MENTEE_RECORD_FIELDS = new Set<string>([
   "academic_status",
-  // 희망 로스쿨 — 가/나 × 1·2지망 4슬롯, 슬롯별 학교 + 특별전형 boolean
-  "target_school_ga_first", "is_special_ga_first",
-  "target_school_ga_second", "is_special_ga_second",
-  "target_school_na_first", "is_special_na_first",
-  "target_school_na_second", "is_special_na_second",
+  // 희망 로스쿨 — 가/나군 단일 슬롯, 슬롯별 학교 + 특별전형 boolean
+  "target_school_ga", "is_special_ga",
+  "target_school_na", "is_special_na",
   "has_leet_experience", "leet_exam_years", "first_leet_year",
   "has_law_class", "law_class_subjects",
   "career_goal",
