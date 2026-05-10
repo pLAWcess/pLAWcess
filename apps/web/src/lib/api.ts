@@ -278,6 +278,26 @@ export async function patchConcern(
 
 export type ActivityCategory = '교내' | '대외' | '사회경험' | '자격·시험';
 
+export type Attachment =
+  | {
+      type: 'document';
+      kind: 'pdf' | 'docx' | 'pptx';
+      filename: string;
+      size: number;
+      contentHash: string;
+      extractedText: string;
+      textCharCount: number;
+      truncated: boolean;
+    }
+  | {
+      type: 'image';
+      kind: 'jpg' | 'png';
+      filename: string;
+      size: number;
+      mimeType: string;
+      contentHash: string;
+    };
+
 export type QualitativeActivity = {
   category?: ActivityCategory;
   name: string;
@@ -286,6 +306,7 @@ export type QualitativeActivity = {
   endDate: string;
   ongoing: boolean;
   content: string;
+  attachments?: Attachment[];
 };
 
 export type StarItem = {
@@ -302,7 +323,7 @@ export type StarItem = {
 export type KeywordCount = {
   keyword: string;
   count: number;
-  sources?: string[];  // 이 통합 키워드로 묶인 raw 키워드 목록 (구버전 데이터에는 없을 수 있음)
+  sources?: string[];
 };
 
 export type StoryOutline = {
@@ -348,7 +369,54 @@ export async function patchQualitative(
     `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
     { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
   );
-  if (!res.ok) throw new Error("정성 데이터 저장 실패");
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => null);
+    throw new Error(errBody?.error ?? `정성 데이터 저장 실패 (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+// ----------------------------------------------------------------
+// 첨부 파일 + 활동 저장 + 인라인 단일 분석을 한 번에 수행하는 multipart PATCH.
+// ----------------------------------------------------------------
+export type PatchQualitativeMultipartResponse = QualitativeData & {
+  inlineStar?: StarItem;
+  inlineSkipped?: boolean;
+  inlineError?: string;
+  attachmentErrors?: string[];
+};
+
+export async function patchQualitativeMultipart(
+  year: string,
+  body: { careerGoal?: string; activities: QualitativeActivity[]; analyzeIndex?: number },
+  filesByActivityIndex: Map<number, File[]>
+): Promise<PatchQualitativeMultipartResponse> {
+  const form = new FormData();
+  form.append(
+    "payload",
+    JSON.stringify({
+      careerGoal: body.careerGoal,
+      activities: body.activities,
+      analyze_index: body.analyzeIndex,
+    })
+  );
+  for (const [idx, files] of filesByActivityIndex.entries()) {
+    files.forEach((file, i) => {
+      form.append(`files_${idx}_${i}`, file, file.name);
+    });
+  }
+
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", credentials: "include", body: form }
+  );
+  if (!res.ok) {
+    if (res.status === 413) {
+      throw new Error("업로드 용량이 너무 큽니다. 첨부 파일 합계를 4MB 이하로 줄여주세요.");
+    }
+    const errBody = await res.json().catch(() => null);
+    throw new Error(errBody?.error ?? `정성 데이터 저장 실패 (HTTP ${res.status})`);
+  }
   return res.json();
 }
 
