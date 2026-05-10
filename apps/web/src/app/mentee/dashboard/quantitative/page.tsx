@@ -7,7 +7,7 @@ import GpaCard from '@/components/quantitative/GpaCard';
 import { getQuantitative, patchQuantitative } from '@/lib/api';
 import type { QuantitativeData, LeetSection, GpaSection, LanguageSection } from '@/lib/api';
 
-const YEAR_OPTIONS = ['2024학년도', '2025학년도', '2026학년도'];
+const YEAR = '2026학년도';
 
 const EMPTY: QuantitativeData = {
   leet: {
@@ -19,7 +19,6 @@ const EMPTY: QuantitativeData = {
 };
 
 export default function QuantitativePage() {
-  const [year, setYear] = useState('2026학년도');
   const [data, setData] = useState<QuantitativeData>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,24 +26,24 @@ export default function QuantitativePage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getQuantitative(year)
+    getQuantitative(YEAR)
       .then(setData)
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
-  }, [year]);
+  }, []);
 
   async function handleSaveLeet(leet: LeetSection) {
-    const updated = await patchQuantitative(year, { leet });
+    const updated = await patchQuantitative(YEAR, { leet });
     setData(updated);
   }
 
   async function handleSaveGpa(gpa: GpaSection) {
-    const updated = await patchQuantitative(year, { gpa });
+    const updated = await patchQuantitative(YEAR, { gpa });
     setData(updated);
   }
 
   async function handleSaveLanguage(language: LanguageSection) {
-    const updated = await patchQuantitative(year, { language });
+    const updated = await patchQuantitative(YEAR, { language });
     setData(updated);
   }
 
@@ -67,10 +66,7 @@ export default function QuantitativePage() {
           <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
             <div className="flex items-center justify-between mb-6">
               <div className="h-6 w-24 bg-gray-200 rounded" />
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-28 bg-gray-100 rounded" />
-                <div className="h-8 w-16 bg-gray-200 rounded" />
-              </div>
+              <div className="h-8 w-16 bg-gray-200 rounded" />
             </div>
             <table className="w-full text-sm table-fixed">
               <thead>
@@ -130,7 +126,7 @@ export default function QuantitativePage() {
         </div>
       ) : (
         <>
-          <LeetCard initialData={data.leet} onSave={handleSaveLeet} year={year} yearOptions={YEAR_OPTIONS} onYearChange={setYear} />
+          <LeetCard initialData={data.leet} onSave={handleSaveLeet} />
           <LanguageCard initialData={data.language} onSave={handleSaveLanguage} />
           <GpaCard initialData={data.gpa} onSave={handleSaveGpa} />
         </>
