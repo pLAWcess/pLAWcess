@@ -18,6 +18,61 @@ Admin 페이지 4개 화면 (회원관리 / 신청관리 / 매칭관리 / 공지
 | 멘토 record 출처 | 사용자별 가장 최근 MentorRecord (`process_year DESC LIMIT 1`) |
 | Announcement 모델 | 최소 사양 (id, title, body, created_by, created_at, updated_at) — soft delete 미적용 |
 | Public 공지 GET | 로그인 강제 (멘티/멘토/admin 모두 허용, 비로그인 401) |
+| 응답 케이스 | 모든 응답 카멜케이스 통일 (snake → camel 변환) |
+| 페이지네이션 | 배열형 응답은 `{ data, totalCount, page, limit }` 으로 래핑. `?page=1&limit=50` 기본값. `eligible` 는 매칭 알고리즘 입력이라 적용 제외 |
+
+## 공통 응답 규약
+
+### 페이지네이션 래퍼 (배열형 응답)
+
+대상: `/admin/users`, `/admin/applications`, `/admin/announcements`, `/announcements`
+
+**Query** (모두 옵션, 기본값 명시)
+- `page` (기본 1, 정수, ≥1)
+- `limit` (기본 50, 정수, 1~200)
+
+**응답 형태**
+```json
+{
+  "data": [...],
+  "totalCount": 137,
+  "page": 1,
+  "limit": 50
+}
+```
+
+**구현**
+```ts
+const skip = (page - 1) * limit;
+const [data, totalCount] = await prisma.$transaction([
+  prisma.<model>.findMany({ where, orderBy, skip, take: limit, include }),
+  prisma.<model>.count({ where }),
+]);
+```
+
+**적용 제외**: `/admin/matchings/eligible` (매칭 알고리즘 입력 — 풀 전체 반환).
+
+### Prisma include + take: 1 함정
+
+`/admin/applications` 에서 AdminMemo 최근 1건을 join 시:
+
+```ts
+include: {
+  admin_memos: {
+    take: 1,
+    orderBy: { created_at: 'desc' },
+    select: { memo_content: true },
+  },
+}
+```
+
+→ `row.admin_memos` 는 **객체가 아닌 길이 1짜리 배열** (Prisma 1:N include의 take 동작).
+
+응답 매핑 시 반드시:
+```ts
+memo: row.admin_memos[0]?.memo_content ?? null
+```
+형태로 첫 요소를 안전 추출. `row.admin_memos.memo_content` 쓰면 `undefined`.
 
 ## 엔드포인트 목록
 
@@ -36,6 +91,7 @@ Admin 페이지 4개 화면 (회원관리 / 신청관리 / 매칭관리 / 공지
 
 **Query**
 - `role` (필수): `mentee` 또는 `mentor`
+- `page`, `limit` — 공통 페이지네이션 규약 따름
 
 **WHERE**
 ```
@@ -43,44 +99,51 @@ users.is_deleted = false
 AND users.current_role = $role
 ```
 
-**응답 케이스 정책** — 본 PR의 모든 응답은 **카멜케이스 통일**. Prisma raw 객체를 그대로 반환하지 않고 변환해서 응답.
+**응답 형태** — 페이지네이션 래퍼.
 
-**SELECT 및 응답 (멘티)**
+**data 항목 (멘티)**
 ```json
-[
-  {
-    "userId": "uuid",
-    "name": "김민준",
-    "studentId": "2020123456",
-    "firstMajor": "법학과",
-    "secondMajor": null,
-    "phone": "010-1234-5678",
-    "accountStatus": "active"
-  }
-]
+{
+  "userId": "uuid",
+  "name": "김민준",
+  "studentId": "2020123456",
+  "firstMajor": "법학과",
+  "secondMajor": null,
+  "phone": "010-1234-5678",
+  "accountStatus": "active"
+}
 ```
 
-**SELECT 및 응답 (멘토)**
+**data 항목 (멘토)**
 - 멘토는 latest MentorRecord 1개를 사용자별로 join 해 `lawschool_name`, `lawschool_grade`(=cohort) 표시.
 ```json
-[
-  {
-    "userId": "uuid",
-    "name": "최수진",
-    "studentId": "2018456789",
-    "lawSchool": "서울대학교 로스쿨",
-    "cohort": 7,
-    "phone": "010-4567-8901",
-    "accountStatus": "active"
-  }
-]
+{
+  "userId": "uuid",
+  "name": "최수진",
+  "studentId": "2018456789",
+  "lawSchool": "서울대학교 로스쿨",
+  "cohort": 7,
+  "phone": "010-4567-8901",
+  "accountStatus": "active"
+}
+```
+
+**전체 응답 예시**
+```json
+{
+  "data": [ ... ],
+  "totalCount": 137,
+  "page": 1,
+  "limit": 50
+}
 ```
 - record가 없는 멘토(이론상 거의 없음): `lawSchool: null, cohort: null` 로 응답하고 행은 노출.
 
 **정렬**: `name ASC`
 
 **구현 노트**
-- 멘토 latest record 조회: `findMany({ where: { user_id: { in: [...] } }, orderBy: { process_year: 'desc' } })` → 메모리에서 `Map<user_id, record>` 로 첫 만남만 유지(N+1 회피).
+- 페이지네이션은 User 테이블에 적용 (skip/take). count 도 같은 WHERE 로.
+- 멘토 latest record 조회: 페이지에 들어온 user_id 들로만 `findMany({ where: { user_id: { in: pageUserIds } }, orderBy: { process_year: 'desc' } })` → 메모리에서 `Map<user_id, record>` 로 첫 만남만 유지(N+1 회피, 페이지 사이즈만큼만 스캔).
 
 **에러**
 - 400: `role` 누락 또는 `mentee|mentor` 외 값
@@ -90,6 +153,7 @@ AND users.current_role = $role
 **Query**
 - `role` (필수): `mentee` 또는 `mentor`
 - `year` (옵션): 기본값 = 활성 CycleSchedule.process_year. 활성 cycle이 없고 year 미지정이면 400.
+- `page`, `limit` — 공통 페이지네이션 규약 따름
 
 **WHERE**
 ```
@@ -101,8 +165,8 @@ AND applications.application_status IN
 
 **JOIN**
 - User: name, student_id, undergrad_first_major
-- 멘토면 latest MentorRecord: lawschool_name
-- AdminMemo: 같은 application_id에 대한 가장 최근 1개 (`ORDER BY created_at DESC LIMIT 1`)
+- 멘토면 latest MentorRecord: lawschool_name (페이지에 들어온 user_id 들에 한해 추가 조회, /admin/users 와 동일 패턴)
+- AdminMemo: 같은 application_id에 대한 가장 최근 1개. include 의 `take: 1` 사용 — **반환은 객체가 아닌 길이 1짜리 배열**. 응답 매핑 시 `row.admin_memos[0]?.memo_content ?? null` (공통 응답 규약 참고).
 
 **상태 라벨 매핑** (`apps/api/src/lib/labels.ts` 에 추가)
 | DB enum | FE label |
@@ -112,22 +176,30 @@ AND applications.application_status IN
 | `rejected` | `rejected` |
 | `revision_requested` | `revision` |
 
-**응답 (멘티)**
+**data 항목 (멘티)**
 ```json
-[
-  {
-    "applicationId": "uuid",
-    "name": "김민준",
-    "studentId": "2020123456",
-    "major": "법학과",
-    "status": "approved",
-    "memo": "서류 확인 완료",
-    "submittedAt": "2026-04-10T..."
-  }
-]
+{
+  "applicationId": "uuid",
+  "name": "김민준",
+  "studentId": "2020123456",
+  "major": "법학과",
+  "status": "approved",
+  "memo": "서류 확인 완료",
+  "submittedAt": "2026-04-10T..."
+}
 ```
 
-**응답 (멘토)** — `major` 대신 `school` (=lawschool_name).
+**data 항목 (멘토)** — `major` 대신 `school` (=lawschool_name).
+
+**전체 응답 예시**
+```json
+{
+  "data": [ ... ],
+  "totalCount": 24,
+  "page": 1,
+  "limit": 50
+}
+```
 
 **정렬**: `submitted_at DESC`
 
@@ -253,9 +325,10 @@ Announcement.create({
 
 ## 6. GET /api/admin/announcements
 
+- Query: `page`, `limit` — 공통 페이지네이션 규약 따름
 - 정렬: `created_at DESC`
 - include: created_by → name
-- 응답 200: 위 형태 객체 배열
+- 응답 200: `{ data: [...], totalCount, page, limit }` 형태. `data` 항목은 POST 응답과 동일.
 
 ## 7. DELETE /api/admin/announcements/:id
 
@@ -267,7 +340,8 @@ Announcement.create({
 ## 8. GET /api/announcements (공개)
 
 - 라우트 핸들러 시작에 `getTokenFromCookie(req)` 검증 → 없으면 401.
-- 정렬·응답 형태는 admin 목록과 동일.
+- Query: `page`, `limit` — 공통 페이지네이션 규약 따름
+- 정렬·응답 형태는 admin 목록과 동일 (`{ data, totalCount, page, limit }`).
 
 ## 9. GET /api/announcements/:id (공개)
 
@@ -336,15 +410,17 @@ export async function resolveProcessYear(req: NextRequest): Promise<
 ## E2E 검증 (curl)
 
 1. admin 로그인 → 쿠키 저장
-2. mentee/mentor 회원 목록 200
-3. mentee/mentor 신청 목록 200 (year 생략 시 활성 cycle 사용)
-4. eligible 200 (mentees + mentors 풀)
-5. POST 공지 201
-6. GET admin 공지 목록 200
-7. DELETE 공지 200 + 재조회 시 사라짐
-8. mentee 로그인 → 공개 공지 GET 200, admin GET 403
-9. 비로그인 → 공개 공지 GET 401
-10. role 누락/오류 → 400
+2. mentee/mentor 회원 목록 200 (`{ data, totalCount, page, limit }` 형태 확인)
+3. `?page=2&limit=10` 으로 페이지 이동 → totalCount 일치, data 길이 ≤ limit
+4. mentee/mentor 신청 목록 200 (year 생략 시 활성 cycle 사용)
+5. eligible 200 (mentees + mentors 풀, 래퍼 없음)
+6. POST 공지 201
+7. GET admin 공지 목록 200
+8. DELETE 공지 200 + 재조회 시 사라짐
+9. mentee 로그인 → 공개 공지 GET 200, admin GET 403
+10. 비로그인 → 공개 공지 GET 401
+11. role 누락/오류 → 400
+12. `?limit=300` (상한 200 초과) → 400
 
 ## FE 핸드오프 메모
 
@@ -356,3 +432,4 @@ export async function resolveProcessYear(req: NextRequest): Promise<
 - `/announcements`, `/mentee/announcements`, `/mentor/announcements` mock 제거 → `GET /api/announcements`
 - `/[role]/announcements/[id]` → `GET /api/announcements/:id`
 - **응답 필드는 모두 카멜케이스** (snake_case 아님). 기존 mock의 `user_id` 등 snake 필드는 `userId`로 변경 필요. 응답에 type 정의 추가.
+- **배열형 응답은 페이지네이션 래퍼**: `users`, `applications`, `announcements` 응답이 `{ data, totalCount, page, limit }`. 기존 FE 클라이언트 페이지네이션을 서버 페이지네이션으로 교체해야 함 (page/limit 서버에 보내고 totalCount 로 totalPages 계산). `eligible` 만 단일 객체 응답.
