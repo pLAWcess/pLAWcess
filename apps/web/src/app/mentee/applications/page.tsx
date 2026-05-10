@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { EditButton, EditButtons } from '@/components/ui/EditButton';
+
 import ConcernCard from '@/components/concerns/ConcernCard';
-import { getActiveCycleSchedule, submitMenteeApplication, type CycleSchedule } from '@/lib/api';
+import { getActiveCycleSchedule, submitMenteeApplication, getBasicInfo, type CycleSchedule, type BasicInfoAdmission } from '@/lib/api';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -26,31 +26,24 @@ const STEPS = [
   { title: '지속적인 관리', desc: '정기적인 피드백과 관리를 통해 로스쿨 합격까지 함께합니다.' },
 ];
 
-type ApplicationData = {
-  가군1지망: string;
-  나군1지망: string;
-  추가요청: string;
-};
-
-const initialApplication: ApplicationData = {
-  가군1지망: '고려대학교 (일반전형)',
-  나군1지망: '서울대학교 (일반전형)',
-  추가요청: '-',
-};
-
 export default function ApplicationsPage() {
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
   const [activeSchedule, setActiveSchedule] = useState<CycleSchedule | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [appData, setAppData] = useState<ApplicationData>(initialApplication);
-  const [draft, setDraft] = useState<ApplicationData>(initialApplication);
-  const [isEditing, setIsEditing] = useState(false);
+  const [admission, setAdmission] = useState<BasicInfoAdmission | null>(null);
+  const [extraRequest, setExtraRequest] = useState('');
 
   useEffect(() => {
     getActiveCycleSchedule().then(setActiveSchedule).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!activeSchedule) return;
+    const year = `${activeSchedule.process_year}학년도`;
+    getBasicInfo(year).then((data) => setAdmission(data.admission)).catch(() => {});
+  }, [activeSchedule]);
 
   const isClosed = isDeadlinePassed(activeSchedule?.mentee_apply_end ?? null);
   const isNotRegistered = !activeSchedule || !activeSchedule.mentee_apply_end;
@@ -210,53 +203,57 @@ export default function ApplicationsPage() {
 
       {/* 신청서 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6">
           <h2 className="text-base font-semibold text-text-primary">pLAWcess 신청서</h2>
-          {isEditing
-            ? <EditButtons onCancel={() => setIsEditing(false)} onSave={() => { setAppData(draft); setIsEditing(false); }} />
-            : <EditButton onClick={() => { setDraft(appData); setIsEditing(true); }} />
-          }
         </div>
 
         <div className="space-y-6">
-          {/* 희망 로스쿨 */}
+          {/* 희망 로스쿨 — read-only, basic-info API */}
           <div>
             <p className="text-sm font-medium text-text-primary mb-3">희망 로스쿨</p>
-            <div className="grid grid-cols-2 gap-6">
-              {(['가군', '나군'] as const).map((group) => {
-                const key = group === '가군' ? '가군1지망' : '나군1지망';
-                return (
-                  <div key={group}>
-                    <p className="text-sm text-text-secondary mb-1">{group}</p>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={draft[key]}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="w-full border-b border-border-input bg-transparent text-sm text-brand font-medium py-1 focus:outline-none focus:border-brand"
-                      />
-                    ) : (
-                      <p className="text-sm text-brand font-medium">1지망: {appData[key]}</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {admission === null ? (
+              <p className="text-sm text-text-secondary">불러오는 중...</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-6">
+                {(['가', '나'] as const).map((group) => {
+                  const slot = admission[group];
+                  const preferred = admission.preferredGroup;
+                  const rank = preferred === null ? null : preferred === group ? '1순위' : '2순위';
+                  return (
+                    <div key={group}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm text-text-secondary">{group}군</p>
+                        {rank && (
+                          <span className={`text-xs font-medium ${rank === '1순위' ? 'text-brand' : 'text-text-secondary'}`}>
+                            {rank}
+                          </span>
+                        )}
+                      </div>
+                      {slot.school ? (
+                        <p className="text-sm text-brand font-medium">
+                          {slot.school}
+                          {slot.isSpecial && <span className="ml-1 text-xs text-text-secondary">(특별전형)</span>}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-text-secondary">기본정보에서 희망 학교를 먼저 입력해주세요.</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* 추가 요청사항 */}
           <div>
             <p className="text-sm font-medium text-text-primary mb-2">추가 요청사항</p>
-            {isEditing ? (
-              <textarea
-                value={draft['추가요청']}
-                onChange={(e) => setDraft((prev) => ({ ...prev, 추가요청: e.target.value }))}
-                rows={3}
-                className="w-full border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-              />
-            ) : (
-              <p className="text-sm text-text-secondary">{appData['추가요청']}</p>
-            )}
+            <textarea
+              value={extraRequest}
+              onChange={(e) => setExtraRequest(e.target.value)}
+              rows={3}
+              placeholder="관리자에게 전달하고 싶은 추가 요청사항을 입력해주세요."
+              className="w-full border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+            />
           </div>
         </div>
 

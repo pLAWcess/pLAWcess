@@ -13,8 +13,8 @@ export type PersonalInfo = {
 
 export type AdmissionEntry = { school: string; type: string };
 export type AdmissionInfo = {
-  가: { first: AdmissionEntry; second: AdmissionEntry };
-  나: { first: AdmissionEntry; second: AdmissionEntry };
+  가: AdmissionEntry;
+  나: AdmissionEntry;
 };
 
 export const emptyPersonalInfo: PersonalInfo = {
@@ -31,14 +31,8 @@ export const emptyPersonalInfo: PersonalInfo = {
 };
 
 export const emptyAdmissionInfo: AdmissionInfo = {
-  가: {
-    first: { school: '', type: '일반전형' },
-    second: { school: '', type: '일반전형' },
-  },
-  나: {
-    first: { school: '', type: '일반전형' },
-    second: { school: '', type: '일반전형' },
-  },
+  가: { school: '', type: '일반전형' },
+  나: { school: '', type: '일반전형' },
 };
 
 export type LawSchool = {

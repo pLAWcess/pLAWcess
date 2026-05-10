@@ -29,23 +29,23 @@ enum Gender {
 }
 
 enum AcademicStatus {
-  enrolled        // 재학
-  on_leave        // 휴학
-  graduated       // 졸업
-  completed       // 수료
-  expelled        // 제적
+  enrolled // 재학
+  on_leave // 휴학
+  graduated // 졸업
+  completed // 수료
+  expelled // 제적
 }
 
 enum MilitaryStatus {
-  completed       // 군필
-  not_completed   // 미필
-  not_applicable  // 해당없음 (여성 등)
+  completed // 군필
+  not_completed // 미필
+  not_applicable // 해당없음 (여성 등)
 }
 
 enum CareerGoal {
-  lawyer          // 변호사
-  prosecutor      // 검사
-  judge           // 판사
+  lawyer // 변호사
+  prosecutor // 검사
+  judge // 판사
 }
 
 enum AccountStatus {
@@ -69,18 +69,18 @@ enum ApplicationRole {
 /// MenteeRecord.record_status: draft/submitted 만 사용
 /// Application.application_status: submitted 이후 상태만 사용
 enum ApplicationStatus {
-  draft                // 작성 중 (임시저장)
-  submitted            // 제출 완료 — 이 시점부터 Application 생성
-  approved             // 승인
-  rejected             // 반려
-  revision_requested   // 보완 요청
+  draft // 작성 중 (임시저장)
+  submitted // 제출 완료 — 이 시점부터 Application 생성
+  approved // 승인
+  rejected // 반려
+  revision_requested // 보완 요청
 }
 
 enum MatchStatus {
-  suggested   // AI 추천 결과
-  draft       // 관리자 수동 수정 중
-  finalized   // 최종 확정
-  cancelled   // 취소
+  suggested // AI 추천 결과
+  draft // 관리자 수동 수정 중
+  finalized // 최종 확정
+  cancelled // 취소
 }
 
 // ================================================================
@@ -93,9 +93,9 @@ enum MatchStatus {
 //    - 탈퇴 시 Soft Delete + 개인 식별 정보 익명화
 // ----------------------------------------------------------------
 model User {
-  user_id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  login_id        String?         @unique @db.VarChar(50)
-  name            String          @db.VarChar(50)
+  user_id  String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  login_id String? @unique @db.VarChar(50)
+  name     String  @db.VarChar(50)
 
   // 신상 (시간 불변)
   birth_date      DateTime?       @db.Date
@@ -106,29 +106,29 @@ model User {
   student_id      String?         @db.VarChar(20)
 
   // 학부 (시간 불변)
-  undergrad_school_name      String? @db.VarChar(100)
-  undergrad_first_major      String? @db.VarChar(100)
-  undergrad_second_major     String? @db.VarChar(100)
-  undergrad_entry_year       Int?
-  undergrad_graduation_year  Int?
+  undergrad_school_name     String? @db.VarChar(100)
+  undergrad_first_major     String? @db.VarChar(100)
+  undergrad_second_major    String? @db.VarChar(100)
+  undergrad_entry_year      Int?
+  undergrad_graduation_year Int?
 
   // 계정
-  account_status  AccountStatus   @default(active)
-  current_role    CurrentRole     @default(none)
-  password_hash   String?         @db.VarChar(100)
+  account_status AccountStatus @default(active)
+  current_role   CurrentRole   @default(none)
+  password_hash  String?       @db.VarChar(100)
 
   // Soft Delete
-  is_deleted      Boolean         @default(false)
-  deleted_at      DateTime?
+  is_deleted Boolean   @default(false)
+  deleted_at DateTime?
 
-  created_at      DateTime        @default(now())
-  updated_at      DateTime        @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // relations
   mentee_records        MenteeRecord[]
   mentor_records        MentorRecord[]
   applications          Application[]
-  created_match_results MatchResult[] @relation("MatchCreatedBy")
+  created_match_results MatchResult[]  @relation("MatchCreatedBy")
   admin_memos           AdminMemo[]
 
   @@map("users")
@@ -141,72 +141,69 @@ model User {
 //    - submitted_at 제거 → Application.submitted_at 으로 통일
 // ----------------------------------------------------------------
 model MenteeRecord {
-  record_id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id               String            @db.Uuid
-  process_year          Int
+  record_id    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String @db.Uuid
+  process_year Int
 
   // 1단계: 기본정보
-  first_leet_year       Int?
-  has_leet_experience   Boolean           @default(false)
-  leet_exam_years       Json?             // [2023, 2024] — 표시용, 검색 안 함
-  has_law_class         Boolean           @default(false)
-  law_class_subjects    Json?             // ["민법", "형법"] — 표시용, 검색 안 함
+  first_leet_year     Int?
+  has_leet_experience Boolean @default(false)
+  leet_exam_years     Json? // [2023, 2024] — 표시용, 검색 안 함
+  has_law_class       Boolean @default(false)
+  law_class_subjects  Json? // ["민법", "형법"] — 표시용, 검색 안 함
 
   // 2단계: 정량
-  gpa                       Decimal?      @db.Decimal(3, 2)  // 전체 평점 (매칭 알고리즘용)
-  gpa_major                 Decimal?      @db.Decimal(3, 2)  // 전공 평점
-  gpa_converted             Decimal?      @db.Decimal(5, 2)  // 환산점수
+  gpa           Decimal? @db.Decimal(3, 2) // 전체 평점 (매칭 알고리즘용)
+  gpa_major     Decimal? @db.Decimal(3, 2) // 전공 평점
+  gpa_converted Decimal? @db.Decimal(5, 2) // 환산점수
 
-  leet_score                Decimal?      @db.Decimal(5, 2)  // 표준점수 합계 (매칭 알고리즘용)
-  leet_verbal_raw           Int?                             // 언어이해 원점수
-  leet_verbal_standard      Int?                             // 언어이해 표준점수
-  leet_verbal_percentile    Decimal?      @db.Decimal(5, 2)  // 언어이해 백분위
-  leet_reasoning_raw        Int?                             // 추리논증 원점수
-  leet_reasoning_standard   Int?                             // 추리논증 표준점수
-  leet_reasoning_percentile Decimal?      @db.Decimal(5, 2)  // 추리논증 백분위
+  leet_score                Decimal? @db.Decimal(5, 2) // 표준점수 합계 (매칭 알고리즘용)
+  leet_verbal_raw           Int? // 언어이해 원점수
+  leet_verbal_standard      Int? // 언어이해 표준점수
+  leet_verbal_percentile    Decimal? @db.Decimal(5, 2) // 언어이해 백분위
+  leet_reasoning_raw        Int? // 추리논증 원점수
+  leet_reasoning_standard   Int? // 추리논증 표준점수
+  leet_reasoning_percentile Decimal? @db.Decimal(5, 2) // 추리논증 백분위
 
-  toeic_score               Int?
-  toefl_score               Int?
-  teps_score                Int?
+  toeic_score Int?
+  toefl_score Int?
+  teps_score  Int?
 
-  // 희망 로스쿨 — 가/나 군 × 1·2지망 4슬롯, 슬롯별 학교 + 특별전형 여부
-  target_school_ga_first    String?       @db.VarChar(100)  // 가군 1지망
-  is_special_ga_first       Boolean       @default(false)
-  target_school_ga_second   String?       @db.VarChar(100)  // 가군 2지망
-  is_special_ga_second      Boolean       @default(false)
-  target_school_na_first    String?       @db.VarChar(100)  // 나군 1지망
-  is_special_na_first       Boolean       @default(false)
-  target_school_na_second   String?       @db.VarChar(100)  // 나군 2지망
-  is_special_na_second      Boolean       @default(false)
+  // 희망 로스쿨 — 가/나군 단일 슬롯, 슬롯별 학교 + 특별전형 여부
+  target_school_ga String? @db.VarChar(100) // 가군
+  is_special_ga    Boolean @default(false)
+  target_school_na String? @db.VarChar(100) // 나군
+  is_special_na    Boolean @default(false)
+  preferred_group  String? @db.VarChar(2)   // 1순위 군 ("가" or "나")
 
   // 3단계: 자소서·정성 (사용자 직접 입력)
-  qualitative_activities Json?    // { volunteer, conference, thesis, club, external }
-  core_keywords          String?  @db.VarChar(500)
-  story_summary          String?  @db.Text
-  career_goal            CareerGoal?  // 변호사 / 검사 / 판사 (정성 대시보드 선택)
+  qualitative_activities Json? // { volunteer, conference, thesis, club, external }
+  core_keywords          String?     @db.VarChar(500)
+  story_summary          String?     @db.Text
+  career_goal            CareerGoal? // 변호사 / 검사 / 판사 (정성 대시보드 선택)
 
   // AI 분석 결과 (LLM Output)
-  star_analysis          Json?    // STAR 구조화 결과 — 단일 활동 분석 결과 누적
-  ai_story_outline       Json?    // AI 추천 자소서 흐름: { intro, body: { label, text }[], conclusion }
-  ai_keywords            Json?    // KeywordCount[] — 의미 병합·집계된 상위 키워드
-  is_ai_analyzed         Boolean  @default(false) // 통합 분석 완료 여부
-  ai_analyzed_at         DateTime?               // 통합 분석 완료 시각
-  ai_summary_hash        String?  @db.VarChar(64) // 통합 분석(키워드+자소서) 캐시 hash
-  star_input_hashes      Json?    // 활동별 단일 STAR 분석 캐시: { "0": hash, "1": hash, ... }
+  star_analysis     Json? // STAR 구조화 결과 — 단일 활동 분석 결과 누적
+  ai_story_outline  Json? // AI 추천 자소서 흐름: { intro, body: { label, text }[], conclusion }
+  ai_keywords       Json? // KeywordCount[] — 의미 병합·집계된 상위 키워드
+  is_ai_analyzed    Boolean   @default(false) // 통합 분석 완료 여부
+  ai_analyzed_at    DateTime? // 통합 분석 완료 시각
+  ai_summary_hash   String?   @db.VarChar(64) // 통합 분석(키워드+자소서) 캐시 hash
+  star_input_hashes Json? // 활동별 단일 STAR 분석 캐시: { "0": hash, "1": hash, ... }
 
   // 4단계: 기타 고민
-  strengths_weaknesses  String?           @db.Text
-  desired_mentor        String?           @db.Text
+  strengths_weaknesses String? @db.Text
+  desired_mentor       String? @db.Text
 
   // 신청 시점 학적 스냅샷
-  academic_status       AcademicStatus?
+  academic_status AcademicStatus?
 
   // 작성 상태 (draft ↔ submitted 만 사용)
-  record_status         ApplicationStatus @default(draft)
-  current_step          Int               @default(1) @db.SmallInt  // 1~4
+  record_status ApplicationStatus @default(draft)
+  current_step  Int               @default(1) @db.SmallInt // 1~4
 
-  created_at            DateTime          @default(now())
-  updated_at            DateTime          @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // relations
   user        User         @relation(fields: [user_id], references: [user_id])
@@ -224,38 +221,38 @@ model MenteeRecord {
 //    - mentoring_fields → MentorField 테이블로 분리
 // ----------------------------------------------------------------
 model MentorRecord {
-  record_id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id                    String            @db.Uuid
-  process_year               Int
+  record_id    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String @db.Uuid
+  process_year Int
 
-  leet_score                 Decimal?          @db.Decimal(5, 2)
-  gpa                        Decimal?          @db.Decimal(3, 2)
+  leet_score                 Decimal? @db.Decimal(5, 2)
+  gpa                        Decimal? @db.Decimal(3, 2)
   leet_exam_year             Int?
-  has_law_class              Boolean           @default(false)
-  law_class_subjects         Json?             // 표시용, 검색 안 함
-  personal_statement_summary String?           @db.Text
-  strengths_weaknesses       String?           @db.Text
-  career_goal                String?           @db.Text
-  is_special_admission       Boolean           @default(false)
+  has_law_class              Boolean  @default(false)
+  law_class_subjects         Json? // 표시용, 검색 안 함
+  personal_statement_summary String?  @db.Text
+  strengths_weaknesses       String?  @db.Text
+  career_goal                String?  @db.Text
+  is_special_admission       Boolean  @default(false)
 
   // 멘토 본인 로스쿨 정보 (cycle 시점 기준)
-  lawschool_name             String?           @db.VarChar(100)  // 소속 로스쿨
-  lawschool_grade            Int?                                 // 기수 (입학년도)
+  lawschool_name  String? @db.VarChar(100) // 소속 로스쿨
+  lawschool_grade Int? // 기수 (입학년도)
 
   // 신청 시점 학적 스냅샷 (멘토 본인의 로스쿨 학적)
-  academic_status            AcademicStatus?
+  academic_status AcademicStatus?
 
   // 작성 상태
-  record_status              ApplicationStatus @default(draft)
+  record_status ApplicationStatus @default(draft)
 
-  created_at                 DateTime          @default(now())
-  updated_at                 DateTime          @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // relations
-  user            User                  @relation(fields: [user_id], references: [user_id])
-  applied_schools MentorAppliedSchool[]  // 분리된 테이블
-  mentoring_fields MentorField[]         // 분리된 테이블
-  application     Application?
+  user             User                  @relation(fields: [user_id], references: [user_id])
+  applied_schools  MentorAppliedSchool[] // 분리된 테이블
+  mentoring_fields MentorField[] // 분리된 테이블
+  application      Application?
 
   @@unique([user_id, process_year])
   @@map("mentor_records")
@@ -267,11 +264,11 @@ model MentorRecord {
 //      매칭 알고리즘에서 "멘티 희망학교 = 멘토 지원학교" 비교 시 사용
 // ----------------------------------------------------------------
 model MentorAppliedSchool {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  record_id   String      @db.Uuid
-  school_name String      @db.VarChar(100)
-  group_type  String      @db.VarChar(10)   // "가군" | "나군"
-  is_admitted Boolean     @default(false)   // 합격 여부
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  record_id   String  @db.Uuid
+  school_name String  @db.VarChar(100)
+  group_type  String  @db.VarChar(10) // "가군" | "나군"
+  is_admitted Boolean @default(false) // 합격 여부
 
   mentor_record MentorRecord @relation(fields: [record_id], references: [record_id])
 
@@ -286,7 +283,7 @@ model MentorAppliedSchool {
 model MentorField {
   id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   record_id String @db.Uuid
-  field     String @db.VarChar(50)  // "자소서" | "면접" | "학교선택" | "스펙관리" 등
+  field     String @db.VarChar(50) // "자소서" | "면접" | "학교선택" | "스펙관리" 등
 
   mentor_record MentorRecord @relation(fields: [record_id], references: [record_id])
 
@@ -301,31 +298,31 @@ model MentorField {
 //    - application_status: submitted 이후 상태만 사용
 // ----------------------------------------------------------------
 model Application {
-  application_id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id               String            @db.Uuid
-  process_year          Int
-  role                  ApplicationRole
-  application_status    ApplicationStatus @default(submitted)
+  application_id     String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String            @db.Uuid
+  process_year       Int
+  role               ApplicationRole
+  application_status ApplicationStatus @default(submitted)
 
   // role에 따라 하나만 채워짐
   // CHECK 제약조건은 migration.sql에 수동 추가 필요 (아래 주석 참고)
-  mentee_record_id      String?           @unique @db.Uuid
-  mentor_record_id      String?           @unique @db.Uuid
+  mentee_record_id String? @unique @db.Uuid
+  mentor_record_id String? @unique @db.Uuid
 
   // 타임스탬프 — 심사 흐름별 시각 기록
-  submitted_at          DateTime?         // 제출 시각 (MenteeRecord에서 제거하고 여기서만 관리)
+  submitted_at          DateTime? // 제출 시각 (MenteeRecord에서 제거하고 여기서만 관리)
   approved_at           DateTime?
   rejected_at           DateTime?
   revision_requested_at DateTime?
 
-  created_at            DateTime          @default(now())
-  updated_at            DateTime          @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // relations
-  user          User          @relation(fields: [user_id], references: [user_id])
-  mentee_record MenteeRecord? @relation(fields: [mentee_record_id], references: [record_id])
-  mentor_record MentorRecord? @relation(fields: [mentor_record_id], references: [record_id])
-  admin_memos   AdminMemo[]
+  user                 User          @relation(fields: [user_id], references: [user_id])
+  mentee_record        MenteeRecord? @relation(fields: [mentee_record_id], references: [record_id])
+  mentor_record        MentorRecord? @relation(fields: [mentor_record_id], references: [record_id])
+  admin_memos          AdminMemo[]
   mentee_match_results MatchResult[] @relation("MenteeApplication")
   mentor_match_results MatchResult[] @relation("MentorApplication")
 
@@ -349,10 +346,10 @@ model MatchResult {
   ai_reason             String?     @db.Text
   match_status          MatchStatus @default(suggested)
   is_finalized          Boolean     @default(false)
-  created_by            String?     @db.Uuid   // 생성한 관리자 ID
+  created_by            String?     @db.Uuid // 생성한 관리자 ID
 
-  created_at            DateTime    @default(now())
-  updated_at            DateTime    @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // relations
   mentee_application Application @relation("MenteeApplication", fields: [mentee_application_id], references: [application_id])
@@ -367,12 +364,12 @@ model MatchResult {
 //    - 신청 건에 대한 관리자 메모
 // ----------------------------------------------------------------
 model AdminMemo {
-  memo_id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  application_id String      @db.Uuid
-  admin_user_id  String      @db.Uuid
-  memo_content   String      @db.Text
-  created_at     DateTime    @default(now())
-  updated_at     DateTime    @updatedAt
+  memo_id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id String   @db.Uuid
+  admin_user_id  String   @db.Uuid
+  memo_content   String   @db.Text
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   // relations
   application Application @relation(fields: [application_id], references: [application_id])
@@ -389,8 +386,8 @@ model AdminMemo {
 //    - 모든 날짜 필드 nullable: admin이 항목별로 부분 입력 가능
 // ----------------------------------------------------------------
 model CycleSchedule {
-  process_year           Int      @id
-  is_active              Boolean  @default(false)
+  process_year Int     @id
+  is_active    Boolean @default(false)
 
   mentor_recruit_start   DateTime? @db.Date
   mentor_recruit_end     DateTime? @db.Date
@@ -402,8 +399,8 @@ model CycleSchedule {
   admission_result_start DateTime? @db.Date
   admission_result_end   DateTime? @db.Date
 
-  created_at             DateTime @default(now())
-  updated_at             DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("cycle_schedules")
 }
