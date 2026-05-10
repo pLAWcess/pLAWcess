@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
 
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 200;
 const MAX_TITLE = 100;
 
 type AnnouncementRow = {
@@ -22,22 +20,6 @@ function toResponse(row: AnnouncementRow) {
     createdAt: row.created_at.toISOString(),
     author: row.created_by.name,
   };
-}
-
-function parsePagination(req: NextRequest):
-  | { page: number; limit: number; error?: undefined }
-  | { error: NextResponse; page?: undefined; limit?: undefined } {
-  const pageRaw = req.nextUrl.searchParams.get("page");
-  const limitRaw = req.nextUrl.searchParams.get("limit");
-  const page = pageRaw ? parseInt(pageRaw, 10) : 1;
-  const limit = limitRaw ? parseInt(limitRaw, 10) : DEFAULT_LIMIT;
-  if (!Number.isInteger(page) || page < 1) {
-    return { error: NextResponse.json({ error: "page 가 올바르지 않습니다." }, { status: 400 }) };
-  }
-  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
-    return { error: NextResponse.json({ error: `limit 은 1~${MAX_LIMIT} 사이여야 합니다.` }, { status: 400 }) };
-  }
-  return { page, limit };
 }
 
 export async function POST(req: NextRequest) {
@@ -71,30 +53,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(toResponse(created), { status: 201 });
-}
-
-export async function GET(req: NextRequest) {
-  const guard = requireAdmin(req);
-  if (guard.error) return guard.error;
-
-  const pg = parsePagination(req);
-  if (pg.error) return pg.error;
-  const { page, limit } = pg;
-
-  const [rows, totalCount] = await prisma.$transaction([
-    prisma.announcement.findMany({
-      orderBy: { created_at: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: { created_by: { select: { name: true } } },
-    }),
-    prisma.announcement.count(),
-  ]);
-
-  return NextResponse.json({
-    data: rows.map(toResponse),
-    totalCount,
-    page,
-    limit,
-  });
 }
