@@ -1,7 +1,11 @@
 import { createHash } from "crypto";
-import { PDFParse } from "pdf-parse";
-import mammoth from "mammoth";
-import { parseOffice, type OfficeContentNode, type SlideMetadata } from "officeparser";
+// 타입만 import — 런타임에 모듈을 load하지 않는다.
+import type { OfficeContentNode, SlideMetadata } from "officeparser";
+
+// 무거운 추출 라이브러리(pdf-parse / mammoth / officeparser)는 dynamic import로 lazy load.
+// GET·JSON PATCH 같은 경로에선 이 모듈을 import만 하고 추출 함수를 호출하지 않으므로,
+// 라이브러리 초기화(특히 officeparser → tesseract.js의 worker/WASM)가 일어나지 않는다.
+// Vercel cold start에서 모듈 로드 실패로 500이 나는 문제를 방지.
 
 export type DocumentKind = "pdf" | "docx" | "pptx";
 export type ImageKind = "jpg" | "png";
@@ -29,6 +33,7 @@ export function sha256Hex(buffer: Uint8Array): string {
 // ----------------------------------------------------------------
 
 async function extractPdf(buffer: Uint8Array): Promise<string> {
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   try {
     const result = await parser.getText();
@@ -40,6 +45,7 @@ async function extractPdf(buffer: Uint8Array): Promise<string> {
 }
 
 async function extractDocx(buffer: Uint8Array): Promise<string> {
+  const { default: mammoth } = await import("mammoth");
   // mammoth는 Buffer를 기대 — Uint8Array를 Buffer로 감싸 전달
   const buf = Buffer.from(buffer);
   const result = await mammoth.extractRawText({ buffer: buf });
@@ -47,6 +53,7 @@ async function extractDocx(buffer: Uint8Array): Promise<string> {
 }
 
 async function extractPptx(buffer: Uint8Array): Promise<string> {
+  const { parseOffice } = await import("officeparser");
   const buf = Buffer.from(buffer);
   const ast = await parseOffice(buf);
   // Top-level content node 중 SlideMetadata 보유 노드를 슬라이드 단위로 헤더 부여
