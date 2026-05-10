@@ -712,8 +712,8 @@ export async function listAdminAnnouncements(
 }
 
 export async function createAnnouncement(
-  body: { title: string; body: string },
-): Promise<AnnouncementRow> {
+  body: { title: string; body: string; isPublished?: boolean },
+): Promise<AdminAnnouncementRow> {
   const res = await fetch(`${API_BASE}/api/admin/announcements`, {
     method: "POST", headers: headers(), credentials: "include",
     body: JSON.stringify(body),
@@ -723,7 +723,7 @@ export async function createAnnouncement(
 
 export async function updateAnnouncement(
   id: string,
-  body: { title?: string; body?: string; isPublished?: boolean; isPinned?: boolean },
+  body: { title?: string; body?: string; isPublished?: boolean; isPinned?: boolean; restore?: true },
 ): Promise<AdminAnnouncementRow> {
   const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, {
     method: "PATCH", headers: headers(), credentials: "include",
@@ -739,6 +739,16 @@ export async function deleteAnnouncement(id: string): Promise<void> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? "공지사항 삭제 실패");
+  }
+}
+
+export async function hardDeleteAnnouncement(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/announcements/${id}?permanent=true`, {
+    method: "DELETE", headers: headers(), credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "공지사항 영구삭제 실패");
   }
 }
 

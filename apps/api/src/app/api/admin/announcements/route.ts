@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   if (guard.error) return guard.error;
   const adminId = guard.payload.user_id;
 
-  let body: { title?: unknown; body?: unknown };
+  let body: { title?: unknown; body?: unknown; isPublished?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
   const title = typeof body.title === "string" ? body.title.trim() : "";
   const content = typeof body.body === "string" ? body.body.trim() : "";
+  const isPublished = body.isPublished === false ? false : true;
 
   if (title.length < 1 || title.length > MAX_TITLE) {
     return NextResponse.json(
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   const created = await prisma.announcement.create({
-    data: { title, body: content, created_by_user_id: adminId },
+    data: { title, body: content, created_by_user_id: adminId, is_published: isPublished },
     include: { created_by: { select: { name: true } } },
   });
 

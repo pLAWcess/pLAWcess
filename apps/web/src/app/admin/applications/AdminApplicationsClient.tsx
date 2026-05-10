@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   patchCycleSchedule, deleteCycleSchedule, createCycleSchedule, type CycleSchedule,
@@ -9,6 +9,7 @@ import {
   type AdminMenteeApplicationRow,
   type AdminMentorApplicationRow,
   type ApplicationStatusLabel,
+  type Paged,
 } from '@/lib/api';
 
 const STATUS_LABELS: Record<ApplicationStatusLabel, string> = {
@@ -77,17 +78,22 @@ function formatDateKo(iso: string | null): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
-type Props = { initialSchedules: CycleSchedule[] };
+type Props = {
+  initialSchedules: CycleSchedule[];
+  initialYear: number | null;
+  initialMenteeData: Paged<AdminMenteeApplicationRow> | null;
+  initialMentorData: Paged<AdminMentorApplicationRow> | null;
+};
 
-export default function AdminApplicationsClient({ initialSchedules }: Props) {
+export default function AdminApplicationsClient(props: Props) {
   return (
     <Suspense fallback={null}>
-      <ApplicationsPageContent initialSchedules={initialSchedules} />
+      <ApplicationsPageContent {...props} />
     </Suspense>
   );
 }
 
-function ApplicationsPageContent({ initialSchedules }: Props) {
+function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeData, initialMentorData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -340,6 +346,8 @@ function ApplicationsPageContent({ initialSchedules }: Props) {
           year={selectedYear}
           searchKeys={['name', 'studentId', 'major']}
           kindLabel="멘티"
+          initialData={initialMenteeData}
+          initialYear={initialYear}
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
             { label: '전공', value: a.major },
@@ -358,6 +366,8 @@ function ApplicationsPageContent({ initialSchedules }: Props) {
           year={selectedYear}
           searchKeys={['name', 'studentId', 'school']}
           kindLabel="멘토"
+          initialData={initialMentorData}
+          initialYear={initialYear}
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
             { label: '소속 학교', value: a.school ?? '-' },
@@ -407,6 +417,8 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   searchKeys,
   metaForModal,
   kindLabel,
+  initialData,
+  initialYear,
 }: {
   role: 'mentee' | 'mentor';
   year: number | null;
@@ -414,9 +426,11 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   searchKeys: (keyof T)[];
   metaForModal: (row: T) => { label: string; value: string }[];
   kindLabel: string;
+  initialData?: Paged<T> | null;
+  initialYear?: number | null;
 }) {
-  const [data, setData] = useState<T[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [data, setData] = useState<T[]>((initialData?.data ?? []) as T[]);
+  const [totalCount, setTotalCount] = useState(initialData?.totalCount ?? 0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -428,7 +442,15 @@ function ApplicationPanel<T extends AdminApplicationRow>({
 
   const editing = editingId ? data.find((r) => r.applicationId === editingId) ?? null : null;
 
+  const didInitRef = useRef(false);
+
   useEffect(() => {
+    if (!didInitRef.current && initialData != null && page === 1 && year === initialYear) {
+      didInitRef.current = true;
+      return;
+    }
+    didInitRef.current = true;
+
     let cancelled = false;
     async function load() {
       if (year == null) {

@@ -1,12 +1,100 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   listAdminAnnouncements,
+  createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  hardDeleteAnnouncement,
   type AdminAnnouncementRow,
 } from '@/lib/api';
+
+function CreateModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (created: AdminAnnouncementRow) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [isPublished, setIsPublished] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await createAnnouncement({ title: title.trim(), body: body.trim(), isPublished });
+      onCreated(created);
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '작성 실패');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-text-primary">공지사항 작성</h2>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors text-text-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-6 py-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              제목
+              <span className="ml-2 text-xs font-normal text-text-placeholder">{title.length}/100</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value.slice(0, 100))}
+              placeholder="공지사항 제목을 입력하세요"
+              className="px-3 py-2.5 text-sm border border-border-input rounded-md focus:outline-none focus:border-brand transition-colors"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-primary">본문</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="공지 본문을 입력하세요"
+              rows={8}
+              className="px-3 py-2.5 text-sm border border-border-input rounded-md focus:outline-none focus:border-brand transition-colors resize-none"
+            />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={!isPublished}
+              onChange={(e) => setIsPublished(!e.target.checked)}
+              className="w-4 h-4 rounded border-border-input accent-brand"
+            />
+            <span className="text-sm text-text-secondary">비공개로 게시</span>
+          </label>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+          <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50">
+            취소
+          </button>
+          <button onClick={handleSave} disabled={saving || !title.trim() || !body.trim()} className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50">
+            {saving ? '게시 중...' : (isPublished ? '게시' : '비공개로 게시')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function EditModal({
   target,
@@ -98,6 +186,12 @@ export default function AdminAnnouncementsManageClient({
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<AdminAnnouncementRow | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const creationOrder = useMemo(() => {
+    const sorted = [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return new Map(sorted.map((a, i) => [a.announcementId, i + 1]));
+  }, [list]);
 
   async function refresh() {
     setLoading(true);
@@ -136,6 +230,18 @@ export default function AdminAnnouncementsManageClient({
     }
   }
 
+  async function handleRestore(id: string) {
+    setDeletingId(id);
+    try {
+      const updated = await updateAnnouncement(id, { restore: true });
+      setList((prev) => prev.map((item) => item.announcementId === id ? updated : item));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '복원 실패');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('이 공지사항을 삭제할까요?')) return;
     setDeletingId(id);
@@ -152,8 +258,30 @@ export default function AdminAnnouncementsManageClient({
     }
   }
 
+  async function handleHardDelete(id: string) {
+    if (!confirm('영구삭제하면 복원할 수 없습니다. 계속할까요?')) return;
+    setDeletingId(id);
+    try {
+      await hardDeleteAnnouncement(id);
+      setList((prev) => prev.filter((item) => item.announcementId !== id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '영구삭제 실패');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <>
+    {showCreate && (
+      <CreateModal
+        onClose={() => setShowCreate(false)}
+        onCreated={(created) => {
+          setList((prev) => [created, ...prev]);
+          setShowCreate(false);
+        }}
+      />
+    )}
     {editTarget && (
       <EditModal
         target={editTarget}
@@ -165,9 +293,17 @@ export default function AdminAnnouncementsManageClient({
       />
     )}
     <div className="flex flex-col gap-8 w-full">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">공지사항 관리</h1>
-        <p className="mt-1 text-sm text-text-secondary">전체 공지사항을 확인하고 공개 여부를 관리합니다</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">공지사항 관리</h1>
+          <p className="mt-1 text-sm text-text-secondary">전체 공지사항을 확인하고 공개 여부를 관리합니다</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
+        >
+          + 공지 작성
+        </button>
       </div>
 
       <section className="bg-white border border-border rounded-xl px-8 py-6">
@@ -200,7 +336,26 @@ export default function AdminAnnouncementsManageClient({
                     <p className="mt-2 text-xs text-text-placeholder">
                       {a.author} · {new Date(a.createdAt).toLocaleDateString('ko-KR')} · 조회 {a.viewCount.toLocaleString()}
                     </p>
+                    <p className="mt-0.5 text-xs text-text-placeholder">#{creationOrder.get(a.announcementId)}</p>
                   </div>
+                  {isDeleted && (
+                    <div className="shrink-0 flex gap-2">
+                      <button
+                        onClick={() => handleRestore(a.announcementId)}
+                        disabled={deletingId === a.announcementId}
+                        className="text-xs border border-brand text-brand px-3 py-1.5 rounded-md hover:bg-brand-light transition-colors disabled:opacity-50"
+                      >
+                        복원
+                      </button>
+                      <button
+                        onClick={() => handleHardDelete(a.announcementId)}
+                        disabled={deletingId === a.announcementId}
+                        className="text-xs text-red-500 border border-red-200 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        영구삭제
+                      </button>
+                    </div>
+                  )}
                   {!isDeleted && (
                     <div className="shrink-0 flex gap-2">
                       <button
@@ -212,14 +367,14 @@ export default function AdminAnnouncementsManageClient({
                       <button
                         onClick={() => handleTogglePin(a)}
                         disabled={togglingId === a.announcementId}
-                        className={`text-xs border px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 ${a.isPinned ? 'border-brand text-brand hover:bg-brand-light' : 'border-border hover:bg-gray-50'}`}
+                        className={`text-xs border px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 min-w-[68px] text-center ${a.isPinned ? 'border-brand text-brand hover:bg-brand-light' : 'border-border hover:bg-gray-50'}`}
                       >
                         {a.isPinned ? '고정 해제' : '고정하기'}
                       </button>
                       <button
                         onClick={() => handleTogglePublish(a)}
                         disabled={togglingId === a.announcementId}
-                        className="text-xs border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        className="text-xs border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 min-w-[52px] text-center"
                       >
                         {a.isPublished ? '비공개' : '공개'}
                       </button>

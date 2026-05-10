@@ -44,7 +44,6 @@ const adminNavSections: NavSection[] = [
     section: '공지사항',
     items: [
       { label: '공지 목록', href: '/admin/announcements', exact: true },
-      { label: '공지 작성', href: '/admin/announcements/create', exact: true },
     ],
   },
 ];
@@ -87,7 +86,7 @@ export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarPro
       {isSections(config)
         ? config.map((section, i) => (
             <div key={section.section} className={`flex flex-col gap-1${i > 0 ? ' border-t border-border mt-2 pt-2' : ''}`}>
-              <p className="px-3 pt-3 pb-1 text-xs font-semibold text-text-placeholder uppercase tracking-wide">
+              <p className="px-3 pt-1 pb-1 text-xs font-semibold text-text-placeholder uppercase tracking-wide">
                 {section.section}
               </p>
               {section.items.map((item) => (
