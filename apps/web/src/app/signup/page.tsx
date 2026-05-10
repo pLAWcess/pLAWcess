@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import Footer from '@/components/layout/Footer';
 
 const API_BASE = '';
@@ -213,8 +214,8 @@ export default function SignupPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 shrink-0">
-        <Link href="/" className="text-brand font-bold text-lg tracking-tight">
-          pLAWcess
+        <Link href="/">
+          <Image src="/logo/puzzleserif_logo.png" alt="pLAWcess" width={120} height={39} priority />
         </Link>
       </header>
       <main className="flex-1 bg-page-bg flex justify-center items-start px-4 pt-12 pb-20">

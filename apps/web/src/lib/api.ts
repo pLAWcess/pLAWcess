@@ -541,8 +541,16 @@ export type AnnouncementRow = {
   announcementId: string;
   title: string;
   body: string;
+  isPinned: boolean;
+  viewCount: number;
   createdAt: string;
+  updatedAt: string;
   author: string;
+};
+
+export type AdminAnnouncementRow = AnnouncementRow & {
+  isPublished: boolean;
+  deletedAt: string | null;
 };
 
 function buildPaging(page?: number, limit?: number): string {
@@ -691,7 +699,7 @@ export async function getEligibleMatchingPool(year?: number): Promise<EligiblePo
 
 export async function listAdminAnnouncements(
   page?: number, limit?: number,
-): Promise<Paged<AnnouncementRow>> {
+): Promise<Paged<AdminAnnouncementRow>> {
   const params = new URLSearchParams();
   if (page !== undefined) params.set("page", String(page));
   if (limit !== undefined) params.set("limit", String(limit));
@@ -704,13 +712,24 @@ export async function listAdminAnnouncements(
 }
 
 export async function createAnnouncement(
-  body: { title: string; body: string },
-): Promise<AnnouncementRow> {
+  body: { title: string; body: string; isPublished?: boolean },
+): Promise<AdminAnnouncementRow> {
   const res = await fetch(`${API_BASE}/api/admin/announcements`, {
     method: "POST", headers: headers(), credentials: "include",
     body: JSON.stringify(body),
   });
   return jsonOrError(res, "공지사항 작성 실패");
+}
+
+export async function updateAnnouncement(
+  id: string,
+  body: { title?: string; body?: string; isPublished?: boolean; isPinned?: boolean; restore?: true },
+): Promise<AdminAnnouncementRow> {
+  const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, {
+    method: "PATCH", headers: headers(), credentials: "include",
+    body: JSON.stringify(body),
+  });
+  return jsonOrError(res, "공지사항 수정 실패");
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {
@@ -720,6 +739,16 @@ export async function deleteAnnouncement(id: string): Promise<void> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? "공지사항 삭제 실패");
+  }
+}
+
+export async function hardDeleteAnnouncement(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/announcements/${id}?permanent=true`, {
+    method: "DELETE", headers: headers(), credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "공지사항 영구삭제 실패");
   }
 }
 
