@@ -380,3 +380,81 @@
   - 활성 cycle 있음: 단일 행 객체
   - 활성 cycle 없음: `null`
 - 401: 로그인 안 됨
+
+
+## #176 Admin 페이지 API
+
+### 공통 페이지네이션 래퍼
+
+배열형 응답은 모두 `{ data, totalCount, page, limit }` 형태. Query 파라미터 `?page=1&limit=50` (기본). `limit` 상한 200.
+
+### `GET /api/admin/users`
+
+회원관리 — 멘티/멘토 회원 목록.
+
+- 권한: admin
+- Query: `role=mentee|mentor` (필수), `page`, `limit`
+- Response 200: 페이지네이션 래퍼. `data` 항목은 멘티/멘토 역할에 따라 다름.
+  - 멘티: `{ userId, name, studentId, firstMajor, secondMajor, phone, accountStatus }`
+  - 멘토: `{ userId, name, studentId, lawSchool, cohort, phone, accountStatus }` — 가장 최근 MentorRecord 기준.
+- 400: role 누락/오류, page/limit 오류
+
+### `GET /api/admin/applications`
+
+신청관리 — 멘티/멘토 신청 목록.
+
+- 권한: admin
+- Query: `role=mentee|mentor` (필수), `year=YYYY` (옵션, 기본 활성 cycle), `page`, `limit`
+- Response 200: 페이지네이션 래퍼. `data` 항목:
+  - 공통: `{ applicationId, name, studentId, status, memo, submittedAt }`
+  - 멘티: `+ major`, 멘토: `+ school`
+- `status` 라벨 매핑: `submitted→pending` / `approved→approved` / `rejected→rejected` / `revision_requested→revision`
+- 400: role 누락/오류, year 형식, 활성 cycle 없음
+
+### `GET /api/admin/matchings/eligible`
+
+매칭관리 — `application_status='approved'` 멘티+멘토 풀.
+
+- 권한: admin
+- Query: `year=YYYY` (옵션, 기본 활성 cycle)
+- Response 200 (페이지네이션 미적용):
+  ```json
+  {
+    "year": 2026,
+    "mentees": [{ "applicationId", "userId", "name", "studentId", "major", "accountStatus" }],
+    "mentors": [{ "applicationId", "userId", "name", "studentId", "lawSchool", "accountStatus" }]
+  }
+  ```
+- 400: 활성 cycle 없고 year 미지정
+
+### `POST /api/admin/announcements`
+
+- 권한: admin
+- Body: `{ title: string (1~100자), body: string (1자 이상) }`
+- Response 201: `{ announcementId, title, body, createdAt, author }`
+- 400: 검증 실패
+
+### `GET /api/admin/announcements`
+
+- 권한: admin
+- Query: `page`, `limit`
+- Response 200: 페이지네이션 래퍼. `data` 항목 = POST 응답 형태.
+
+### `DELETE /api/admin/announcements/:id`
+
+- 권한: admin
+- Response 200: `{ "success": true }`
+- 404: 없는 id
+
+### `GET /api/announcements`
+
+- 권한: 로그인 필수 (멘티/멘토/admin)
+- Query: `page`, `limit`
+- Response 200: 페이지네이션 래퍼. `data` 항목 = POST 응답 형태.
+- 401: 비로그인
+
+### `GET /api/announcements/:id`
+
+- 권한: 로그인 필수
+- Response 200: `{ announcementId, title, body, createdAt, author }`
+- 401, 404
