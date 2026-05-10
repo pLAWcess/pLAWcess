@@ -19,6 +19,7 @@ const menteeNavItems: NavItem[] = [
   { label: '프로세스 신청', href: '/mentee/applications' },
   { label: '합격 아카이브', href: '/mentee/archive' },
   { label: '공지사항', href: '/mentee/announcements' },
+  { label: '설정', href: '/settings', exact: true },
 ];
 
 const mentorNavItems: NavItem[] = [
@@ -28,6 +29,7 @@ const mentorNavItems: NavItem[] = [
   { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
   { label: '합격 아카이브', href: '/mentor/archive' },
   { label: '공지사항', href: '/mentor/announcements' },
+  { label: '설정', href: '/settings', exact: true },
 ];
 
 const adminNavSections: NavSection[] = [
@@ -44,6 +46,12 @@ const adminNavSections: NavSection[] = [
     section: '공지사항',
     items: [
       { label: '공지 목록', href: '/admin/announcements', exact: true },
+    ],
+  },
+  {
+    section: '계정',
+    items: [
+      { label: '설정', href: '/settings', exact: true },
     ],
   },
 ];
@@ -82,7 +90,7 @@ export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarPro
   const config: NavConfig = isAdmin ? adminNavSections : isMentor ? mentorNavItems : menteeNavItems;
 
   const navContent = (
-    <nav className="flex flex-col gap-1 px-2">
+    <nav className="flex flex-col gap-1 px-2 pb-2">
       {isSections(config)
         ? config.map((section, i) => (
             <div key={section.section} className={`flex flex-col gap-1${i > 0 ? ' border-t border-border mt-2 pt-2' : ''}`}>

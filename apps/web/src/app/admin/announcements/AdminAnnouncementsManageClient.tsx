@@ -177,8 +177,10 @@ function EditModal({
 
 export default function AdminAnnouncementsManageClient({
   initialList,
+  openCreate = false,
 }: {
   initialList: AdminAnnouncementRow[];
+  openCreate?: boolean;
 }) {
   const [list, setList] = useState<AdminAnnouncementRow[]>(initialList);
   const [loading, setLoading] = useState(false);
@@ -186,12 +188,21 @@ export default function AdminAnnouncementsManageClient({
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<AdminAnnouncementRow | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(openCreate);
+  const [filter, setFilter] = useState<'all' | 'published' | 'unpublished' | 'deleted'>('all');
 
   const creationOrder = useMemo(() => {
     const sorted = [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return new Map(sorted.map((a, i) => [a.announcementId, i + 1]));
   }, [list]);
+
+  const filteredList = useMemo(() => {
+    if (filter === 'all') return list;
+    if (filter === 'published') return list.filter((a) => a.isPublished && !a.deletedAt);
+    if (filter === 'unpublished') return list.filter((a) => !a.isPublished && !a.deletedAt);
+    if (filter === 'deleted') return list.filter((a) => !!a.deletedAt);
+    return list;
+  }, [list, filter]);
 
   async function refresh() {
     setLoading(true);
@@ -298,12 +309,34 @@ export default function AdminAnnouncementsManageClient({
           <h1 className="text-2xl font-bold text-text-primary">공지사항 관리</h1>
           <p className="mt-1 text-sm text-text-secondary">전체 공지사항을 확인하고 공개 여부를 관리합니다</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
-        >
-          + 공지 작성
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
+            {([
+              { value: 'all', label: '전체' },
+              { value: 'published', label: '공개' },
+              { value: 'unpublished', label: '비공개' },
+              { value: 'deleted', label: '삭제됨' },
+            ] as const).map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setFilter(value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  filter === value
+                    ? 'bg-white text-text-primary shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
+          >
+            + 공지 작성
+          </button>
+        </div>
       </div>
 
       <section className="bg-white border border-border rounded-xl px-8 py-6">
@@ -311,11 +344,11 @@ export default function AdminAnnouncementsManageClient({
           <p className="py-6 text-sm text-text-secondary">로딩 중...</p>
         ) : error ? (
           <p className="py-6 text-sm text-red-500">{error}</p>
-        ) : list.length === 0 ? (
+        ) : filteredList.length === 0 ? (
           <p className="py-6 text-sm text-text-secondary">공지사항이 없습니다.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {list.map((a) => {
+            {filteredList.map((a) => {
               const isDeleted = !!a.deletedAt;
               return (
                 <li key={a.announcementId} className={`py-5 flex items-start justify-between gap-4 ${isDeleted ? 'opacity-40' : ''}`}>

@@ -109,12 +109,24 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
   const [selectedYear, setSelectedYear] = useState<number | null>(
     initialSchedules.length > 0 ? initialSchedules[0].process_year : null
   );
+  const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [draft, setDraft] = useState<ScheduleDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [addingYear, setAddingYear] = useState(false);
 
   const current = schedules.find((s) => s.process_year === selectedYear) ?? null;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
+        setYearDropdownOpen(false);
+      }
+    }
+    if (yearDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [yearDropdownOpen]);
 
   const dateErrors = useMemo(() => {
     if (!draft) return {};
@@ -168,7 +180,7 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
 
   async function handleDelete() {
     if (!selectedYear || !current) return;
-    if (!confirm(`${selectedYear}년 스케줄을 삭제할까요?`)) return;
+    if (!confirm(`${selectedYear}년 스케줄을 정말 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
     try {
       await deleteCycleSchedule(selectedYear);
       const next = schedules.filter((s) => s.process_year !== selectedYear);
@@ -204,58 +216,75 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
           <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 연도 선택 */}
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedYear ?? ''}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="px-4 py-2 pr-8 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
+          {/* 연도 선택 커스텀 드롭다운 */}
+          <div className="relative" ref={yearDropdownRef}>
+            <button
+              onClick={() => setYearDropdownOpen((o) => !o)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 transition-colors"
             >
-              {schedules.map((s) => (
-                <option key={s.process_year} value={s.process_year}>{s.process_year}년</option>
-              ))}
-            </select>
-            {current?.is_active && (
-              <span className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />활성
+              <span className="text-sm font-semibold text-text-primary">
+                {selectedYear != null ? `${selectedYear}년` : '연도'}
               </span>
+              {current?.is_active && (
+                <span className="flex items-center gap-1 text-xs font-medium text-green-600">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />활성
+                </span>
+              )}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-text-placeholder transition-transform ${yearDropdownOpen ? 'rotate-180' : ''}`}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {yearDropdownOpen && schedules.length > 0 && (
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-border rounded-lg shadow-md overflow-hidden min-w-25">
+                {schedules.map((s) => (
+                  <button
+                    key={s.process_year}
+                    onClick={() => { setSelectedYear(s.process_year); setYearDropdownOpen(false); }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                      s.process_year === selectedYear
+                        ? 'bg-brand-light text-brand font-semibold'
+                        : 'text-text-primary hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>{s.process_year}년</span>
+                    {s.is_active && <span className="w-1.5 h-1.5 bg-green-500 rounded-full ml-2" />}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
-          {/* 활성화 / 비활성화 토글 */}
+
+          {/* 구분선 */}
+          <div className="w-px h-5 bg-border" />
+
+          {/* 액션 버튼 그룹 */}
           {current && (
-            current.is_active ? (
-              <button
-                onClick={toggleActive}
-                className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
-              >
-                노출 비활성화
-              </button>
-            ) : (
-              <button
-                onClick={toggleActive}
-                className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
-              >
-                이 일정을 멘티/멘토에게 노출
-              </button>
-            )
+            <button
+              onClick={toggleActive}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                current.is_active
+                  ? 'text-text-secondary border-border hover:bg-gray-50'
+                  : 'text-brand border-brand/40 bg-brand/5 hover:bg-brand/10'
+              }`}
+            >
+              {current.is_active ? '노출 끄기' : '노출 켜기'}
+            </button>
           )}
-          {/* 연도 삭제 */}
+          <button
+            onClick={handleAddYear}
+            disabled={addingYear}
+            className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            + 새 연도
+          </button>
           {current && (
             <button
               onClick={handleDelete}
-              className="px-3 py-2 text-xs text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
             >
               연도 삭제
             </button>
           )}
-          {/* 새 연도 추가 */}
-          <button
-            onClick={handleAddYear}
-            disabled={addingYear}
-            className="px-3 py-2 text-xs text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            + 새 연도 추가
-          </button>
         </div>
       </div>
 
@@ -517,17 +546,21 @@ function ApplicationPanel<T extends AdminApplicationRow>({
             className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-          className="px-3 py-1.5 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
-        >
-          <option value="all">전체 상태</option>
-          <option value="approved">승인</option>
-          <option value="pending">대기</option>
-          <option value="revision">보완요청</option>
-          <option value="rejected">거절</option>
-        </select>
+        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
+          {(['all', 'approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                statusFilter === s
+                  ? 'bg-white text-text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {s === 'all' ? '전체' : STATUS_LABELS[s]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <table className="w-full table-auto">
@@ -792,7 +825,7 @@ function PageButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`min-w-[28px] h-7 px-2 text-xs rounded-md transition-colors ${
+      className={`min-w-7 h-7 px-2 text-xs rounded-md transition-colors ${
         active
           ? 'bg-brand text-white font-semibold'
           : 'text-text-secondary hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed'
