@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { getUser } from '@/lib/api';
 
@@ -40,8 +41,11 @@ interface SidebarProps {
 
 export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const [userRole, setUserRole] = useState<string | undefined>(undefined);
 
-  const userRole = getUser()?.current_role;
+  useEffect(() => {
+    setUserRole(getUser()?.current_role);
+  }, []);
 
   const navItems: NavItem[] = pathname.startsWith('/mentor')
     ? mentorNavItems
