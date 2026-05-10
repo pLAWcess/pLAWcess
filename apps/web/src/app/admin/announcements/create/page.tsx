@@ -1,64 +1,70 @@
 'use client';
 
-import { useState } from 'react';
-
-type Announcement = {
-  id: string;
-  title: string;
-  body: string;
-  created_at: string;
-  author: string;
-};
-
-// TODO: API 연결 후 실제 데이터로 교체 — GET /api/admin/announcements
-const MOCK_ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: '1',
-    title: '2026학년도 멘토 모집 안내',
-    body: '2026학년도 pLAWcess 멘토 모집을 시작합니다. 자유전공학부 출신 법학대학원 합격자라면 누구나 지원 가능합니다.',
-    created_at: '2026-04-10T00:00:00Z',
-    author: '관리자',
-  },
-  {
-    id: '2',
-    title: '멘티 신청 마감일 변경',
-    body: '멘티 신청 마감일이 2026년 4월 30일로 변경되었습니다. 기간 내 신청 부탁드립니다.',
-    created_at: '2026-04-05T00:00:00Z',
-    author: '관리자',
-  },
-];
+import { useEffect, useState } from 'react';
+import {
+  listAdminAnnouncements,
+  createAnnouncement,
+  deleteAnnouncement,
+  type AnnouncementRow,
+} from '@/lib/api';
 
 export default function AdminAnnouncementsCreatePage() {
-  const [list, setList] = useState<Announcement[]>(MOCK_ANNOUNCEMENTS);
+  const [list, setList] = useState<AnnouncementRow[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+
+  async function refresh() {
+    setListLoading(true);
+    setListError(null);
+    try {
+      const res = await listAdminAnnouncements();
+      setList(res.data);
+    } catch (e: unknown) {
+      setListError(e instanceof Error ? e.message : '목록 조회 실패');
+    } finally {
+      setListLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
     setSaving(true);
-    // TODO: POST /api/admin/announcements { title, body }
-    await new Promise((r) => setTimeout(r, 400));
-    const next: Announcement = {
-      id: String(Date.now()),
-      title: title.trim(),
-      body: body.trim(),
-      created_at: new Date().toISOString(),
-      author: '관리자',
-    };
-    setList((prev) => [next, ...prev]);
-    setTitle('');
-    setBody('');
-    setMessage('공지사항이 게시되었습니다.');
-    setSaving(false);
-    setTimeout(() => setMessage(''), 3000);
+    setSubmitError(null);
+    try {
+      const created = await createAnnouncement({ title: title.trim(), body: body.trim() });
+      setList((prev) => [created, ...prev]);
+      setTitle('');
+      setBody('');
+      setMessage('공지사항이 게시되었습니다.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : '게시 실패');
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(id: string) {
-    // TODO: DELETE /api/admin/announcements/:id
-    setList((prev) => prev.filter((a) => a.id !== id));
+  async function handleDelete(id: string) {
+    if (!confirm('이 공지사항을 삭제할까요? (복구 불가)')) return;
+    try {
+      await deleteAnnouncement(id);
+      setList((prev) => prev.filter((a) => a.announcementId !== id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '삭제 실패');
+      // 404 등 — 서버 상태와 동기화
+      refresh();
+    }
   }
 
   return (
@@ -96,10 +102,11 @@ export default function AdminAnnouncementsCreatePage() {
             />
           </div>
           {message && <p className="text-sm text-brand font-medium">{message}</p>}
+          {submitError && <p className="text-sm text-red-500">{submitError}</p>}
           <div className="flex justify-end gap-2 mt-2">
             <button
               type="button"
-              onClick={() => { setTitle(''); setBody(''); }}
+              onClick={() => { setTitle(''); setBody(''); setSubmitError(null); }}
               disabled={saving}
               className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
@@ -124,21 +131,25 @@ export default function AdminAnnouncementsCreatePage() {
       {/* 게시된 공지 목록 */}
       <section className="bg-white border border-border rounded-xl px-8 py-6">
         <h2 className="text-base font-semibold text-text-primary mb-5">게시된 공지사항</h2>
-        {list.length === 0 ? (
+        {listLoading ? (
+          <p className="py-6 text-sm text-text-secondary">로딩 중...</p>
+        ) : listError ? (
+          <p className="py-6 text-sm text-red-500">{listError}</p>
+        ) : list.length === 0 ? (
           <p className="py-6 text-sm text-text-secondary">게시된 공지사항이 없습니다.</p>
         ) : (
           <ul className="divide-y divide-border">
             {list.map((a) => (
-              <li key={a.id} className="py-5 flex items-start justify-between gap-4">
+              <li key={a.announcementId} className="py-5 flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-text-primary">{a.title}</p>
                   <p className="mt-1 text-sm text-text-secondary line-clamp-2">{a.body}</p>
                   <p className="mt-2 text-xs text-text-placeholder">
-                    {a.author} · {new Date(a.created_at).toLocaleDateString('ko-KR')}
+                    {a.author} · {new Date(a.createdAt).toLocaleDateString('ko-KR')}
                   </p>
                 </div>
                 <button
-                  onClick={() => handleDelete(a.id)}
+                  onClick={() => handleDelete(a.announcementId)}
                   className="shrink-0 text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   삭제
