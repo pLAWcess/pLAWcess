@@ -241,6 +241,38 @@ export async function submitMenteeApplication(year: string): Promise<SubmitAppli
 }
 
 // ----------------------------------------------------------------
+// Concerns (기타 고민)
+// ----------------------------------------------------------------
+
+export type ConcernData = {
+  strengthsWeaknesses: string;
+  desiredMentor: string;
+  specialNotes: string;
+  extraRequest: string;
+};
+
+export async function getConcerns(year: string): Promise<ConcernData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/concerns?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("기타 고민 조회 실패");
+  return res.json();
+}
+
+export async function patchConcern(
+  year: string,
+  body: Partial<ConcernData>
+): Promise<ConcernData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/concerns?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
+  );
+  if (!res.ok) throw new Error("기타 고민 저장 실패");
+  return res.json();
+}
+
+// ----------------------------------------------------------------
 // Qualitative
 // ----------------------------------------------------------------
 

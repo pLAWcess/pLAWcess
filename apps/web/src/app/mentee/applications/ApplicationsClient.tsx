@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import ConcernCard from '@/components/concerns/ConcernCard';
-import { submitMenteeApplication, type CycleSchedule, type BasicInfoAdmission } from '@/lib/api';
+import { submitMenteeApplication, patchConcern, type CycleSchedule, type BasicInfoAdmission, type ConcernData } from '@/lib/api';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -28,21 +28,45 @@ const STEPS = [
 type Props = {
   initialSchedule: CycleSchedule | null;
   initialAdmission: BasicInfoAdmission | null;
+  initialConcerns: ConcernData | null;
 };
 
-export default function ApplicationsClient({ initialSchedule, initialAdmission }: Props) {
+export default function ApplicationsClient({ initialSchedule, initialAdmission, initialConcerns }: Props) {
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [extraRequest, setExtraRequest] = useState('');
+  const [extraRequest, setExtraRequest] = useState(initialConcerns?.extraRequest ?? '');
+  const [editingCards, setEditingCards] = useState<Set<string>>(new Set());
+
+  function makeEditingHandler(key: string) {
+    return (isEditing: boolean) => {
+      setEditingCards((prev) => {
+        const next = new Set(prev);
+        isEditing ? next.add(key) : next.delete(key);
+        return next;
+      });
+    };
+  }
+
+  const hasUnsavedCard = editingCards.size > 0;
 
   const activeSchedule = initialSchedule;
   const admission = initialAdmission;
+  const year = String(activeSchedule?.process_year ?? new Date().getFullYear());
+
+  async function saveConcern(field: keyof ConcernData, value: string) {
+    await patchConcern(year, { [field]: value });
+  }
+
   const isClosed = isDeadlinePassed(activeSchedule?.mentee_apply_end ?? null);
   const isNotRegistered = !activeSchedule || !activeSchedule.mentee_apply_end;
 
   async function handleSubmit() {
     if (isClosed || isNotRegistered) return;
+    if (hasUnsavedCard) {
+      alert('저장하지 않은 내용이 있습니다. 완료 버튼을 누른 후 다시 시도해주세요.');
+      return;
+    }
     if (!agreed) {
       setShowConsentError(true);
       return;
@@ -50,7 +74,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission }
     setShowConsentError(false);
     setIsSubmitting(true);
     try {
-      const year = String(activeSchedule?.process_year ?? new Date().getFullYear());
+      await patchConcern(year, { extraRequest });
       await submitMenteeApplication(year);
       alert('신청서가 제출되었습니다.');
     } catch (e) {
@@ -131,19 +155,25 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission }
         title="강점 및 약점"
         description="본인이 생각하는 강점과 약점을 자유롭게 작성해주세요"
         placeholder="예) 강점: 꾸준한 대외활동 경험, 높은 GPA&#10;약점: LEET 준비 기간이 짧음, 법학 과목 이수 부족"
-        initialValue=""
+        initialValue={initialConcerns?.strengthsWeaknesses ?? ''}
+        onSave={(value) => saveConcern('strengthsWeaknesses', value)}
+        onEditingChange={makeEditingHandler('strengthsWeaknesses')}
       />
       <ConcernCard
         title="희망 멘토상 및 고민"
         description="어떤 멘토를 만나고 싶은지, 멘토에게 묻고 싶은 질문을 작성해주세요"
         placeholder="예) 비슷한 스펙으로 합격한 경험이 있는 멘토를 희망합니다.&#10;자소서 방향성에 대한 조언을 받고 싶습니다."
-        initialValue=""
+        initialValue={initialConcerns?.desiredMentor ?? ''}
+        onSave={(value) => saveConcern('desiredMentor', value)}
+        onEditingChange={makeEditingHandler('desiredMentor')}
       />
       <ConcernCard
         title="특이사항"
         description="본인만이 가지고 있는 특이사항이나, 멘토에게 꼭 전달하고 싶은 내용을 작성해주세요"
         placeholder="예) 컴퓨터학과의 장점을 살리고싶습니다.&#10;법학학점이 낮습니다."
-        initialValue=""
+        initialValue={initialConcerns?.specialNotes ?? ''}
+        onSave={(value) => saveConcern('specialNotes', value)}
+        onEditingChange={makeEditingHandler('specialNotes')}
       />
 
       {/* 개인정보 동의 카드 */}

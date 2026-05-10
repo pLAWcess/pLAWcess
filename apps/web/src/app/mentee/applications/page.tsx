@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import ApplicationsClient from './ApplicationsClient';
-import type { CycleSchedule, BasicInfoAdmission } from '@/lib/api';
+import type { CycleSchedule, BasicInfoAdmission, ConcernData } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const COOKIE_NAME = 'plawcess_token';
@@ -25,16 +25,22 @@ export default async function ApplicationsPage() {
   const activeSchedule = await fetchWithCookie<CycleSchedule>('/api/cycle-schedules/active', token);
 
   let initialAdmission: BasicInfoAdmission | null = null;
+  let initialConcerns: ConcernData | null = null;
   if (activeSchedule) {
     const year = encodeURIComponent(`${activeSchedule.process_year}학년도`);
-    const basicInfo = await fetchWithCookie<{ admission: BasicInfoAdmission }>(`/api/mentee/basic-info?year=${year}`, token);
+    const [basicInfo, concerns] = await Promise.all([
+      fetchWithCookie<{ admission: BasicInfoAdmission }>(`/api/mentee/basic-info?year=${year}`, token),
+      fetchWithCookie<ConcernData>(`/api/mentee/concerns?year=${year}`, token),
+    ]);
     initialAdmission = basicInfo?.admission ?? null;
+    initialConcerns = concerns;
   }
 
   return (
     <ApplicationsClient
       initialSchedule={activeSchedule}
       initialAdmission={initialAdmission}
+      initialConcerns={initialConcerns}
     />
   );
 }

@@ -194,6 +194,8 @@ model MenteeRecord {
   // 4단계: 기타 고민
   strengths_weaknesses String? @db.Text
   desired_mentor       String? @db.Text
+  special_notes        String? @db.Text
+  extra_request        String? @db.Text
 
   // 신청 시점 학적 스냅샷
   academic_status AcademicStatus?
