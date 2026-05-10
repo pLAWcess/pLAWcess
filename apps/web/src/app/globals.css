@@ -2,7 +2,7 @@
 
 :root {
   --background: #FAFAF8;
-  --foreground: #171717;
+  --foreground: #111725;
 }
 
 @theme inline {
@@ -12,8 +12,8 @@
   --font-mono: var(--font-geist-mono);
 
   /* Brand */
-  --color-brand: #3B82F6;
-  --color-brand-dark: #2563EB;
+  --color-brand: #1E95B7;
+  --color-brand-dark: #1778A0;
   --color-brand-light: #EFF6FF;
   --color-brand-muted: #DBEAFE;
 
@@ -26,7 +26,7 @@
   /* Surfaces */
   --color-page-bg: #F3F4F6;
   --color-table-bg: #F9FAFB;
-  --color-card-bg: #FFFFFF;
+  --color-card-bg: #FAFAF8;
 
   /* Borders */
   --color-border: #E5E7EB;
@@ -34,6 +34,7 @@
 }
 
 .page-container {
+  /* TODO: tailwind 유틸리티로 나중에 바꾸기 .. */
   max-width: 64rem;
   margin-left: auto;
   margin-right: auto;
