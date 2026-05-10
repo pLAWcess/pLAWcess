@@ -542,6 +542,7 @@ export type AnnouncementRow = {
   title: string;
   body: string;
   createdAt: string;
+  updatedAt: string;
   author: string;
 };
 
@@ -688,20 +689,6 @@ export async function getEligibleMatchingPool(year?: number): Promise<EligiblePo
 }
 
 // 공지사항 (admin) -------------------------------------------------
-
-export async function listAdminAnnouncements(
-  page?: number, limit?: number,
-): Promise<Paged<AnnouncementRow>> {
-  const params = new URLSearchParams();
-  if (page !== undefined) params.set("page", String(page));
-  if (limit !== undefined) params.set("limit", String(limit));
-  const qs = params.toString();
-  const res = await fetch(
-    `${API_BASE}/api/admin/announcements${qs ? `?${qs}` : ""}`,
-    { headers: headers(), credentials: "include" },
-  );
-  return jsonOrError(res, "공지사항 목록 조회 실패");
-}
 
 export async function createAnnouncement(
   body: { title: string; body: string },

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  listAdminAnnouncements,
+  listAnnouncements,
   createAnnouncement,
   deleteAnnouncement,
   type AnnouncementRow,
@@ -23,7 +23,7 @@ export default function AdminAnnouncementsCreatePage() {
     setListLoading(true);
     setListError(null);
     try {
-      const res = await listAdminAnnouncements();
+      const res = await listAnnouncements();
       setList(res.data);
     } catch (e: unknown) {
       setListError(e instanceof Error ? e.message : '목록 조회 실패');
