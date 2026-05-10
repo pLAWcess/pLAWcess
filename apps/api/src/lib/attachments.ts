@@ -1,12 +1,8 @@
 import {
   dispatchByMime,
-  isDocumentKind,
   MIME_TO_KIND,
   MAX_TEXT_PER_ACTIVITY,
   type ExtractResult,
-  type DocumentExtractResult,
-  type ImageExtractResult,
-  type AttachmentKind,
 } from "./extract";
 
 // ----------------------------------------------------------------
@@ -20,14 +16,6 @@ import {
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;          // 파일당 4MB
 export const MAX_TOTAL_BYTES_PER_REQUEST = 4 * 1024 * 1024; // 한 요청 본문 한도 (활동당)
 export const MAX_FILES_PER_ACTIVITY = 5;
-
-const KIND_LABEL: Record<AttachmentKind, string> = {
-  pdf: "PDF",
-  docx: "DOCX",
-  pptx: "PPTX",
-  jpg: "JPG",
-  png: "PNG",
-};
 
 // DB에 저장될 활동 메타 (이미지의 base64는 제외)
 export type StoredAttachment =
@@ -143,26 +131,24 @@ export async function processActivityAttachments(
     }
 
     if (extracted.type === "image") {
-      const img = extracted as ImageExtractResult;
       stored.push({
         type: "image",
-        kind: img.kind,
-        filename: img.filename,
-        size: img.size,
-        mimeType: img.mimeType,
-        contentHash: img.contentHash,
+        kind: extracted.kind,
+        filename: extracted.filename,
+        size: extracted.size,
+        mimeType: extracted.mimeType,
+        contentHash: extracted.contentHash,
       });
       images.push({
-        filename: img.filename,
-        mimeType: img.mimeType,
-        base64: img.base64,
-        contentHash: img.contentHash,
+        filename: extracted.filename,
+        mimeType: extracted.mimeType,
+        base64: extracted.base64,
+        contentHash: extracted.contentHash,
       });
       continue;
     }
 
-    const doc = extracted as DocumentExtractResult;
-    if (!isDocumentKind(doc.kind)) continue; // 타입 가드
+    const doc = extracted; // type narrowing → DocumentExtractResult
 
     if (doc.empty) {
       errors.push(
@@ -224,11 +210,4 @@ export async function processActivityAttachments(
   }
 
   return { result: { stored, images }, errors };
-}
-
-// ----------------------------------------------------------------
-// 사용자 친화 라벨
-// ----------------------------------------------------------------
-export function kindLabel(kind: AttachmentKind): string {
-  return KIND_LABEL[kind];
 }

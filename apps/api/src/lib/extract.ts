@@ -20,10 +20,6 @@ export const MIME_TO_KIND: Record<string, AttachmentKind> = {
   "image/png": "png",
 };
 
-export function isDocumentKind(kind: AttachmentKind): kind is DocumentKind {
-  return kind === "pdf" || kind === "docx" || kind === "pptx";
-}
-
 export function sha256Hex(buffer: Uint8Array): string {
   return createHash("sha256").update(buffer).digest("hex");
 }
