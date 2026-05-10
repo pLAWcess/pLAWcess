@@ -42,7 +42,7 @@ export default function BasicInfoPage() {
   const [isAdmissionEditing, setIsAdmissionEditing] = useState(false);
   const [admissionSaving, setAdmissionSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerInitialSlot, setPickerInitialSlot] = useState<{ group: '가' | '나'; rank: 'first' | 'second' } | undefined>(undefined);
+  const [pickerInitialSlot, setPickerInitialSlot] = useState<{ group: '가' | '나' } | undefined>(undefined);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -69,8 +69,8 @@ export default function BasicInfoPage() {
           type: s.isSpecial ? '특별전형' : '일반전형',
         });
         const admission: AdmissionInfo = {
-          가: { first: fromApi(data.admission.가.first), second: fromApi(data.admission.가.second) },
-          나: { first: fromApi(data.admission.나.first), second: fromApi(data.admission.나.second) },
+          가: fromApi(data.admission.가),
+          나: fromApi(data.admission.나),
         };
         setPersonalInfo(personal);
         setAdmissionInfo(admission);
@@ -135,8 +135,8 @@ export default function BasicInfoPage() {
       });
       await patchBasicInfo(YEAR, {
         admission: {
-          가: { first: toApi(admissionDraft.가.first), second: toApi(admissionDraft.가.second) },
-          나: { first: toApi(admissionDraft.나.first), second: toApi(admissionDraft.나.second) },
+          가: toApi(admissionDraft.가),
+          나: toApi(admissionDraft.나),
         },
       });
       setAdmissionInfo(admissionDraft);
@@ -151,16 +151,12 @@ export default function BasicInfoPage() {
   function handleAdmissionCancel() { setIsAdmissionEditing(false); }
   function handleAdmissionChange(
     group: '가' | '나',
-    rank: 'first' | 'second',
     field: 'school' | 'type',
     value: string,
   ) {
     setAdmissionDraft((prev) => ({
       ...prev,
-      [group]: {
-        ...prev[group],
-        [rank]: { ...prev[group][rank], [field]: value },
-      },
+      [group]: { ...prev[group], [field]: value },
     }));
   }
 
@@ -268,7 +264,7 @@ export default function BasicInfoPage() {
 
         <div className="grid grid-cols-2 divide-x divide-border">
           {(['가', '나'] as const).map((group) => {
-            const data = isAdmissionEditing ? admissionDraft[group] : admissionInfo[group];
+            const item = isAdmissionEditing ? admissionDraft[group] : admissionInfo[group];
             return (
               <div key={group} className={group === '나' ? 'pl-8' : 'pr-8'}>
                 <span className="inline-block text-sm font-semibold text-brand bg-brand-light px-3 py-1 rounded mb-5">
@@ -276,52 +272,46 @@ export default function BasicInfoPage() {
                 </span>
                 <table className="w-full text-sm">
                   <tbody>
-                    {(['first', 'second'] as const).map((rank, i) => {
-                      const item = data[rank];
-                      return (
-                        <tr key={rank} className="border-b border-border last:border-0">
-                          <td className="py-4 text-text-secondary w-16">{i === 0 ? '제1지망' : '제2지망'}</td>
-                          <td className="py-4 w-36">
-                            {isAdmissionEditing ? (
-                              <div className="h-5">
-                                <button
-                                  type="button"
-                                  onClick={() => { setPickerInitialSlot({ group, rank }); setPickerOpen(true); }}
-                                  className="w-full flex items-center justify-between border-b border-border-input py-0 focus:outline-none focus:border-brand"
-                                >
-                                  <span className={item.school ? 'text-text-primary' : 'text-text-placeholder'}>
-                                    {item.school || '학교 선택'}
-                                  </span>
-                                  <svg
-                                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                    className="text-text-placeholder shrink-0"
-                                  >
-                                    <polyline points="6 9 12 15 18 9" />
-                                  </svg>
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-text-primary">{item.school}</span>
-                            )}
-                          </td>
-                          <td className="py-4">
-                            {isAdmissionEditing ? (
-                              <div className="h-5">
-                                <SelectField
-                                  value={item.type}
-                                  options={TYPE_OPTIONS}
-                                  onChange={(val) => handleAdmissionChange(group, rank, 'type', val)}
-                                  placeholder="전형 선택"
-                                />
-                              </div>
-                            ) : (
-                              <span className="text-text-primary">{item.type}</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    <tr>
+                      <td className="py-4 w-36">
+                        {isAdmissionEditing ? (
+                          <div className="h-5">
+                            <button
+                              type="button"
+                              onClick={() => { setPickerInitialSlot({ group }); setPickerOpen(true); }}
+                              className="w-full flex items-center justify-between border-b border-border-input py-0 focus:outline-none focus:border-brand"
+                            >
+                              <span className={item.school ? 'text-text-primary' : 'text-text-placeholder'}>
+                                {item.school || '학교 선택'}
+                              </span>
+                              <svg
+                                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                className="text-text-placeholder shrink-0"
+                              >
+                                <polyline points="6 9 12 15 18 9" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-text-primary">{item.school}</span>
+                        )}
+                      </td>
+                      <td className="py-4">
+                        {isAdmissionEditing ? (
+                          <div className="h-5">
+                            <SelectField
+                              value={item.type}
+                              options={TYPE_OPTIONS}
+                              onChange={(val) => handleAdmissionChange(group, 'type', val)}
+                              placeholder="전형 선택"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-text-primary">{item.type}</span>
+                        )}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
