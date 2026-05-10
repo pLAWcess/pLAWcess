@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { saveUser, getUser, clearUser, type AuthUser } from '@/lib/api';
+import { saveUser, clearUser, type AuthUser } from '@/lib/api';
 import DeleteAccountModal from './DeleteAccountModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 const ROLE_LABEL: Record<string, string> = { mentee: '멘티', mentor: '멘토', admin: '관리자' };
 
-export default function AccountSettings() {
+export default function AccountSettings({ initialUser }: { initialUser: AuthUser | null }) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -31,23 +31,7 @@ export default function AccountSettings() {
   const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
-    const cached = getUser();
-    if (cached) { setUser(cached); return; }
-    fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data) return;
-        const u: AuthUser = {
-          user_id: data.user.user_id,
-          name: data.user.name,
-          login_id: data.user.login_id ?? null,
-          email: data.user.email,
-          current_role: data.user.current_role,
-        };
-        saveUser(u);
-        setUser(u);
-      })
-      .catch(() => {});
+    if (initialUser) saveUser(initialUser);
   }, []);
 
   async function handleChangeEmail(e: React.FormEvent) {

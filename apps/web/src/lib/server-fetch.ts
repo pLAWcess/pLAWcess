@@ -1,3 +1,5 @@
+import type { AuthUser } from '@/lib/api';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const COOKIE_NAME = 'plawcess_token';
 
@@ -12,4 +14,9 @@ export async function serverFetch<T>(path: string, token: string): Promise<T | n
   } catch {
     return null;
   }
+}
+
+export async function getAuthUser(token: string): Promise<AuthUser | null> {
+  const data = await serverFetch<{ user: AuthUser }>('/api/auth/me', token);
+  return data?.user ?? null;
 }

@@ -12,41 +12,33 @@ const API_BASE = '';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
+  initialUser?: AuthUser | null;
 }
 
-export default function Navbar({ onMenuToggle }: NavbarProps) {
+export default function Navbar({ onMenuToggle, initialUser }: NavbarProps) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  async function fetchUser() {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/me`, {
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        console.warn('사용자 정보 조회 실패:', res.status);
-        return;
-      }
-      const data = await res.json();
-      const userData: AuthUser = {
-        user_id: data.user.user_id,
-        name: data.user.name,
-        login_id: data.user.login_id ?? null,
-        email: data.user.email,
-        current_role: data.user.current_role,
-      };
-      saveUser(userData);
-      setUser(userData);
-    } catch (error) {
-      console.error('사용자 정보 조회 실패:', error);
-    }
-  }
+  const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
 
   useEffect(() => {
+    if (initialUser) { saveUser(initialUser); return; }
     const cachedUser = getUser();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (cachedUser) setUser(cachedUser);
-    else fetchUser();
+    if (cachedUser) { setUser(cachedUser); return; }
+    fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        const userData: AuthUser = {
+          user_id: data.user.user_id,
+          name: data.user.name,
+          login_id: data.user.login_id ?? null,
+          email: data.user.email,
+          current_role: data.user.current_role,
+        };
+        saveUser(userData);
+        setUser(userData);
+      })
+      .catch(() => {});
   }, []);
 
   async function handleLogout() {
