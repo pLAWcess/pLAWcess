@@ -1,63 +1,27 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import {
+  getAdminUsers,
+  type AdminMenteeRow,
+  type AdminMentorRow,
+  type AdminAccountStatus,
+} from '@/lib/api';
 
-type AccountStatus = 'active' | 'inactive';
-
-type Mentee = {
-  user_id: string;
-  name: string;
-  studentId: string;
-  college: string;
-  major: string;
-  phone: string;
-  status: AccountStatus;
+const STATUS_LABELS: Record<AdminAccountStatus, string> = {
+  active: '활성',
+  inactive: '비활성',
+  blocked: '차단',
 };
-
-type Mentor = {
-  user_id: string;
-  name: string;
-  studentId: string;
-  lawSchool: string;
-  cohort: string;
-  phone: string;
-  status: AccountStatus;
-};
-
-const MENTEES: Mentee[] = [
-  { user_id: '1', name: '김민준', studentId: '2020123456', college: '인문대학', major: '법학과', phone: '010-1234-5678', status: 'active' },
-  { user_id: '2', name: '이서연', studentId: '2019234567', college: '사회과학대학', major: '정치외교학과', phone: '010-2345-6789', status: 'active' },
-  { user_id: '3', name: '박지호', studentId: '2021345678', college: '상경대학', major: '경제학과', phone: '010-3456-7890', status: 'inactive' },
-  { user_id: '4', name: '정태양', studentId: '2020567890', college: '인문대학', major: '법학과', phone: '010-5678-9012', status: 'inactive' },
-  { user_id: '5', name: '강하늘', studentId: '2019678901', college: '사회과학대학', major: '행정학과', phone: '010-6789-0123', status: 'active' },
-  { user_id: '6', name: '임나래', studentId: '2021789012', college: '인문대학', major: '법학과', phone: '010-7890-1234', status: 'inactive' },
-  { user_id: '7', name: '윤도현', studentId: '2020345612', college: '공과대학', major: '컴퓨터학과', phone: '010-1357-2468', status: 'active' },
-  { user_id: '8', name: '조예린', studentId: '2019456712', college: '경영대학', major: '경영학과', phone: '010-2468-1357', status: 'active' },
-  { user_id: '9', name: '한승호', studentId: '2021567823', college: '인문대학', major: '법학과', phone: '010-3579-2468', status: 'inactive' },
-  { user_id: '10', name: '서민지', studentId: '2020678934', college: '사회과학대학', major: '사회학과', phone: '010-4680-1357', status: 'active' },
-  { user_id: '11', name: '권우석', studentId: '2019789045', college: '상경대학', major: '경제학과', phone: '010-5791-2468', status: 'inactive' },
-  { user_id: '12', name: '문가연', studentId: '2021890156', college: '인문대학', major: '법학과', phone: '010-6802-3579', status: 'active' },
-];
-
-const MENTORS: Mentor[] = [
-  { user_id: '101', name: '최수진', studentId: '2018456789', lawSchool: '서울대학교 로스쿨', cohort: '7기', phone: '010-4567-8901', status: 'active' },
-  { user_id: '102', name: '오승민', studentId: '2017890123', lawSchool: '연세대학교 로스쿨', cohort: '8기', phone: '010-8901-2345', status: 'active' },
-  { user_id: '103', name: '한지우', studentId: '2016901234', lawSchool: '고려대학교 로스쿨', cohort: '9기', phone: '010-9012-3456', status: 'active' },
-  { user_id: '104', name: '윤서아', studentId: '2018012345', lawSchool: '서울대학교 로스쿨', cohort: '7기', phone: '010-0123-4567', status: 'inactive' },
-  { user_id: '105', name: '배현우', studentId: '2017123456', lawSchool: '성균관대학교 로스쿨', cohort: '8기', phone: '010-1122-3344', status: 'active' },
-  { user_id: '106', name: '신예원', studentId: '2016234567', lawSchool: '한양대학교 로스쿨', cohort: '9기', phone: '010-2233-4455', status: 'inactive' },
-  { user_id: '107', name: '장민호', studentId: '2018345678', lawSchool: '이화여대 로스쿨', cohort: '7기', phone: '010-3344-5566', status: 'active' },
-];
-
-const STATUS_LABELS: Record<AccountStatus, string> = { active: '활성', inactive: '비활성' };
 const PAGE_SIZE = 5;
 
-function StatusBadge({ status }: { status: AccountStatus }) {
-  const styles: Record<AccountStatus, string> = {
+function StatusBadge({ status }: { status: AdminAccountStatus }) {
+  const styles: Record<AdminAccountStatus, string> = {
     active: 'bg-green-500 text-white',
     inactive: 'bg-gray-200 text-text-secondary',
+    blocked: 'bg-red-500 text-white',
   };
   return (
     <span className={`inline-flex items-center justify-center min-w-[64px] px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
@@ -128,40 +92,14 @@ function UsersPageContent() {
       {/* 탭 */}
       <div className="flex gap-1 border-b border-border">
         <TabButton active={tab === 'mentee'} onClick={() => setTab('mentee')}>
-          멘티 회원 <span className="ml-1.5 text-xs text-text-placeholder">{MENTEES.length}</span>
+          멘티 회원
         </TabButton>
         <TabButton active={tab === 'mentor'} onClick={() => setTab('mentor')}>
-          멘토 회원 <span className="ml-1.5 text-xs text-text-placeholder">{MENTORS.length}</span>
+          멘토 회원
         </TabButton>
       </div>
 
-      {tab === 'mentee' ? (
-        <MemberPanel<Mentee>
-          data={MENTEES}
-          searchKeys={['name', 'studentId', 'college', 'major', 'phone']}
-          columns={[
-            { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.user_id}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
-            { key: 'studentId', label: '학번', sortable: true },
-            { key: 'college', label: '제1전공', sortable: true },
-            { key: 'major', label: '제2전공', sortable: true },
-            { key: 'phone', label: '연락처' },
-            { key: 'status', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.status} /> },
-          ]}
-        />
-      ) : (
-        <MemberPanel<Mentor>
-          data={MENTORS}
-          searchKeys={['name', 'studentId', 'lawSchool', 'cohort', 'phone']}
-          columns={[
-            { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.user_id}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
-            { key: 'studentId', label: '학번', sortable: true },
-            { key: 'lawSchool', label: '소속 로스쿨', sortable: true },
-            { key: 'cohort', label: '기수', sortable: true },
-            { key: 'phone', label: '연락처' },
-            { key: 'status', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.status} /> },
-          ]}
-        />
-      )}
+      {tab === 'mentee' ? <MenteePanel /> : <MentorPanel />}
     </div>
   );
 }
@@ -189,43 +127,105 @@ type ColumnDef<T> = {
   render?: (row: T) => React.ReactNode;
 };
 
-function MemberPanel<T extends { user_id: string; status: AccountStatus }>({
-  data,
-  columns,
-  searchKeys,
-}: {
-  data: T[];
+function MenteePanel() {
+  return (
+    <UserListPanel<AdminMenteeRow>
+      role="mentee"
+      searchKeys={['name', 'studentId', 'firstMajor', 'secondMajor', 'phone']}
+      columns={[
+        { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
+        { key: 'studentId', label: '학번', sortable: true },
+        { key: 'firstMajor', label: '제1전공', sortable: true, render: (m) => m.firstMajor ?? '-' },
+        { key: 'secondMajor', label: '제2전공', render: (m) => m.secondMajor ?? '-' },
+        { key: 'phone', label: '연락처' },
+        { key: 'accountStatus', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.accountStatus} /> },
+      ]}
+    />
+  );
+}
+
+function MentorPanel() {
+  return (
+    <UserListPanel<AdminMentorRow>
+      role="mentor"
+      searchKeys={['name', 'studentId', 'lawSchool', 'phone']}
+      columns={[
+        { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
+        { key: 'studentId', label: '학번', sortable: true },
+        { key: 'lawSchool', label: '소속 로스쿨', sortable: true, render: (m) => m.lawSchool ?? '-' },
+        { key: 'cohort', label: '기수', sortable: true, render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
+        { key: 'phone', label: '연락처' },
+        { key: 'accountStatus', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.accountStatus} /> },
+      ]}
+    />
+  );
+}
+
+type UserListPanelProps<T extends { userId: string; accountStatus: AdminAccountStatus }> = {
+  role: 'mentee' | 'mentor';
   columns: ColumnDef<T>[];
   searchKeys: (keyof T)[];
-}) {
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | AccountStatus>('all');
-  const [sort, setSort] = useState<SortState<T>>(null);
-  const [page, setPage] = useState(1);
+};
 
+function UserListPanel<T extends { userId: string; accountStatus: AdminAccountStatus }>({
+  role,
+  columns,
+  searchKeys,
+}: UserListPanelProps<T>) {
+  const [rows, setRows] = useState<T[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | AdminAccountStatus>('all');
+  const [sort, setSort] = useState<SortState<T>>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const fetcher = role === 'mentee'
+      ? getAdminUsers('mentee', page, PAGE_SIZE)
+      : getAdminUsers('mentor', page, PAGE_SIZE);
+    fetcher
+      .then((res) => {
+        if (cancelled) return;
+        setRows(res.data as unknown as T[]);
+        setTotalCount(res.totalCount);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : '조회 실패');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [role, page]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+
+  // 클라이언트 검색·필터·정렬은 현재 페이지 결과 한정
   const processed = useMemo(() => {
-    let result = data;
+    let result = rows;
     const q = query.trim().toLowerCase();
-    if (q) result = result.filter((r) => searchKeys.some((k) => String(r[k]).toLowerCase().includes(q)));
-    if (statusFilter !== 'all') result = result.filter((r) => r.status === statusFilter);
+    if (q) result = result.filter((r) => searchKeys.some((k) => String(r[k] ?? '').toLowerCase().includes(q)));
+    if (statusFilter !== 'all') result = result.filter((r) => r.accountStatus === statusFilter);
     if (sort) {
       result = [...result].sort((a, b) => {
-        const av = String(a[sort.key]);
-        const bv = String(b[sort.key]);
+        const av = String(a[sort.key] ?? '');
+        const bv = String(b[sort.key] ?? '');
         const cmp = av.localeCompare(bv, 'ko');
         return sort.dir === 'asc' ? cmp : -cmp;
       });
     }
     return result;
-  }, [data, query, statusFilter, sort, searchKeys]);
-
-  const total = processed.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paged = processed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  }, [rows, query, statusFilter, sort, searchKeys]);
 
   const onSort = (key: keyof T) => {
-    setPage(1);
     setSort((prev) => {
       if (!prev || prev.key !== key) return { key, dir: 'asc' };
       if (prev.dir === 'asc') return { key, dir: 'desc' };
@@ -233,51 +233,37 @@ function MemberPanel<T extends { user_id: string; status: AccountStatus }>({
     });
   };
 
-  const onFilter = (next: typeof statusFilter) => {
-    setStatusFilter(next);
-    setPage(1);
-  };
-
-  const onQuery = (next: string) => {
-    setQuery(next);
-    setPage(1);
-  };
-
   return (
     <section className="bg-white border border-border rounded-xl px-8 py-6">
-      {/* 검색 + 필터 */}
       <div className="flex items-center justify-between mb-4 gap-4">
         <div className="flex items-center gap-2 text-text-placeholder">
           <SearchIcon />
           <input
             value={query}
-            onChange={(e) => onQuery(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="검색..."
             className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => onFilter(e.target.value as typeof statusFilter)}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-3 py-1.5 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
         >
           <option value="all">전체 상태</option>
           <option value="active">활성</option>
           <option value="inactive">비활성</option>
+          <option value="blocked">차단</option>
         </select>
       </div>
 
-      {/* 테이블 */}
       <table className="w-full table-auto">
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
               <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none">
                 {col.sortable ? (
-                  <button
-                    onClick={() => onSort(col.key)}
-                    className="flex items-center gap-1 hover:text-text-primary transition-colors"
-                  >
+                  <button onClick={() => onSort(col.key)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     {col.label}
                     <SortIndicator active={sort?.key === col.key} dir={sort?.key === col.key ? sort.dir : null} />
                   </button>
@@ -289,18 +275,18 @@ function MemberPanel<T extends { user_id: string; status: AccountStatus }>({
           </tr>
         </thead>
         <tbody>
-          {paged.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">
-                검색 결과가 없습니다.
-              </td>
-            </tr>
+          {loading ? (
+            <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
+          ) : error ? (
+            <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-red-500">{error}</td></tr>
+          ) : processed.length === 0 ? (
+            <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td></tr>
           ) : (
-            paged.map((row) => (
-              <tr key={row.user_id} className="border-b border-border last:border-b-0">
+            processed.map((row) => (
+              <tr key={row.userId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
                   <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle">
-                    {col.render ? col.render(row) : String(row[col.key])}
+                    {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}
               </tr>
@@ -309,10 +295,9 @@ function MemberPanel<T extends { user_id: string; status: AccountStatus }>({
         </tbody>
       </table>
 
-      {/* 페이지네이션 + 카운트 */}
       <div className="flex items-center justify-between mt-5">
         <span className="text-xs text-text-secondary">
-          총 {total}명 · {safePage} / {totalPages} 페이지
+          총 {totalCount}명 · {safePage} / {totalPages} 페이지
         </span>
         {totalPages > 1 && (
           <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
