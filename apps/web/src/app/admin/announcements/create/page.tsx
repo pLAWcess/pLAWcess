@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import {
-  listAnnouncements,
+  listAdminAnnouncements,
   createAnnouncement,
   deleteAnnouncement,
-  type AnnouncementRow,
+  type AdminAnnouncementRow,
 } from '@/lib/api';
 
 export default function AdminAnnouncementsCreatePage() {
-  const [list, setList] = useState<AnnouncementRow[]>([]);
+  const [list, setList] = useState<AdminAnnouncementRow[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
 
@@ -23,7 +23,7 @@ export default function AdminAnnouncementsCreatePage() {
     setListLoading(true);
     setListError(null);
     try {
-      const res = await listAnnouncements();
+      const res = await listAdminAnnouncements();
       setList(res.data);
     } catch (e: unknown) {
       setListError(e instanceof Error ? e.message : '목록 조회 실패');

@@ -12,8 +12,8 @@ export async function GET(
   }
 
   const { id } = await params;
-  const row = await prisma.announcement.findUnique({
-    where: { announcement_id: id },
+  const row = await prisma.announcement.findFirst({
+    where: { announcement_id: id, is_published: true, deleted_at: null },
     include: { created_by: { select: { name: true } } },
   });
   if (!row) {

@@ -14,14 +14,14 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: { title?: unknown; body?: unknown };
+  let body: { title?: unknown; body?: unknown; isPublished?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const data: { title?: string; body?: string } = {};
+  const data: { title?: string; body?: string; is_published?: boolean } = {};
 
   if (body.title !== undefined) {
     if (typeof body.title !== "string") {
@@ -51,6 +51,13 @@ export async function PATCH(
     data.body = content;
   }
 
+  if (body.isPublished !== undefined) {
+    if (typeof body.isPublished !== "boolean") {
+      return NextResponse.json({ error: "isPublished 는 boolean 이어야 합니다." }, { status: 400 });
+    }
+    data.is_published = body.isPublished;
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "수정할 필드가 없습니다." }, { status: 400 });
   }
@@ -73,8 +80,10 @@ export async function PATCH(
     announcementId: updated.announcement_id,
     title: updated.title,
     body: updated.body,
+    isPublished: updated.is_published,
     createdAt: updated.created_at.toISOString(),
     updatedAt: updated.updated_at.toISOString(),
+    deletedAt: updated.deleted_at?.toISOString() ?? null,
     author: updated.created_by.name,
   });
 }
@@ -89,7 +98,10 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    await prisma.announcement.delete({ where: { announcement_id: id } });
+    await prisma.announcement.update({
+      where: { announcement_id: id },
+      data: { deleted_at: new Date() },
+    });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
       return NextResponse.json({ error: "해당 공지사항이 없습니다." }, { status: 404 });

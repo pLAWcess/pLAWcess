@@ -459,19 +459,24 @@ model PasswordResetToken {
 // ----------------------------------------------------------------
 // 10. announcements (#176)
 //    - 관리자 작성 공지. 멘티/멘토/admin 모두 읽기 가능.
-//    - hard delete (soft delete 미적용)
+//    - is_published=false 이거나 deleted_at IS NOT NULL 인 경우 일반 유저에게 비노출
+//    - soft delete 적용 (deleted_at)
 // ----------------------------------------------------------------
 model Announcement {
-  announcement_id    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title              String   @db.VarChar(100)
-  body               String   @db.Text
-  created_by_user_id String   @db.Uuid
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  announcement_id    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title              String    @db.VarChar(100)
+  body               String    @db.Text
+  is_published       Boolean   @default(true)
+  created_by_user_id String    @db.Uuid
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
 
   created_by User @relation("AnnouncementCreatedBy", fields: [created_by_user_id], references: [user_id])
 
   @@index([created_at])
+  @@index([is_published])
+  @@index([deleted_at])
   @@map("announcements")
 }
 

@@ -13,14 +13,17 @@ export async function GET(req: NextRequest) {
   if (pg.error) return pg.error;
   const { page, limit } = pg;
 
+  const where = { is_published: true, deleted_at: null };
+
   const [rows, totalCount] = await prisma.$transaction([
     prisma.announcement.findMany({
+      where,
       orderBy: { created_at: "desc" },
       skip: (page - 1) * limit,
       take: limit,
       include: { created_by: { select: { name: true } } },
     }),
-    prisma.announcement.count(),
+    prisma.announcement.count({ where }),
   ]);
 
   return NextResponse.json({
