@@ -30,19 +30,28 @@ export default function ApplicationsPage() {
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
   const [activeSchedule, setActiveSchedule] = useState<CycleSchedule | null>(null);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [admission, setAdmission] = useState<BasicInfoAdmission | null>(null);
+  const [admissionLoading, setAdmissionLoading] = useState(false);
   const [extraRequest, setExtraRequest] = useState('');
 
   useEffect(() => {
-    getActiveCycleSchedule().then(setActiveSchedule).catch(() => {});
+    getActiveCycleSchedule()
+      .then(setActiveSchedule)
+      .catch(() => {})
+      .finally(() => setScheduleLoading(false));
   }, []);
 
   useEffect(() => {
     if (!activeSchedule) return;
+    setAdmissionLoading(true);
     const year = `${activeSchedule.process_year}학년도`;
-    getBasicInfo(year).then((data) => setAdmission(data.admission)).catch(() => {});
+    getBasicInfo(year)
+      .then((data) => setAdmission(data.admission))
+      .catch(() => {})
+      .finally(() => setAdmissionLoading(false));
   }, [activeSchedule]);
 
   const isClosed = isDeadlinePassed(activeSchedule?.mentee_apply_end ?? null);
@@ -76,7 +85,19 @@ export default function ApplicationsPage() {
       </div>
 
       {/* 사업 일정 카드 */}
-      {activeSchedule && (
+      {scheduleLoading ? (
+        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6 animate-pulse">
+          <div className="h-6 w-48 bg-gray-200 rounded mb-4" />
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="h-5 w-24 bg-gray-200 rounded" />
+                <div className="h-5 w-40 bg-gray-100 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : activeSchedule ? (
         <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
           <h2 className="text-base font-semibold text-text-primary mb-4">
             {activeSchedule.process_year}학년도 pLAWcess 일정
@@ -98,7 +119,7 @@ export default function ApplicationsPage() {
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* 프로세스 안내 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
@@ -211,8 +232,15 @@ export default function ApplicationsPage() {
           {/* 희망 로스쿨 — read-only, basic-info API */}
           <div>
             <p className="text-sm font-medium text-text-primary mb-3">희망 로스쿨</p>
-            {admission === null ? (
-              <p className="text-sm text-text-secondary">불러오는 중...</p>
+            {admissionLoading || admission === null ? (
+              <div className="grid grid-cols-2 gap-6 animate-pulse">
+                {[0, 1].map((i) => (
+                  <div key={i}>
+                    <div className="h-5 w-10 bg-gray-200 rounded mb-1" />
+                    <div className="h-5 w-32 bg-gray-100 rounded" />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-6">
                 {(['가', '나'] as const).map((group) => {

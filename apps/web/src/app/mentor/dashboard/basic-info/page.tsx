@@ -110,14 +110,34 @@ export default function MentorBasicInfoPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-6 page-container w-full">
+      <div className="flex flex-col gap-6 page-container w-full animate-pulse">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>
           <p className="text-sm text-text-secondary mt-1">
             멘티 시절 작성한 기본정보가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
           </p>
         </div>
-        <div className="text-sm text-text-secondary py-10 text-center">불러오는 중...</div>
+        <div className="bg-white rounded-xl border border-border shadow-sm">
+          <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-gray-200" />
+              <div className="h-7 w-24 bg-gray-200 rounded" />
+            </div>
+            <EditButton onClick={() => {}} />
+          </div>
+          <div className="px-8 py-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className={`grid grid-cols-2 divide-x divide-border py-5 ${i < 4 ? 'border-b border-border' : ''}`}>
+                {[0, 1].map((col) => (
+                  <div key={col} className={`flex flex-col gap-2 ${col === 1 ? 'pl-8' : ''}`}>
+                    <div className="h-5 w-16 bg-gray-200 rounded" />
+                    <div className="h-6 w-28 bg-gray-100 rounded" />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -150,7 +170,6 @@ export default function MentorBasicInfoPage() {
             </div>
             <div>
               <p className="text-xl font-bold text-text-primary">{personalInfo.name}</p>
-              <p className="text-sm text-text-secondary mt-0.5">{personalInfo.affiliation}</p>
             </div>
           </div>
           {isEditing

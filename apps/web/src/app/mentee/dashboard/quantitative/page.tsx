@@ -68,7 +68,72 @@ export default function QuantitativePage() {
       )}
 
       {loading ? (
-        <div className="text-sm text-[#6B7280] py-10 text-center">불러오는 중...</div>
+        <div className="flex flex-col gap-6 animate-pulse">
+          {/* LEET 카드 스켈레톤 */}
+          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="h-6 w-24 bg-gray-200 rounded" />
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-28 bg-gray-100 rounded" />
+                <div className="h-8 w-16 bg-gray-200 rounded" />
+              </div>
+            </div>
+            <table className="w-full text-sm table-fixed">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="pb-3 w-28" />
+                  {[0, 1, 2].map((i) => (
+                    <th key={i} className="pb-3 text-left">
+                      <div className="h-5 w-16 bg-gray-200 rounded" />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[0, 1].map((row) => (
+                  <tr key={row} className="border-b border-border last:border-0">
+                    <td className="py-4"><div className="h-5 w-16 bg-gray-200 rounded" /></td>
+                    {[0, 1, 2].map((col) => (
+                      <td key={col} className="py-4"><div className="h-5 w-14 bg-gray-100 rounded" /></td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 어학 카드 스켈레톤 */}
+          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="h-6 w-20 bg-gray-200 rounded" />
+              <div className="h-8 w-16 bg-gray-200 rounded" />
+            </div>
+            <div className="grid grid-cols-3 gap-8">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex flex-col gap-2">
+                  <div className="h-5 w-16 bg-gray-200 rounded" />
+                  <div className="h-7 w-12 bg-gray-100 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* GPA 카드 스켈레톤 */}
+          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="h-6 w-16 bg-gray-200 rounded" />
+              <div className="h-8 w-16 bg-gray-200 rounded" />
+            </div>
+            <div className="grid grid-cols-3 gap-8">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex flex-col gap-2">
+                  <div className="h-5 w-20 bg-gray-200 rounded" />
+                  <div className="h-7 w-12 bg-gray-100 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           <LeetCard initialData={data.leet} onSave={handleSaveLeet} year={year} yearOptions={YEAR_OPTIONS} onYearChange={setYear} />
