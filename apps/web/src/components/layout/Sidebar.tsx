@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { getUser } from '@/lib/api';
 
 const menteeNavItems = [
   { label: '기본정보', href: '/mentee/dashboard/basic-info' },
@@ -40,9 +41,15 @@ interface SidebarProps {
 export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
 
+  const userRole = getUser()?.current_role;
+
   const navItems: NavItem[] = pathname.startsWith('/mentor')
     ? mentorNavItems
     : pathname.startsWith('/admin')
+    ? adminNavItems
+    : userRole === 'mentor'
+    ? mentorNavItems
+    : userRole === 'admin'
     ? adminNavItems
     : menteeNavItems;
 
