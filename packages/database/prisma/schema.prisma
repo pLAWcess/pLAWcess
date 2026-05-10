@@ -408,6 +408,33 @@ model CycleSchedule {
   @@map("cycle_schedules")
 }
 
+// ----------------------------------------------------------------
+// 8. email_verifications (#83)
+//    - 회원가입·비밀번호 재설정 6자리 코드 발송·검증
+//    - 코드는 bcrypt 해시로 저장, 1회용 (consumed_at 으로 종결)
+//    - 발송 rate limit 측정에 (email, purpose, created_at) 인덱스 사용
+//    - reset_password 분기는 #84 에서 추가 활성화 (enum 값은 미리 정의)
+// ----------------------------------------------------------------
+enum EmailVerificationPurpose {
+  signup
+  reset_password
+}
+
+model EmailVerification {
+  verification_id String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String                   @db.VarChar(100)
+  purpose         EmailVerificationPurpose
+  code_hash       String                   @db.VarChar(100)
+  expires_at      DateTime
+  attempts        Int                      @default(0)
+  consumed_at     DateTime?
+  created_at      DateTime                 @default(now())
+  ip_address      String?                  @db.VarChar(45)
+
+  @@index([email, purpose, created_at])
+  @@map("email_verifications")
+}
+
 // ================================================================
 // migration.sql에 수동으로 추가해야 할 SQL
 // (Prisma가 자동 생성하지 않는 PostgreSQL 전용 기능)

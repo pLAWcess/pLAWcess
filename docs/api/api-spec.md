@@ -58,6 +58,66 @@
 
 ---
 
+## `/api/auth/email/send-verification` — POST (#83)
+
+회원가입용 6자리 코드 메일 발송. (비밀번호 재설정 분기는 #84 에서 추가)
+
+**Body:** `{ purpose: "signup", email: string }`
+
+**처리:**
+- `User.email` 중복 시 409 (가입 시점 enumeration 허용)
+- Rate limit: 동일 (email, purpose) 60초 쿨다운, 시간당 5회 → 위반 시 429
+- Resend 발송 후 `EmailVerification` INSERT (`expires_at = now+5분`)
+
+**Response 200:** `{ sent: true, expiresAt: ISO_string }`
+
+**Errors:**
+- 400: 요청 형식 오류 / purpose 미지원
+- 409: 이미 사용 중인 이메일
+- 429: 쿨다운/한도 초과
+- 502: 메일 발송 실패
+
+---
+
+## `/api/auth/email/verify-code` — POST (#83)
+
+회원가입 코드 검증 + 가입 단계용 짧은 JWT 발급. (비밀번호 재설정 분기는 #84 에서 추가)
+
+**Body:** `{ email, purpose: "signup", code }`
+
+**처리:**
+- (email, purpose) 가장 최근 미consumed·미만료 행 조회
+- `attempts++` → 5회 초과 시 잠금
+- `bcrypt.compare` 실패 시 400
+- 성공 시 `consumed_at = now`
+
+**Response 200:** `{ ok: true, signupVerificationToken: <JWT>, expiresAt }`
+- JWT payload: `{ email }`, audience `email-verification:signup`, 10분
+
+**Errors:**
+- 400: 코드 만료 / 시도 초과 / 코드 불일치 / purpose 미지원
+
+---
+
+## `/api/auth/signup` — POST (수정, #83)
+
+기존 가입 라우트에 학번·이메일 인증 토큰 수용 추가.
+
+**Body:** `{ name, loginId, email, password, studentId, signupVerificationToken }`
+
+- `signupVerificationToken` JWT 검증: audience `email-verification:signup`, `payload.email === body.email` 일치, 만료 미경과
+- `studentId` 검증: 영문/숫자 4~20자
+- 기존 검증(loginId 형식, password 길이, email/loginId 중복)은 그대로
+
+**Response 201:** `{ user: { user_id, name, login_id, email, student_id, current_role, military_status } }` + 세션 쿠키.
+
+**Errors:**
+- 400: 형식 오류 / 학번 형식
+- 401: 이메일 인증 토큰 만료/위조
+- 409: email/loginId 중복
+
+---
+
 ## `/api/mentee/basic-info` — GET / PATCH
 
 멘티 기본정보. `User`(신상) + `MenteeRecord`(사이클 학적·희망학교) 합성.

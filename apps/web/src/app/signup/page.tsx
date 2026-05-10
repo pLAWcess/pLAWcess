@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
 
 const API_BASE = '';
+const COOLDOWN_SEC = 60;
 
 type Role = 'mentee' | 'mentor';
-type Gender = 'male' | 'female';
+type EmailVerifyState = 'idle' | 'sent' | 'verified';
 
 type FormState = {
   role: Role;
@@ -17,8 +18,7 @@ type FormState = {
   email: string;
   password: string;
   passwordConfirm: string;
-  birthDate: string;       // YYYY.MM.DD.
-  gender: Gender | '';
+  birthDate: string;
   phone: string;
   studentId: string;
   enrollmentFile: File | null;
@@ -37,7 +37,6 @@ const EMPTY_FORM: FormState = {
   password: '',
   passwordConfirm: '',
   birthDate: '',
-  gender: '',
   phone: '',
   studentId: '',
   enrollmentFile: null,
@@ -60,24 +59,38 @@ export default function SignupPage() {
   const [checkLoading, setCheckLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 이메일 인증
+  const [emailVerifyState, setEmailVerifyState] = useState<EmailVerifyState>('idle');
+  const [emailVerifyError, setEmailVerifyError] = useState('');
+  const [code, setCode] = useState('');
+  const [sendLoading, setSendLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [signupVerificationToken, setSignupVerificationToken] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
+
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
-    // loginId 변경 시 체크 결과 초기화
-    if (key === 'loginId') {
-      setCheckResult(null);
+    if (key === 'loginId') setCheckResult(null);
+    if (key === 'email') {
+      setEmailVerifyState('idle');
+      setEmailVerifyError('');
+      setCode('');
+      setSignupVerificationToken('');
+      setCooldown(0);
     }
   }
 
   async function handleCheckLoginId() {
     const { loginId } = form;
-    if (!loginId) {
-      setError('아이디를 입력해주세요.');
-      return;
-    }
-
+    if (!loginId) { setError('아이디를 입력해주세요.'); return; }
     setCheckLoading(true);
     setError('');
-
     try {
       const res = await fetch(`${API_BASE}/api/auth/check-login-id`, {
         method: 'POST',
@@ -85,35 +98,67 @@ export default function SignupPage() {
         credentials: 'include',
         body: JSON.stringify({ loginId }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
-        setCheckResult({
-          ok: false,
-          message: '아이디 형식이 올바르지 않습니다. (영문/숫자/언더스코어 4~30자)',
-        });
+        setCheckResult({ ok: false, message: '아이디 형식이 올바르지 않습니다. (영문/숫자/언더스코어 4~30자)' });
         return;
       }
-
-      if (data.available) {
-        setCheckResult({
-          ok: true,
-          message: '사용 가능한 아이디입니다.',
-        });
-      } else {
-        setCheckResult({
-          ok: false,
-          message: '이미 사용 중인 아이디입니다.',
-        });
-      }
-    } catch (err) {
       setCheckResult({
-        ok: false,
-        message: '중복 확인에 실패했습니다. 다시 시도해주세요.',
+        ok: data.available,
+        message: data.available ? '사용 가능한 아이디입니다.' : '이미 사용 중인 아이디입니다.',
       });
+    } catch {
+      setCheckResult({ ok: false, message: '중복 확인에 실패했습니다. 다시 시도해주세요.' });
     } finally {
       setCheckLoading(false);
+    }
+  }
+
+  async function handleSendCode() {
+    if (!form.email) { setEmailVerifyError('이메일을 입력해주세요.'); return; }
+    setEmailVerifyError('');
+    setSendLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/email/send-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purpose: 'signup', email: form.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailVerifyError(data.error ?? '코드 발송에 실패했습니다.');
+        return;
+      }
+      setEmailVerifyState('sent');
+      setCooldown(COOLDOWN_SEC);
+    } catch {
+      setEmailVerifyError('서버에 연결할 수 없습니다.');
+    } finally {
+      setSendLoading(false);
+    }
+  }
+
+  async function handleVerifyCode() {
+    if (!code) { setEmailVerifyError('인증 코드를 입력해주세요.'); return; }
+    setEmailVerifyError('');
+    setVerifyLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/email/verify-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, purpose: 'signup', code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailVerifyError(data.error ?? '인증에 실패했습니다.');
+        return;
+      }
+      setSignupVerificationToken(data.signupVerificationToken);
+      setEmailVerifyState('verified');
+    } catch {
+      setEmailVerifyError('서버에 연결할 수 없습니다.');
+    } finally {
+      setVerifyLoading(false);
     }
   }
 
@@ -130,28 +175,16 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
 
-    if (!checkResult?.ok) {
-      setError('아이디 중복확인을 해주세요.');
-      return;
-    }
-
-    if (form.password !== form.passwordConfirm) {
-      setError('비밀번호가 일치하지 않습니다.');
-      return;
-    }
+    if (!checkResult?.ok) { setError('아이디 중복확인을 해주세요.'); return; }
+    if (emailVerifyState !== 'verified') { setError('이메일 인증을 완료해주세요.'); return; }
+    if (form.password !== form.passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return; }
     if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(form.birthDate)) {
       setError('생년월일은 YYYY.MM.DD. 형식으로 입력해주세요.');
-      return;
-    }
-    if (!form.gender) {
-      setError('성별을 선택해주세요.');
       return;
     }
 
     setLoading(true);
 
-    // #120: loginId까지 BE 지원. birthDate/gender/phone/studentId/enrollmentFile/role은
-    //       추후 BE 확장 시 추가 (#83 이메일 인증, 학번/재학증명서 처리 등 별도 이슈)
     const res = await fetch(`${API_BASE}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -161,6 +194,8 @@ export default function SignupPage() {
         loginId: form.loginId,
         email: form.email,
         password: form.password,
+        studentId: form.studentId,
+        signupVerificationToken,
       }),
     });
 
@@ -199,9 +234,7 @@ export default function SignupPage() {
                     type="button"
                     onClick={() => update('role', r)}
                     className={`py-2.5 text-sm font-medium rounded-md transition-colors ${
-                      form.role === r
-                        ? 'bg-brand text-white'
-                        : 'text-text-secondary hover:text-text-primary'
+                      form.role === r ? 'bg-brand text-white' : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     {r === 'mentee' ? '멘티' : '멘토'}
@@ -220,10 +253,10 @@ export default function SignupPage() {
                   required
                   className={inputClass}
                 />
-              
               </Field>
-              {/* 학부생 학번 */}
-              <Field label="학부생 학번" htmlFor="studentId">
+
+              {/* 학부 학번 */}
+              <Field label="학부 학번" htmlFor="studentId">
                 <input
                   id="studentId"
                   type="text"
@@ -263,7 +296,7 @@ export default function SignupPage() {
                 )}
               </Field>
 
-              {/* 이메일 + 인증하기 */}
+              {/* 이메일 + 인증 */}
               <Field label="이메일" htmlFor="email">
                 <div className="flex gap-2">
                   <input
@@ -273,16 +306,53 @@ export default function SignupPage() {
                     onChange={(e) => update('email', e.target.value)}
                     placeholder="your.email@example.com"
                     required
-                    className={`${inputClass} flex-1`}
+                    disabled={emailVerifyState === 'verified'}
+                    className={`${inputClass} flex-1 disabled:opacity-60`}
                   />
                   <button
                     type="button"
-                    onClick={() => alert('이메일 인증 기능은 곧 추가됩니다.')}
-                    className="px-4 py-2.5 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap"
+                    onClick={handleSendCode}
+                    disabled={!form.email || sendLoading || cooldown > 0 || emailVerifyState === 'verified'}
+                    className="px-4 py-2.5 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    인증하기
+                    {sendLoading
+                      ? '발송 중...'
+                      : cooldown > 0
+                      ? `${cooldown}초 후 재발송`
+                      : emailVerifyState === 'sent'
+                      ? '재발송'
+                      : '인증 코드 발송'}
                   </button>
                 </div>
+
+                {emailVerifyState === 'sent' && (
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="6자리 코드 입력"
+                      maxLength={6}
+                      className={`${inputClass} flex-1 tracking-widest`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyCode}
+                      disabled={code.length !== 6 || verifyLoading}
+                      className="px-4 py-2.5 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {verifyLoading ? '확인 중...' : '확인'}
+                    </button>
+                  </div>
+                )}
+
+                {emailVerifyState === 'verified' && (
+                  <p className="text-xs text-green-600">이메일 인증이 완료되었습니다.</p>
+                )}
+                {emailVerifyError && (
+                  <p className="text-xs text-red-500">{emailVerifyError}</p>
+                )}
               </Field>
 
               {/* 비밀번호 */}
@@ -325,46 +395,16 @@ export default function SignupPage() {
                 />
               </Field>
 
-              {/* 성별 */}
-              <Field label="성별">
-                <div className="grid grid-cols-2 gap-1 p-1 bg-page-bg rounded-md">
-                  {(['male', 'female'] as const).map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => update('gender', g)}
-                      className={`py-2.5 text-sm font-medium rounded-md transition-colors ${
-                        form.gender === g
-                          ? 'bg-brand text-white'
-                          : 'text-text-secondary hover:text-text-primary'
-                      }`}
-                    >
-                      {g === 'male' ? '남성' : '여성'}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-
-              {/* 전화번호 + SMS 인증 */}
+              {/* 전화번호 */}
               <Field label="전화번호" htmlFor="phone">
-                <div className="flex gap-2">
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => update('phone', e.target.value)}
-                    placeholder="010-0000-0000"
-                    required
-                    className={`${inputClass} flex-1`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => alert('SMS 인증 기능은 곧 추가됩니다.')}
-                    className="px-4 py-2.5 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap"
-                  >
-                    SMS 인증
-                  </button>
-                </div>
+                <input
+                  id="phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => update('phone', e.target.value)}
+                  placeholder="010-0000-0000"
+                  className={inputClass}
+                />
               </Field>
 
               {/* 학부 재학증명서 업로드 */}
