@@ -26,6 +26,7 @@ datasource db {
 enum Gender {
   male
   female
+  other
 }
 
 enum AcademicStatus {

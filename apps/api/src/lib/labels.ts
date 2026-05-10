@@ -6,11 +6,13 @@
 export function genderToLabel(g: string | null | undefined): string {
   if (g === "male") return "남성";
   if (g === "female") return "여성";
+  if (g === "other") return "기타";
   return "";
 }
 export function labelToGender(label: string): string | null {
   if (label === "남성") return "male";
   if (label === "여성") return "female";
+  if (label === "기타") return "other";
   return null;
 }
 
