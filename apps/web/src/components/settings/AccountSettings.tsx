@@ -32,7 +32,7 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
 
   useEffect(() => {
     if (initialUser) saveUser(initialUser);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleChangeEmail(e: React.FormEvent) {
     e.preventDefault();

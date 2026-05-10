@@ -42,7 +42,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
     return (isEditing: boolean) => {
       setEditingCards((prev) => {
         const next = new Set(prev);
-        isEditing ? next.add(key) : next.delete(key);
+        if (isEditing) next.add(key); else next.delete(key);
         return next;
       });
     };

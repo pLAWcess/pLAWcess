@@ -988,8 +988,9 @@ export default function QualitativePage() {
   }
   function clearDraftFilesAt(category: CategoryTab, index: number) {
     setDraftFiles((d) => {
-      const { [`${category}:${index}`]: _, ...rest } = d;
-      return rest;
+      const next = { ...d };
+      delete next[`${category}:${index}`];
+      return next;
     });
   }
 

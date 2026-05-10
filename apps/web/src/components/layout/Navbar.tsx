@@ -39,7 +39,7 @@ export default function Navbar({ onMenuToggle, initialUser }: NavbarProps) {
         setUser(userData);
       })
       .catch(() => {});
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogout() {
     await fetch(`${API_BASE}/api/auth/logout`, {
