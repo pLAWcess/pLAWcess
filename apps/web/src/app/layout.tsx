@@ -11,7 +11,12 @@ const pretendard = localFont({
 
 export const metadata: Metadata = {
   title: "pLAWcess",
-  description: "pLAWcess 멘티 대시보드",
+  description: "고려대학교 로스쿨 진학 멘토링 플랫폼",
+  openGraph: {
+    title: "pLAWcess",
+    description: "고려대학교 로스쿨 진학 멘토링 플랫폼",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+  },
 };
 
 export default function RootLayout({
