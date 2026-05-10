@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getUser, saveUser, clearAllCache, type AuthUser } from '@/lib/api';
+import { getUser, saveUser, type AuthUser } from '@/lib/api';
 import UserMenu from '@/components/layout/UserMenu';
 import NotificationBell from '@/components/layout/NotificationBell';
 
@@ -52,7 +52,6 @@ export default function LandingNavbar() {
       method: 'POST',
       credentials: 'include',
     });
-    clearAllCache();
     setUser(null);
     router.push('/');
   }
