@@ -43,6 +43,5 @@ jobs:
       - name: Build (api)
         run: pnpm build:api
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           JWT_SECRET: ci-secret-for-build
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
