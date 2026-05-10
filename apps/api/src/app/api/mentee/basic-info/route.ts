@@ -22,7 +22,7 @@ function getProcessYear(req: NextRequest): number {
 }
 
 type AdmissionSlotInput = { school?: string; isSpecial?: boolean };
-type AdmissionInput = { 가?: AdmissionSlotInput; 나?: AdmissionSlotInput };
+type AdmissionInput = { 가?: AdmissionSlotInput; 나?: AdmissionSlotInput; preferredGroup?: '가' | '나' | null };
 
 // ----------------------------------------------------------------
 // GET /api/mentee/basic-info?year=2026학년도
@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
         is_special_ga: true,
         target_school_na: true,
         is_special_na: true,
+        preferred_group: true,
       },
     }),
   ]);
@@ -83,6 +84,7 @@ export async function GET(req: NextRequest) {
     admission: {
       가: { school: record?.target_school_ga ?? "", isSpecial: record?.is_special_ga ?? false },
       나: { school: record?.target_school_na ?? "", isSpecial: record?.is_special_na ?? false },
+      preferredGroup: (record?.preferred_group as '가' | '나' | null) ?? null,
     },
   });
 }
@@ -126,6 +128,9 @@ export async function PATCH(req: NextRequest) {
       if (slot.isSpecial !== undefined) {
         flat[`is_special_${col}`] = slot.isSpecial;
       }
+    }
+    if (body.admission.preferredGroup !== undefined) {
+      flat.preferred_group = body.admission.preferredGroup ?? null;
     }
   }
 

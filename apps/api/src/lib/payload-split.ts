@@ -20,6 +20,7 @@ export const MENTEE_RECORD_FIELDS = new Set<string>([
   // 희망 로스쿨 — 가/나군 단일 슬롯, 슬롯별 학교 + 특별전형 boolean
   "target_school_ga", "is_special_ga",
   "target_school_na", "is_special_na",
+  "preferred_group",
   "has_leet_experience", "leet_exam_years", "first_leet_year",
   "has_law_class", "law_class_subjects",
   "career_goal",

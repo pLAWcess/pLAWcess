@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { EditButton, EditButtons } from '@/components/ui/EditButton';
+
 import ConcernCard from '@/components/concerns/ConcernCard';
 import { getActiveCycleSchedule, submitMenteeApplication, getBasicInfo, type CycleSchedule, type BasicInfoAdmission } from '@/lib/api';
 
@@ -34,8 +34,6 @@ export default function ApplicationsPage() {
 
   const [admission, setAdmission] = useState<BasicInfoAdmission | null>(null);
   const [extraRequest, setExtraRequest] = useState('');
-  const [extraRequestDraft, setExtraRequestDraft] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     getActiveCycleSchedule().then(setActiveSchedule).catch(() => {});
@@ -219,9 +217,18 @@ export default function ApplicationsPage() {
               <div className="grid grid-cols-2 gap-6">
                 {(['가', '나'] as const).map((group) => {
                   const slot = admission[group];
+                  const preferred = admission.preferredGroup;
+                  const rank = preferred === null ? null : preferred === group ? '1순위' : '2순위';
                   return (
                     <div key={group}>
-                      <p className="text-sm text-text-secondary mb-1">{group}군</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm text-text-secondary">{group}군</p>
+                        {rank && (
+                          <span className={`text-xs font-medium ${rank === '1순위' ? 'text-brand' : 'text-text-secondary'}`}>
+                            {rank}
+                          </span>
+                        )}
+                      </div>
                       {slot.school ? (
                         <p className="text-sm text-brand font-medium">
                           {slot.school}
@@ -239,23 +246,14 @@ export default function ApplicationsPage() {
 
           {/* 추가 요청사항 */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-text-primary">추가 요청사항</p>
-              {isEditing
-                ? <EditButtons onCancel={() => setIsEditing(false)} onSave={() => { setExtraRequest(extraRequestDraft); setIsEditing(false); }} />
-                : <EditButton onClick={() => { setExtraRequestDraft(extraRequest); setIsEditing(true); }} />
-              }
-            </div>
-            {isEditing ? (
-              <textarea
-                value={extraRequestDraft}
-                onChange={(e) => setExtraRequestDraft(e.target.value)}
-                rows={3}
-                className="w-full border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-              />
-            ) : (
-              <p className="text-sm text-text-secondary">{extraRequest || '-'}</p>
-            )}
+            <p className="text-sm font-medium text-text-primary mb-2">추가 요청사항</p>
+            <textarea
+              value={extraRequest}
+              onChange={(e) => setExtraRequest(e.target.value)}
+              rows={3}
+              placeholder="관리자에게 전달하고 싶은 추가 요청사항을 입력해주세요."
+              className="w-full border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+            />
           </div>
         </div>
 

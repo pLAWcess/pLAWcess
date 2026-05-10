@@ -174,6 +174,7 @@ model MenteeRecord {
   is_special_ga    Boolean @default(false)
   target_school_na String? @db.VarChar(100) // 나군
   is_special_na    Boolean @default(false)
+  preferred_group  String? @db.VarChar(2)   // 1순위 군 ("가" or "나")
 
   // 3단계: 자소서·정성 (사용자 직접 입력)
   qualitative_activities Json? // { volunteer, conference, thesis, club, external }

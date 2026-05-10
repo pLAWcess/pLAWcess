@@ -41,6 +41,8 @@ export default function BasicInfoPage() {
   const [admissionDraft, setAdmissionDraft] = useState<AdmissionInfo>(emptyAdmissionInfo);
   const [isAdmissionEditing, setIsAdmissionEditing] = useState(false);
   const [admissionSaving, setAdmissionSaving] = useState(false);
+  const [preferredGroup, setPreferredGroup] = useState<'가' | '나' | null>(null);
+  const [preferredGroupDraft, setPreferredGroupDraft] = useState<'가' | '나' | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerInitialSlot, setPickerInitialSlot] = useState<{ group: '가' | '나' } | undefined>(undefined);
 
@@ -74,6 +76,7 @@ export default function BasicInfoPage() {
         };
         setPersonalInfo(personal);
         setAdmissionInfo(admission);
+        setPreferredGroup(data.admission.preferredGroup ?? null);
       })
       .catch(() => setLoadError('기본정보를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
@@ -137,9 +140,11 @@ export default function BasicInfoPage() {
         admission: {
           가: toApi(admissionDraft.가),
           나: toApi(admissionDraft.나),
+          preferredGroup: preferredGroupDraft,
         },
       });
       setAdmissionInfo(admissionDraft);
+      setPreferredGroup(preferredGroupDraft);
       setIsAdmissionEditing(false);
     } catch {
       // 저장 실패 시 편집 상태 유지
@@ -148,7 +153,7 @@ export default function BasicInfoPage() {
     }
   }
 
-  function handleAdmissionCancel() { setIsAdmissionEditing(false); }
+  function handleAdmissionCancel() { setPreferredGroupDraft(preferredGroup); setIsAdmissionEditing(false); }
   function handleAdmissionChange(
     group: '가' | '나',
     field: 'school' | 'type',
@@ -258,18 +263,38 @@ export default function BasicInfoPage() {
           <h2 className="text-base font-semibold text-text-primary">희망 학교 및 전형</h2>
           {isAdmissionEditing
             ? <EditButtons onCancel={handleAdmissionCancel} onSave={handleAdmissionSave} disabled={admissionSaving} />
-            : <EditButton onClick={() => { setAdmissionDraft(admissionInfo); setIsAdmissionEditing(true); }} />
+            : <EditButton onClick={() => { setAdmissionDraft(admissionInfo); setPreferredGroupDraft(preferredGroup); setIsAdmissionEditing(true); }} />
           }
         </div>
 
         <div className="grid grid-cols-2 divide-x divide-border">
           {(['가', '나'] as const).map((group) => {
             const item = isAdmissionEditing ? admissionDraft[group] : admissionInfo[group];
+            const isPreferred = isAdmissionEditing ? preferredGroupDraft === group : preferredGroup === group;
             return (
-              <div key={group} className={group === '나' ? 'pl-8' : 'pr-8'}>
-                <span className="inline-block text-sm font-semibold text-brand bg-brand-light px-3 py-1 rounded mb-5">
-                  {group}군
-                </span>
+              <div
+                key={group}
+                className={`${group === '나' ? 'pl-8' : 'pr-8'} rounded-lg transition-colors ${isPreferred ? 'bg-brand-light' : ''}`}
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="inline-block text-sm font-semibold text-brand bg-brand-light px-3 py-1 rounded">
+                    {group}군
+                  </span>
+                  {isAdmissionEditing ? (
+                    <button
+                      type="button"
+                      onClick={() => setPreferredGroupDraft(preferredGroupDraft === group ? null : group)}
+                      className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-brand transition-colors"
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${isPreferred ? 'border-brand' : 'border-border'}`}>
+                        {isPreferred && <span className="w-1.5 h-1.5 rounded-full bg-brand block" />}
+                      </span>
+                      1순위
+                    </button>
+                  ) : isPreferred ? (
+                    <span className="text-xs font-medium text-brand">1순위</span>
+                  ) : null}
+                </div>
                 <table className="w-full text-sm">
                   <tbody>
                     <tr>

@@ -126,6 +126,7 @@ export type AdmissionSlot = { school: string; isSpecial: boolean };
 export type BasicInfoAdmission = {
   가: AdmissionSlot;
   나: AdmissionSlot;
+  preferredGroup: '가' | '나' | null;
 };
 
 export type BasicInfoData = {
@@ -151,6 +152,7 @@ export async function patchBasicInfo(
     admission?: {
       가?: AdmissionSlotPatch;
       나?: AdmissionSlotPatch;
+      preferredGroup?: '가' | '나' | null;
     };
   }
 ): Promise<void> {
