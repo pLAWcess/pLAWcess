@@ -3,12 +3,17 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { clearAllCache, saveUser, getUser, type AuthUser } from '@/lib/api';
+import { saveUser, getUser, type AuthUser } from '@/lib/api';
 import UserMenu from './UserMenu';
+import NotificationBell from './NotificationBell';
 
 const API_BASE = '';
 
-export default function Navbar() {
+interface NavbarProps {
+  onMenuToggle?: () => void;
+}
+
+export default function Navbar({ onMenuToggle }: NavbarProps) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
 
@@ -50,26 +55,31 @@ export default function Navbar() {
       method: 'POST',
       credentials: 'include',
     });
-    clearAllCache();
     router.push('/');
   }
 
   return (
     <header className="h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
-      <Link href="/" className="text-brand font-bold text-lg tracking-tight">
-        pLAWcess
-      </Link>
-      <div className="flex items-center gap-2 text-sm text-text-secondary">
-        <button
-          className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="알림"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-        </button>
+      <div className="flex items-center gap-3">
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            aria-label="메뉴"
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        )}
+        <Link href="/" className="text-brand font-bold text-lg tracking-tight">
+          pLAWcess
+        </Link>
+      </div>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
         {user ? <UserMenu user={user} onLogout={handleLogout} /> : null}
       </div>
     </header>

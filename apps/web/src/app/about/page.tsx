@@ -1,4 +1,4 @@
-import LandingNavbar from '@/components/landing/LandingNavbar';
+import LandingNavbarServer from '@/components/landing/LandingNavbarServer';
 import Footer from '@/components/layout/Footer';
 import AboutHero from '@/components/landing/about/AboutHero';
 import ServiceIntro from '@/components/landing/about/ServiceIntro';
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <LandingNavbar />
+      <LandingNavbarServer />
       <main className="flex-1">
         <AboutHero />
         <ServiceIntro />

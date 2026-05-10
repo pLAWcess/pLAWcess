@@ -41,7 +41,7 @@ export default function UserMenu({ user, onLogout }: Props) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-md hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-md hover:bg-gray-100 transition-colors text-base"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -79,6 +79,20 @@ export default function UserMenu({ user, onLogout }: Props) {
             </div>
             <p className="text-xs text-text-secondary mt-1 truncate">{user.email}</p>
           </div>
+          {(user.current_role === 'mentee' || user.current_role === 'mentor') && (
+            <Link
+              href={`/${user.current_role}/history`}
+              onClick={() => setOpen(false)}
+              role="menuitem"
+              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-gray-50 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              지난 기록
+            </Link>
+          )}
           <Link
             href="/settings"
             onClick={() => setOpen(false)}

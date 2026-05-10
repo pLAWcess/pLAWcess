@@ -27,8 +27,7 @@ function headers() {
   return { "Content-Type": "application/json" };
 }
 
-const LS_PREFIX = "plawcess:";
-const USER_KEY = `${LS_PREFIX}user`;
+const USER_KEY = "plawcess:user";
 
 export type AuthUser = { user_id: string; name: string; login_id: string | null; email: string; current_role: string };
 
@@ -43,51 +42,13 @@ export function getUser(): AuthUser | null {
   } catch { return null; }
 }
 
-function lsKey(year: string) {
-  const userId = getUser()?.user_id ?? "anonymous";
-  return `${LS_PREFIX}quantitative:${userId}:${year}`;
-}
-
-function readLocalCache(year: string): QuantitativeData | null {
-  try {
-    const raw = localStorage.getItem(lsKey(year));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeLocalCache(year: string, data: QuantitativeData) {
-  try {
-    localStorage.setItem(lsKey(year), JSON.stringify(data));
-  } catch {}
-}
-
-async function fetchQuantitative(year: string): Promise<QuantitativeData> {
+export async function getQuantitative(year: string): Promise<QuantitativeData> {
   const res = await fetch(
     `${API_BASE}/api/mentee/quantitative?year=${encodeURIComponent(year)}`,
     { headers: headers(), credentials: "include" }
   );
   if (!res.ok) throw new Error("정량 데이터 조회 실패");
-  const data = await res.json();
-  writeLocalCache(year, data);
-  return data;
-}
-
-export function getCachedQuantitative(year: string): QuantitativeData | null {
-  return readLocalCache(year);
-}
-
-export function clearAllCache() {
-  try {
-    Object.keys(localStorage)
-      .filter((key) => key.startsWith(LS_PREFIX))
-      .forEach((key) => localStorage.removeItem(key));
-  } catch {}
-}
-
-export async function getQuantitative(year: string): Promise<QuantitativeData> {
-  return fetchQuantitative(year);
+  return res.json();
 }
 
 export async function patchQuantitative(
@@ -99,9 +60,7 @@ export async function patchQuantitative(
     { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
   );
   if (!res.ok) throw new Error("정량 데이터 저장 실패");
-  const data = await res.json();
-  writeLocalCache(year, data);
-  return data;
+  return res.json();
 }
 
 // ----------------------------------------------------------------
@@ -121,11 +80,12 @@ export type BasicInfoPersonal = {
   militaryStatus: string;
 };
 
-// 가/나 × 1·2지망 4슬롯, 슬롯별 학교 + 특별전형 boolean
+// 가/나군 단일 슬롯, 슬롯별 학교 + 특별전형 boolean
 export type AdmissionSlot = { school: string; isSpecial: boolean };
 export type BasicInfoAdmission = {
-  가: { first: AdmissionSlot; second: AdmissionSlot };
-  나: { first: AdmissionSlot; second: AdmissionSlot };
+  가: AdmissionSlot;
+  나: AdmissionSlot;
+  preferredGroup: '가' | '나' | null;
 };
 
 export type BasicInfoData = {
@@ -143,15 +103,15 @@ export async function getBasicInfo(year: string): Promise<BasicInfoData> {
 }
 
 type AdmissionSlotPatch = { school?: string; isSpecial?: boolean };
-type AdmissionGroupPatch = { first?: AdmissionSlotPatch; second?: AdmissionSlotPatch };
 
 export async function patchBasicInfo(
   year: string,
   body: {
     personal?: Partial<Omit<BasicInfoPersonal, "name" | "affiliation">>;
     admission?: {
-      가?: AdmissionGroupPatch;
-      나?: AdmissionGroupPatch;
+      가?: AdmissionSlotPatch;
+      나?: AdmissionSlotPatch;
+      preferredGroup?: '가' | '나' | null;
     };
   }
 ): Promise<void> {
@@ -281,10 +241,62 @@ export async function submitMenteeApplication(year: string): Promise<SubmitAppli
 }
 
 // ----------------------------------------------------------------
+// Concerns (기타 고민)
+// ----------------------------------------------------------------
+
+export type ConcernData = {
+  strengthsWeaknesses: string;
+  desiredMentor: string;
+  specialNotes: string;
+  extraRequest: string;
+};
+
+export async function getConcerns(year: string): Promise<ConcernData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/concerns?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" }
+  );
+  if (!res.ok) throw new Error("기타 고민 조회 실패");
+  return res.json();
+}
+
+export async function patchConcern(
+  year: string,
+  body: Partial<ConcernData>
+): Promise<ConcernData> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/concerns?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
+  );
+  if (!res.ok) throw new Error("기타 고민 저장 실패");
+  return res.json();
+}
+
+// ----------------------------------------------------------------
 // Qualitative
 // ----------------------------------------------------------------
 
 export type ActivityCategory = '교내' | '대외' | '사회경험' | '자격·시험';
+
+export type Attachment =
+  | {
+      type: 'document';
+      kind: 'pdf' | 'docx' | 'pptx';
+      filename: string;
+      size: number;
+      contentHash: string;
+      extractedText: string;
+      textCharCount: number;
+      truncated: boolean;
+    }
+  | {
+      type: 'image';
+      kind: 'jpg' | 'png';
+      filename: string;
+      size: number;
+      mimeType: string;
+      contentHash: string;
+    };
 
 export type QualitativeActivity = {
   category?: ActivityCategory;
@@ -294,6 +306,7 @@ export type QualitativeActivity = {
   endDate: string;
   ongoing: boolean;
   content: string;
+  attachments?: Attachment[];
 };
 
 export type StarItem = {
@@ -310,7 +323,7 @@ export type StarItem = {
 export type KeywordCount = {
   keyword: string;
   count: number;
-  sources?: string[];  // 이 통합 키워드로 묶인 raw 키워드 목록 (구버전 데이터에는 없을 수 있음)
+  sources?: string[];
 };
 
 export type StoryOutline = {
@@ -356,7 +369,54 @@ export async function patchQualitative(
     `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
     { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
   );
-  if (!res.ok) throw new Error("정성 데이터 저장 실패");
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => null);
+    throw new Error(errBody?.error ?? `정성 데이터 저장 실패 (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+// ----------------------------------------------------------------
+// 첨부 파일 + 활동 저장 + 인라인 단일 분석을 한 번에 수행하는 multipart PATCH.
+// ----------------------------------------------------------------
+export type PatchQualitativeMultipartResponse = QualitativeData & {
+  inlineStar?: StarItem;
+  inlineSkipped?: boolean;
+  inlineError?: string;
+  attachmentErrors?: string[];
+};
+
+export async function patchQualitativeMultipart(
+  year: string,
+  body: { careerGoal?: string; activities: QualitativeActivity[]; analyzeIndex?: number },
+  filesByActivityIndex: Map<number, File[]>
+): Promise<PatchQualitativeMultipartResponse> {
+  const form = new FormData();
+  form.append(
+    "payload",
+    JSON.stringify({
+      careerGoal: body.careerGoal,
+      activities: body.activities,
+      analyze_index: body.analyzeIndex,
+    })
+  );
+  for (const [idx, files] of filesByActivityIndex.entries()) {
+    files.forEach((file, i) => {
+      form.append(`files_${idx}_${i}`, file, file.name);
+    });
+  }
+
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", credentials: "include", body: form }
+  );
+  if (!res.ok) {
+    if (res.status === 413) {
+      throw new Error("업로드 용량이 너무 큽니다. 첨부 파일 합계를 4MB 이하로 줄여주세요.");
+    }
+    const errBody = await res.json().catch(() => null);
+    throw new Error(errBody?.error ?? `정성 데이터 저장 실패 (HTTP ${res.status})`);
+  }
   return res.json();
 }
 

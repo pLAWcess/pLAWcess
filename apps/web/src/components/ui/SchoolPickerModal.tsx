@@ -4,24 +4,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { type AdmissionInfo, LAW_SCHOOLS } from '@/constants/basic-info';
 
 type Group = '가' | '나';
-type Rank = 'first' | 'second';
-type Slot = { group: Group; rank: Rank };
+type Slot = { group: Group };
 
 const SLOTS: readonly Slot[] = [
-  { group: '가', rank: 'first' },
-  { group: '가', rank: 'second' },
-  { group: '나', rank: 'first' },
-  { group: '나', rank: 'second' },
+  { group: '가' },
+  { group: '나' },
 ];
 
 function slotLabel(slot: Slot) {
-  return `${slot.group}군 · 제${slot.rank === 'first' ? '1' : '2'}지망`;
+  return `${slot.group}군`;
 }
 
 interface Props {
   open: boolean;
   initial: AdmissionInfo;
-  initialActive?: { group: Group; rank: Rank };
+  initialActive?: { group: Group };
   onClose: () => void;
   onConfirm: (next: AdmissionInfo) => void;
 }
@@ -46,10 +43,10 @@ function SchoolPickerModalInner({
 }: Omit<Props, 'open'>) {
   const initialIdx = (() => {
     if (initialActive) {
-      const idx = SLOTS.findIndex((s) => s.group === initialActive.group && s.rank === initialActive.rank);
+      const idx = SLOTS.findIndex((s) => s.group === initialActive.group);
       return idx === -1 ? 0 : idx;
     }
-    const firstEmpty = SLOTS.findIndex((s) => !initial[s.group][s.rank].school);
+    const firstEmpty = SLOTS.findIndex((s) => !initial[s.group].school);
     return firstEmpty === -1 ? 0 : firstEmpty;
   })();
 
@@ -58,13 +55,11 @@ function SchoolPickerModalInner({
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 활성 슬롯 변경 시 검색창 포커스
   useEffect(() => {
     const id = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(id);
   }, [activeIdx]);
 
-  // ESC로 닫기 + body 스크롤 잠금
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
     document.addEventListener('keydown', onKey);
@@ -78,8 +73,6 @@ function SchoolPickerModalInner({
 
   const activeSlot = SLOTS[activeIdx];
   const activeGroupKey = activeSlot.group === '가' ? 'inGa' : 'inNa';
-  const otherRank: Rank = activeSlot.rank === 'first' ? 'second' : 'first';
-  const otherSchoolInGroup = draft[activeSlot.group][otherRank].school;
 
   const candidates = useMemo(() => {
     const q = query.trim();
@@ -89,30 +82,21 @@ function SchoolPickerModalInner({
   }, [query, activeGroupKey]);
 
   function pickSchool(name: string) {
-    if (name === otherSchoolInGroup) return;
     setDraft((prev) => ({
       ...prev,
-      [activeSlot.group]: {
-        ...prev[activeSlot.group],
-        [activeSlot.rank]: { ...prev[activeSlot.group][activeSlot.rank], school: name },
-      },
+      [activeSlot.group]: { ...prev[activeSlot.group], school: name },
     }));
     setQuery('');
-    const next = SLOTS.findIndex((s, i) => i > activeIdx && !draft[s.group][s.rank].school && !(s.group === activeSlot.group && s.rank === activeSlot.rank));
+    const next = SLOTS.findIndex((s, i) => i > activeIdx && !draft[s.group].school);
     if (next !== -1) setActiveIdx(next);
   }
 
   function clearSlot(slot: Slot) {
     setDraft((prev) => ({
       ...prev,
-      [slot.group]: {
-        ...prev[slot.group],
-        [slot.rank]: { ...prev[slot.group][slot.rank], school: '' },
-      },
+      [slot.group]: { ...prev[slot.group], school: '' },
     }));
   }
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -133,47 +117,40 @@ function SchoolPickerModalInner({
           </button>
         </div>
 
-        {/* 슬롯 4개 */}
+        {/* 슬롯 2개 */}
         <div className="px-6 py-5 grid grid-cols-2 gap-4">
-          {(['가', '나'] as const).map((group) => (
-            <div key={group} className="border border-border rounded-lg p-3">
-              <div className="text-xs font-semibold text-brand mb-2">{group}군</div>
-              <div className="flex flex-col gap-1">
-                {(['first', 'second'] as const).map((rank) => {
-                  const idx = SLOTS.findIndex((s) => s.group === group && s.rank === rank);
-                  const isActive = idx === activeIdx;
-                  const school = draft[group][rank].school;
-                  return (
-                    <button
-                      key={rank}
-                      type="button"
-                      onClick={() => setActiveIdx(idx)}
-                      className={`flex items-center justify-between px-2 py-1.5 rounded text-sm text-left transition-colors ${
-                        isActive ? 'bg-brand-light text-brand font-medium' : 'hover:bg-page-bg text-text-primary'
-                      }`}
+          {SLOTS.map((slot, idx) => {
+            const isActive = idx === activeIdx;
+            const school = draft[slot.group].school;
+            return (
+              <div key={slot.group} className="border border-border rounded-lg p-3">
+                <div className="text-xs font-semibold text-brand mb-2">{slot.group}군</div>
+                <button
+                  type="button"
+                  onClick={() => setActiveIdx(idx)}
+                  className={`flex items-center justify-between w-full px-2 py-1.5 rounded text-sm text-left transition-colors ${
+                    isActive ? 'bg-brand-light text-brand font-medium' : 'hover:bg-page-bg text-text-primary'
+                  }`}
+                >
+                  <span className={`flex-1 ${school ? '' : 'text-text-placeholder'}`}>{school || '─'}</span>
+                  {school && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); clearSlot(slot); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearSlot(slot); } }}
+                      className="text-text-placeholder hover:text-text-primary ml-1"
+                      aria-label={`${slotLabel(slot)} 비우기`}
                     >
-                      <span className="text-text-secondary text-xs w-12 shrink-0">제{rank === 'first' ? '1' : '2'}지망</span>
-                      <span className={`flex-1 ${school ? '' : 'text-text-placeholder'}`}>{school || '─'}</span>
-                      {school && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => { e.stopPropagation(); clearSlot({ group, rank }); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearSlot({ group, rank }); } }}
-                          className="text-text-placeholder hover:text-text-primary ml-1"
-                          aria-label={`${slotLabel({ group, rank })} 비우기`}
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </span>
+                  )}
+                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* 검색창 */}
@@ -220,18 +197,14 @@ function SchoolPickerModalInner({
           ) : (
             <ul className="flex flex-col">
               {candidates.map((s) => {
-                const selected = draft[activeSlot.group][activeSlot.rank].school === s.name;
-                const taken = s.name === otherSchoolInGroup;
+                const selected = draft[activeSlot.group].school === s.name;
                 return (
                   <li key={s.name}>
                     <button
                       type="button"
-                      disabled={taken}
                       onClick={() => pickSchool(s.name)}
                       className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded transition-colors ${
-                        taken
-                          ? 'text-text-placeholder cursor-not-allowed'
-                          : selected
+                        selected
                           ? 'bg-brand-light text-brand'
                           : 'text-text-primary hover:bg-page-bg'
                       }`}
@@ -242,7 +215,6 @@ function SchoolPickerModalInner({
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       )}
-                      {taken && !selected && <span className="text-xs">다른 지망에서 선택됨</span>}
                     </button>
                   </li>
                 );
