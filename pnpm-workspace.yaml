@@ -3,7 +3,10 @@ packages:
   - "packages/*"
 
 onlyBuiltDependencies:
-  - "prisma"
+  - "@google/genai"
   - "@prisma/engines"
+  - "prisma"
+  - "protobufjs"
   - "sharp"
+  - "tesseract.js"
   - "unrs-resolver"
