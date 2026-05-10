@@ -10,6 +10,8 @@ const SESSION_AUDIENCE = "session";
 export type TokenPayload = {
   user_id: string;
   current_role: string;
+  name?: string;
+  email?: string;
 };
 
 export function signToken(payload: TokenPayload): string {

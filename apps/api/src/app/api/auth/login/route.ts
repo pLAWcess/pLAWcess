@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "차단된 계정입니다. 관리자에게 문의하세요." }, { status: 403 });
   }
 
-  const token = signToken({ user_id: user.user_id, current_role: user.current_role });
+  const token = signToken({ user_id: user.user_id, current_role: user.current_role, name: user.name, email: user.email });
   const { password_hash: _, ...safeUser } = user;
 
   return NextResponse.json(

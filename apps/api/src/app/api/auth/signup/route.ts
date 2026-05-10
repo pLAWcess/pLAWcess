@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const token = signToken({ user_id: user.user_id, current_role: user.current_role });
+  const token = signToken({ user_id: user.user_id, current_role: user.current_role, name: user.name, email: user.email });
 
   return NextResponse.json(
     { user },
