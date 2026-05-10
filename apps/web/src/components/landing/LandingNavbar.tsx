@@ -61,9 +61,11 @@ export default function LandingNavbar() {
   return (
     <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
       {/* Left: Logo */}
-      <Link href="/" className="text-brand font-bold text-lg tracking-tight">
-        pLAWcess
-      </Link>
+      <div className="flex-1">
+        <Link href="/" className="text-brand font-bold text-lg tracking-tight">
+          pLAWcess
+        </Link>
+      </div>
 
       {/* Center: Nav items */}
       <nav className="flex items-center gap-6" aria-label="주요 메뉴">
@@ -106,9 +108,9 @@ export default function LandingNavbar() {
       </nav>
 
       {/* Right: Action buttons */}
-      <div className="flex items-center gap-2">
+      <div className="flex-1 flex items-center justify-end gap-2">
         {!authChecked ? (
-          <div className="w-44 h-9" />
+          <div className="h-9" />
         ) : user ? (
           <>
             <NotificationBell />
