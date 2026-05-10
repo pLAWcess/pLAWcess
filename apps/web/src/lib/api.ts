@@ -121,11 +121,11 @@ export type BasicInfoPersonal = {
   militaryStatus: string;
 };
 
-// 가/나 × 1·2지망 4슬롯, 슬롯별 학교 + 특별전형 boolean
+// 가/나군 단일 슬롯, 슬롯별 학교 + 특별전형 boolean
 export type AdmissionSlot = { school: string; isSpecial: boolean };
 export type BasicInfoAdmission = {
-  가: { first: AdmissionSlot; second: AdmissionSlot };
-  나: { first: AdmissionSlot; second: AdmissionSlot };
+  가: AdmissionSlot;
+  나: AdmissionSlot;
 };
 
 export type BasicInfoData = {
@@ -143,15 +143,14 @@ export async function getBasicInfo(year: string): Promise<BasicInfoData> {
 }
 
 type AdmissionSlotPatch = { school?: string; isSpecial?: boolean };
-type AdmissionGroupPatch = { first?: AdmissionSlotPatch; second?: AdmissionSlotPatch };
 
 export async function patchBasicInfo(
   year: string,
   body: {
     personal?: Partial<Omit<BasicInfoPersonal, "name" | "affiliation">>;
     admission?: {
-      가?: AdmissionGroupPatch;
-      나?: AdmissionGroupPatch;
+      가?: AdmissionSlotPatch;
+      나?: AdmissionSlotPatch;
     };
   }
 ): Promise<void> {
