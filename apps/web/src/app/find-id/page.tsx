@@ -30,10 +30,10 @@ export default function FindIdPage() {
       return;
     }
 
+    const data = await res.json();
     setLoading(false);
 
     if (!res.ok) {
-      const data = await res.json();
       setError(data.error ?? '오류가 발생했습니다.');
       return;
     }
@@ -53,7 +53,7 @@ export default function FindIdPage() {
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-text-primary">아이디 찾기</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              가입 시 사용한 이메일을 입력하시면 아이디를 보내드립니다.
+              가입 시 사용한 이메일 주소를 입력하시면 아이디를 보내드립니다.
             </p>
           </div>
 
@@ -71,9 +71,7 @@ export default function FindIdPage() {
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="email" className="text-sm font-medium text-text-primary">
-                    이메일
-                  </label>
+                  <label htmlFor="email" className="text-sm font-medium text-text-primary">이메일</label>
                   <input
                     id="email"
                     type="email"

@@ -58,14 +58,19 @@
 
 ---
 
-## `/api/auth/email/send-verification` — POST (#83)
+## `/api/auth/email/send-verification` — POST (#83·#84)
 
-회원가입용 6자리 코드 메일 발송. (비밀번호 재설정 분기는 #84 에서 추가)
+회원가입·비밀번호재설정용 6자리 코드 메일 발송.
 
-**Body:** `{ purpose: "signup", email: string }`
+**Body (purpose 별 분기):**
+```ts
+| { purpose: "signup"; email: string }
+| { purpose: "reset_password"; name: string; loginId: string; email: string }   // #84
+```
 
 **처리:**
-- `User.email` 중복 시 409 (가입 시점 enumeration 허용)
+- `signup`: User.email 중복 시 409 (가입 시점 enumeration 허용)
+- `reset_password`: 이름·아이디·이메일 셋 다 일치 시 발송. 불일치도 200 동일 응답(enumeration 방어), 메일 미발송
 - Rate limit: 동일 (email, purpose) 60초 쿨다운, 시간당 5회 → 위반 시 429
 - Resend 발송 후 `EmailVerification` INSERT (`expires_at = now+5분`)
 
@@ -73,17 +78,17 @@
 
 **Errors:**
 - 400: 요청 형식 오류 / purpose 미지원
-- 409: 이미 사용 중인 이메일
+- 409: 이미 사용 중인 이메일 (signup 만)
 - 429: 쿨다운/한도 초과
 - 502: 메일 발송 실패
 
 ---
 
-## `/api/auth/email/verify-code` — POST (#83)
+## `/api/auth/email/verify-code` — POST (#83·#84)
 
-회원가입 코드 검증 + 가입 단계용 짧은 JWT 발급. (비밀번호 재설정 분기는 #84 에서 추가)
+코드 검증 + 후속 토큰 발급.
 
-**Body:** `{ email, purpose: "signup", code }`
+**Body:** `{ email, purpose: "signup" | "reset_password", code }`
 
 **처리:**
 - (email, purpose) 가장 최근 미consumed·미만료 행 조회
@@ -91,11 +96,13 @@
 - `bcrypt.compare` 실패 시 400
 - 성공 시 `consumed_at = now`
 
-**Response 200:** `{ ok: true, signupVerificationToken: <JWT>, expiresAt }`
-- JWT payload: `{ email }`, audience `email-verification:signup`, 10분
+**Response 200:**
+- `signup` → `{ ok: true, signupVerificationToken: <JWT>, expiresAt }` — payload `{ email }`, audience `email-verification:signup`, 10분
+- `reset_password` → `{ ok: true, resetToken: <JWT>, expiresAt }` + `password_reset_tokens` INSERT(user_id 매핑). JWT payload `{ token_id, raw }`, audience `password-reset`, 10분
 
 **Errors:**
 - 400: 코드 만료 / 시도 초과 / 코드 불일치 / purpose 미지원
+- 404: 사용자 부재 (reset_password 도중 user 삭제 등)
 
 ---
 
@@ -115,6 +122,51 @@
 - 400: 형식 오류 / 학번 형식
 - 401: 이메일 인증 토큰 만료/위조
 - 409: email/loginId 중복
+
+---
+
+## `/api/auth/find-id` — POST (#84)
+
+이름+학번 일치 시 마스킹된 이메일 응답 + 메일로 아이디 발송.
+
+**Body:** `{ name, studentId }`
+
+**처리:**
+- IP rate limit: 시간당 10회
+- User where { name, student_id, is_deleted: false } 일치 단일 행
+
+**이메일 마스킹 규칙:**
+- 로컬파트 1~2자: 첫 1자 + `***`
+- 로컬파트 3자 이상: 첫 2자 + `***`
+
+**Response 200:** `{ maskedEmail: "ho***@gmail.com" }`
+
+**Errors:**
+- 400: 요청 형식
+- 404: 일치하는 회원 없음
+- 429: IP 한도 초과
+- 502: 메일 발송 실패
+
+---
+
+## `/api/auth/reset-password` — POST (#84)
+
+`reset_token` 검증 후 비밀번호 변경.
+
+**Body:** `{ resetToken, newPassword }`
+
+**처리:**
+- JWT 검증 → `token_id` 추출
+- `password_reset_tokens` 조회: 미consumed, 미만료
+- `bcrypt.compare(raw, token_hash)`
+- `newPassword.length ≥ 8`
+- 트랜잭션: `User.password_hash` 갱신 + 이 token consumed + 같은 user 의 다른 미사용 reset token 일괄 무효화
+
+**Response 200:** `{ success: true }`
+
+**Errors:**
+- 400: 형식/비밀번호 길이
+- 401: 토큰 만료/사용됨/위조
 
 ---
 

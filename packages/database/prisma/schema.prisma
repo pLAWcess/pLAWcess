@@ -131,6 +131,7 @@ model User {
   applications          Application[]
   created_match_results MatchResult[]  @relation("MatchCreatedBy")
   admin_memos           AdminMemo[]
+  password_reset_tokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -433,6 +434,25 @@ model EmailVerification {
 
   @@index([email, purpose, created_at])
   @@map("email_verifications")
+}
+
+// ----------------------------------------------------------------
+// 9. password_reset_tokens (#84)
+//    - verify-code 통과 → 새 비밀번호 입력 사이를 잇는 1회용 토큰
+//    - JWT 는 위변조 방지 wrapper, 실제 검증은 token_hash bcrypt 비교
+// ----------------------------------------------------------------
+model PasswordResetToken {
+  token_id    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  token_hash  String    @db.VarChar(100)
+  expires_at  DateTime
+  consumed_at DateTime?
+  created_at  DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("password_reset_tokens")
 }
 
 // ================================================================
