@@ -2,65 +2,29 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { patchCycleSchedule, deleteCycleSchedule, createCycleSchedule, type CycleSchedule } from '@/lib/api';
+import {
+  patchCycleSchedule, deleteCycleSchedule, createCycleSchedule, type CycleSchedule,
+  getAdminApplications,
+  type AdminMenteeApplicationRow,
+  type AdminMentorApplicationRow,
+  type ApplicationStatusLabel,
+} from '@/lib/api';
 
-type ApplicationStatus = 'approved' | 'pending' | 'revision';
-
-type MenteeApp = {
-  id: string;
-  name: string;
-  studentId: string;
-  major: string;
-  status: ApplicationStatus;
-  memo: string | null;
-};
-
-type MentorApp = {
-  id: string;
-  name: string;
-  studentId: string;
-  school: string;
-  status: ApplicationStatus;
-  memo: string | null;
-};
-
-const MENTEE_APPLICATIONS: MenteeApp[] = [
-  { id: 'm1', name: '김민준', studentId: '2020123456', major: '법학과', status: 'approved', memo: '서류 확인 완료' },
-  { id: 'm2', name: '이서연', studentId: '2019234567', major: '경영학과', status: 'pending', memo: null },
-  { id: 'm3', name: '박지호', studentId: '2021345678', major: '컴퓨터공학과', status: 'revision', memo: '학적 증명서 추가 필요' },
-  { id: 'm4', name: '정태양', studentId: '2020567890', major: '경제학과', status: 'pending', memo: null },
-  { id: 'm5', name: '강하늘', studentId: '2019678901', major: '심리학과', status: 'approved', memo: '서류 확인 완료' },
-  { id: 'm6', name: '임나래', studentId: '2021789012', major: '법학과', status: 'pending', memo: null },
-  { id: 'm7', name: '윤도현', studentId: '2020345612', major: '컴퓨터학과', status: 'approved', memo: '서류 확인 완료' },
-  { id: 'm8', name: '조예린', studentId: '2019456712', major: '경영학과', status: 'revision', memo: '자소서 보완 요청' },
-  { id: 'm9', name: '한승호', studentId: '2021567823', major: '법학과', status: 'pending', memo: null },
-  { id: 'm10', name: '서민지', studentId: '2020678934', major: '사회학과', status: 'approved', memo: '서류 확인 완료' },
-  { id: 'm11', name: '권우석', studentId: '2019789045', major: '경제학과', status: 'pending', memo: null },
-  { id: 'm12', name: '문가연', studentId: '2021890156', major: '법학과', status: 'approved', memo: '서류 확인 완료' },
-];
-
-const MENTOR_APPLICATIONS: MentorApp[] = [
-  { id: 't1', name: '최수진', studentId: '2018456789', school: '성균관대학교', status: 'approved', memo: '경력 확인 완료' },
-  { id: 't2', name: '오승민', studentId: '2017890123', school: '연세대학교', status: 'approved', memo: '경력 확인 완료' },
-  { id: 't3', name: '한지우', studentId: '2016901234', school: '고려대학교', status: 'pending', memo: null },
-  { id: 't4', name: '윤서아', studentId: '2018012345', school: '서울대학교', status: 'revision', memo: '자기소개서 보완 필요' },
-  { id: 't5', name: '배현우', studentId: '2017123456', school: '성균관대학교', status: 'approved', memo: '경력 확인 완료' },
-  { id: 't6', name: '신예원', studentId: '2016234567', school: '한양대학교', status: 'pending', memo: null },
-];
-
-const STATUS_LABELS: Record<ApplicationStatus, string> = {
+const STATUS_LABELS: Record<ApplicationStatusLabel, string> = {
   approved: '승인',
   pending: '대기',
   revision: '보완요청',
+  rejected: '거절',
 };
 
 const PAGE_SIZE = 5;
 
-function StatusBadge({ status }: { status: ApplicationStatus }) {
-  const styles: Record<ApplicationStatus, string> = {
+function StatusBadge({ status }: { status: ApplicationStatusLabel }) {
+  const styles: Record<ApplicationStatusLabel, string> = {
     approved: 'bg-green-500 text-white',
     pending: 'bg-gray-200 text-gray-600',
     revision: 'border border-orange-400 text-orange-500',
+    rejected: 'bg-red-500 text-white',
   };
   return (
     <span className={`inline-flex items-center justify-center min-w-[64px] px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
@@ -365,17 +329,14 @@ function ApplicationsPageContent({ initialSchedules }: Props) {
 
       {/* 탭 */}
       <div className="flex gap-1 border-b border-border">
-        <TabButton active={tab === 'mentee'} onClick={() => setTab('mentee')}>
-          멘티 신청 <span className="ml-1.5 text-xs text-text-placeholder">{MENTEE_APPLICATIONS.length}</span>
-        </TabButton>
-        <TabButton active={tab === 'mentor'} onClick={() => setTab('mentor')}>
-          멘토 신청 <span className="ml-1.5 text-xs text-text-placeholder">{MENTOR_APPLICATIONS.length}</span>
-        </TabButton>
+        <TabButton active={tab === 'mentee'} onClick={() => setTab('mentee')}>멘티 신청</TabButton>
+        <TabButton active={tab === 'mentor'} onClick={() => setTab('mentor')}>멘토 신청</TabButton>
       </div>
 
       {tab === 'mentee' ? (
-        <ApplicationPanel<MenteeApp>
-          initialData={MENTEE_APPLICATIONS}
+        <ApplicationPanel<AdminMenteeApplicationRow>
+          role="mentee"
+          year={selectedYear}
           searchKeys={['name', 'studentId', 'major']}
           kindLabel="멘티"
           metaForModal={(a) => [
@@ -391,18 +352,19 @@ function ApplicationsPageContent({ initialSchedules }: Props) {
           ]}
         />
       ) : (
-        <ApplicationPanel<MentorApp>
-          initialData={MENTOR_APPLICATIONS}
+        <ApplicationPanel<AdminMentorApplicationRow>
+          role="mentor"
+          year={selectedYear}
           searchKeys={['name', 'studentId', 'school']}
           kindLabel="멘토"
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
-            { label: '소속 학교', value: a.school },
+            { label: '소속 학교', value: a.school ?? '-' },
           ]}
           columns={[
             { key: 'name', label: '이름', sortable: true },
             { key: 'studentId', label: '학번', sortable: true },
-            { key: 'school', label: '소속 학교', sortable: true },
+            { key: 'school', label: '소속 학교', sortable: true, render: (a) => a.school ?? '-' },
             { key: 'status', label: '신청 상태', sortable: true, render: (a) => <StatusBadge status={a.status} /> },
             { key: 'memo', label: '요청사항 및 관리자메모', render: (a) => <MemoCell memo={a.memo} /> },
           ]}
@@ -435,39 +397,76 @@ type ColumnDef<T> = {
   render?: (row: T) => React.ReactNode;
 };
 
-type ApplicationRow = { id: string; status: ApplicationStatus; memo: string | null; name: string };
+type AdminApplicationRow = AdminMenteeApplicationRow | AdminMentorApplicationRow;
 
-function ApplicationPanel<T extends ApplicationRow>({
-  initialData,
+function ApplicationPanel<T extends AdminApplicationRow>({
+  role,
+  year,
   columns,
   searchKeys,
   metaForModal,
   kindLabel,
 }: {
-  initialData: T[];
+  role: 'mentee' | 'mentor';
+  year: number | null;
   columns: ColumnDef<T>[];
   searchKeys: (keyof T)[];
   metaForModal: (row: T) => { label: string; value: string }[];
   kindLabel: string;
 }) {
-  const [data, setData] = useState<T[]>(initialData);
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
-  const [sort, setSort] = useState<SortState<T>>(null);
+  const [data, setData] = useState<T[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatusLabel>('all');
+  const [sort, setSort] = useState<SortState<T>>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const editing = editingId ? data.find((r) => r.id === editingId) ?? null : null;
+  const editing = editingId ? data.find((r) => r.applicationId === editingId) ?? null : null;
+
+  useEffect(() => {
+    if (year == null) {
+      setData([]);
+      setTotalCount(0);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const fetcher = role === 'mentee'
+      ? getAdminApplications('mentee', { year, page, limit: PAGE_SIZE })
+      : getAdminApplications('mentor', { year, page, limit: PAGE_SIZE });
+    fetcher
+      .then((res) => {
+        if (cancelled) return;
+        setData(res.data as unknown as T[]);
+        setTotalCount(res.totalCount);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : '조회 실패');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [role, year, page]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
 
   const processed = useMemo(() => {
     let result = data;
     const q = query.trim().toLowerCase();
-    if (q) result = result.filter((r) => searchKeys.some((k) => String(r[k]).toLowerCase().includes(q)));
+    if (q) result = result.filter((r) => searchKeys.some((k) => String(r[k] ?? '').toLowerCase().includes(q)));
     if (statusFilter !== 'all') result = result.filter((r) => r.status === statusFilter);
     if (sort) {
       result = [...result].sort((a, b) => {
-        const av = String(a[sort.key]);
-        const bv = String(b[sort.key]);
+        const av = String(a[sort.key] ?? '');
+        const bv = String(b[sort.key] ?? '');
         const cmp = av.localeCompare(bv, 'ko');
         return sort.dir === 'asc' ? cmp : -cmp;
       });
@@ -475,13 +474,7 @@ function ApplicationPanel<T extends ApplicationRow>({
     return result;
   }, [data, query, statusFilter, sort, searchKeys]);
 
-  const total = processed.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paged = processed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
   const onSort = (key: keyof T) => {
-    setPage(1);
     setSort((prev) => {
       if (!prev || prev.key !== key) return { key, dir: 'asc' };
       if (prev.dir === 'asc') return { key, dir: 'desc' };
@@ -496,20 +489,21 @@ function ApplicationPanel<T extends ApplicationRow>({
           <SearchIcon />
           <input
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="검색..."
             className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-3 py-1.5 text-sm border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-brand"
         >
           <option value="all">전체 상태</option>
           <option value="approved">승인</option>
           <option value="pending">대기</option>
           <option value="revision">보완요청</option>
+          <option value="rejected">거절</option>
         </select>
       </div>
 
@@ -532,21 +526,23 @@ function ApplicationPanel<T extends ApplicationRow>({
           </tr>
         </thead>
         <tbody>
-          {paged.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td>
-            </tr>
+          {loading ? (
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
+          ) : error ? (
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-red-500">{error}</td></tr>
+          ) : processed.length === 0 ? (
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td></tr>
           ) : (
-            paged.map((row) => (
-              <tr key={row.id} className="border-b border-border last:border-b-0">
+            processed.map((row) => (
+              <tr key={row.applicationId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
                   <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle">
-                    {col.render ? col.render(row) : String(row[col.key])}
+                    {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}
                 <td className="py-4 pr-2 text-right align-middle whitespace-nowrap">
                   <button
-                    onClick={() => setEditingId(row.id)}
+                    onClick={() => setEditingId(row.applicationId)}
                     className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -564,7 +560,7 @@ function ApplicationPanel<T extends ApplicationRow>({
 
       <div className="flex items-center justify-between mt-5">
         <span className="text-xs text-text-secondary">
-          총 {total}건 · {safePage} / {totalPages} 페이지
+          총 {totalCount}건 · {safePage} / {totalPages} 페이지
         </span>
         {totalPages > 1 && <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />}
       </div>
@@ -575,9 +571,9 @@ function ApplicationPanel<T extends ApplicationRow>({
         kindLabel={kindLabel}
         onClose={() => setEditingId(null)}
         onSave={async ({ memo, status }) => {
-          // TODO: PATCH /api/admin/applications/:id { memo, status }
-          await new Promise((r) => setTimeout(r, 300));
-          setData((prev) => prev.map((r) => (r.id === editingId ? { ...r, memo: memo || null, status } : r)));
+          // TODO: PATCH /api/admin/applications/:id { memo, status } — 별도 이슈
+          await new Promise((r) => setTimeout(r, 200));
+          setData((prev) => prev.map((r) => (r.applicationId === editingId ? { ...r, memo: memo || null, status } : r)));
           setEditingId(null);
         }}
       />
@@ -585,7 +581,7 @@ function ApplicationPanel<T extends ApplicationRow>({
   );
 }
 
-function ApplicationEditModal<T extends ApplicationRow>({
+function ApplicationEditModal<T extends AdminApplicationRow>({
   target,
   meta,
   kindLabel,
@@ -596,10 +592,10 @@ function ApplicationEditModal<T extends ApplicationRow>({
   meta: { label: string; value: string }[];
   kindLabel: string;
   onClose: () => void;
-  onSave: (next: { memo: string; status: ApplicationStatus }) => Promise<void>;
+  onSave: (next: { memo: string; status: ApplicationStatusLabel }) => Promise<void>;
 }) {
   const [memo, setMemo] = useState('');
-  const [status, setStatus] = useState<ApplicationStatus>('pending');
+  const [status, setStatus] = useState<ApplicationStatusLabel>('pending');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -640,7 +636,6 @@ function ApplicationEditModal<T extends ApplicationRow>({
         aria-label={`${kindLabel} 신청 검토`}
         className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]"
       >
-        {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-text-primary">{kindLabel} 신청 검토</h2>
           <button type="button" onClick={onClose} aria-label="닫기" className="text-text-placeholder hover:text-text-primary">
@@ -650,9 +645,7 @@ function ApplicationEditModal<T extends ApplicationRow>({
           </button>
         </div>
 
-        {/* 본문 */}
         <div className="px-6 py-5 flex flex-col gap-6 overflow-y-auto">
-          {/* 신청자 정보 */}
           <div>
             <p className="text-xs font-medium text-text-secondary mb-2">신청자 정보</p>
             <div className="bg-page-bg border border-border rounded-md px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
@@ -669,11 +662,10 @@ function ApplicationEditModal<T extends ApplicationRow>({
             </div>
           </div>
 
-          {/* 신청 상태 */}
           <div>
             <p className="text-sm font-medium text-text-primary mb-3">신청 상태</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(['approved', 'pending', 'revision'] as const).map((s) => (
+            <div className="grid grid-cols-4 gap-2">
+              {(['approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -690,7 +682,6 @@ function ApplicationEditModal<T extends ApplicationRow>({
             </div>
           </div>
 
-          {/* 관리자 메모 */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-text-primary">관리자 메모</p>
@@ -708,7 +699,6 @@ function ApplicationEditModal<T extends ApplicationRow>({
           </div>
         </div>
 
-        {/* 푸터 */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
           <button
             type="button"
