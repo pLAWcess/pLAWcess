@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   patchCycleSchedule, deleteCycleSchedule, createCycleSchedule, type CycleSchedule,
   getAdminApplications,
+  patchAdminApplication,
   type AdminMenteeApplicationRow,
   type AdminMentorApplicationRow,
   type ApplicationStatusLabel,
@@ -571,9 +572,9 @@ function ApplicationPanel<T extends AdminApplicationRow>({
         kindLabel={kindLabel}
         onClose={() => setEditingId(null)}
         onSave={async ({ memo, status }) => {
-          // TODO: PATCH /api/admin/applications/:id { memo, status } — 별도 이슈
-          await new Promise((r) => setTimeout(r, 200));
-          setData((prev) => prev.map((r) => (r.applicationId === editingId ? { ...r, memo: memo || null, status } : r)));
+          if (!editingId) return;
+          const updated = await patchAdminApplication(editingId, { status, memo });
+          setData((prev) => prev.map((r) => (r.applicationId === editingId ? (updated as T) : r)));
           setEditingId(null);
         }}
       />

@@ -603,6 +603,17 @@ export async function getAdminApplications(
   return jsonOrError(res, "신청 목록 조회 실패");
 }
 
+export async function patchAdminApplication(
+  id: string,
+  body: { status?: ApplicationStatusLabel; memo?: string },
+): Promise<AdminMenteeApplicationRow | AdminMentorApplicationRow> {
+  const res = await fetch(`${API_BASE}/api/admin/applications/${id}`, {
+    method: "PATCH", headers: headers(), credentials: "include",
+    body: JSON.stringify(body),
+  });
+  return jsonOrError(res, "신청 수정 실패");
+}
+
 // 매칭 적격 풀 ------------------------------------------------------
 
 export async function getEligibleMatchingPool(year?: number): Promise<EligiblePool> {
