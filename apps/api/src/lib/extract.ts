@@ -33,15 +33,13 @@ export function sha256Hex(buffer: Uint8Array): string {
 // ----------------------------------------------------------------
 
 async function extractPdf(buffer: Uint8Array): Promise<string> {
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const result = await parser.getText();
-    // PageTextResult { num, text } 배열 → 페이지 경계를 LF 두 줄로 보존
-    return result.pages.map((p) => p.text).join("\n\n");
-  } finally {
-    await parser.destroy().catch(() => {});
-  }
+  // unpdf — serverless(Vercel/Cloudflare) 친화적인 pdfjs 래퍼.
+  // pdf-parse@2는 pdfjs-dist의 브라우저 전역(DOMMatrix 등) 의존성 때문에
+  // Node 런타임에서 ReferenceError로 깨지는 이슈가 있어 교체.
+  const { extractText } = await import("unpdf");
+  const { text } = await extractText(buffer, { mergePages: false });
+  // text: string[] (페이지별) → 페이지 경계를 LF 두 줄로 보존
+  return text.join("\n\n");
 }
 
 async function extractDocx(buffer: Uint8Array): Promise<string> {
