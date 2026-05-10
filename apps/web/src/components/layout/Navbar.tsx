@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { saveUser, getUser, type AuthUser } from '@/lib/api';
 import UserMenu from './UserMenu';
@@ -74,8 +75,8 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
             </svg>
           </button>
         )}
-        <Link href="/" className="text-brand font-bold text-lg tracking-tight">
-          pLAWcess
+        <Link href="/">
+          <Image src="/logo/puzzleserif_logo.png" alt="pLAWcess" width={120} height={39} priority />
         </Link>
       </div>
       <div className="flex items-center gap-2">

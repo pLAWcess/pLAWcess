@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getUser, saveUser, type AuthUser } from '@/lib/api';
@@ -65,8 +66,8 @@ export default function LandingNavbar({ initialUser }: Props) {
     <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
       {/* Left: Logo */}
       <div className="flex-1">
-        <Link href="/" className="text-brand font-bold text-lg tracking-tight">
-          pLAWcess
+        <Link href="/">
+          <Image src="/logo/puzzleserif_logo.png" alt="pLAWcess" width={120} height={39} priority />
         </Link>
       </div>
 
