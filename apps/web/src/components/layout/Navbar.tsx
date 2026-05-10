@@ -16,7 +16,7 @@ interface NavbarProps {
 
 export default function Navbar({ onMenuToggle }: NavbarProps) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(() => getUser());
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   async function fetchUser() {
     try {
@@ -43,8 +43,10 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
   }
 
   useEffect(() => {
+    const cachedUser = getUser();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!getUser()) fetchUser();
+    if (cachedUser) setUser(cachedUser);
+    else fetchUser();
   }, []);
 
   async function handleLogout() {
