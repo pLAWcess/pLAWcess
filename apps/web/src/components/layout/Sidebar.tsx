@@ -34,9 +34,9 @@ const adminNavSections: NavSection[] = [
   {
     section: '프로세스 사업',
     items: [
-      { label: '회원관리', href: '/admin/users' },
-      { label: '신청관리', href: '/admin/applications' },
-      { label: '매칭관리', href: '/admin/matchings', match: '/admin/matchings' },
+      { label: '회원 관리', href: '/admin/users' },
+      { label: '신청 관리', href: '/admin/applications' },
+      { label: '매칭 관리', href: '/admin/matchings', match: '/admin/matchings' },
       { label: '멘토 계정 생성', href: '/admin/mentors/create', match: '/admin/mentors' },
     ],
   },

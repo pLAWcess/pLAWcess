@@ -124,6 +124,18 @@ export default function AdminAnnouncementsManageClient({
     }
   }
 
+  async function handleTogglePin(a: AdminAnnouncementRow) {
+    setTogglingId(a.announcementId);
+    try {
+      const updated = await updateAnnouncement(a.announcementId, { isPinned: !a.isPinned });
+      setList((prev) => prev.map((item) => item.announcementId === updated.announcementId ? updated : item));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '수정 실패');
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('이 공지사항을 삭제할까요?')) return;
     setDeletingId(id);
@@ -177,13 +189,16 @@ export default function AdminAnnouncementsManageClient({
                       {isDeleted && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-text-placeholder">삭제됨</span>
                       )}
+                      {!isDeleted && a.isPinned && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-brand-light text-brand">고정됨</span>
+                      )}
                       {!isDeleted && !a.isPublished && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-50 text-yellow-600">비공개</span>
                       )}
                     </div>
                     <p className="mt-1 text-sm text-text-secondary line-clamp-2">{a.body}</p>
                     <p className="mt-2 text-xs text-text-placeholder">
-                      {a.author} · {new Date(a.createdAt).toLocaleDateString('ko-KR')}
+                      {a.author} · {new Date(a.createdAt).toLocaleDateString('ko-KR')} · 조회 {a.viewCount.toLocaleString()}
                     </p>
                   </div>
                   {!isDeleted && (
@@ -193,6 +208,13 @@ export default function AdminAnnouncementsManageClient({
                         className="text-xs border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
                       >
                         수정
+                      </button>
+                      <button
+                        onClick={() => handleTogglePin(a)}
+                        disabled={togglingId === a.announcementId}
+                        className={`text-xs border px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 ${a.isPinned ? 'border-brand text-brand hover:bg-brand-light' : 'border-border hover:bg-gray-50'}`}
+                      >
+                        {a.isPinned ? '고정 해제' : '고정하기'}
                       </button>
                       <button
                         onClick={() => handleTogglePublish(a)}
