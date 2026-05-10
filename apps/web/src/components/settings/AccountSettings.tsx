@@ -7,6 +7,8 @@ import DeleteAccountModal from './DeleteAccountModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
+const ROLE_LABEL: Record<string, string> = { mentee: '멘티', mentor: '멘토', admin: '관리자' };
+
 export default function AccountSettings() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -125,8 +127,6 @@ export default function AccountSettings() {
     }
   }
 
-  const ROLE_LABEL: Record<string, string> = { mentee: '멘티', mentor: '멘토', admin: '관리자' };
-
   return (
     <div className="flex flex-col gap-6 page-container w-full">
       <div>
@@ -135,88 +135,64 @@ export default function AccountSettings() {
       </div>
 
       {/* 계정 정보 카드 */}
-      <div className="bg-white rounded-xl border border-border shadow-sm">
-        <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-brand-muted flex items-center justify-center text-brand">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-xl font-bold text-text-primary">{user?.name ?? '불러오는 중...'}</p>
-                {user && (
-                  <span className="text-xs text-brand bg-white border border-brand/20 px-2 py-0.5 rounded-full font-medium">
-                    {ROLE_LABEL[user.current_role] ?? user.current_role}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-text-secondary mt-0.5">{user?.email ?? ''}</p>
-            </div>
+      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-2">
+        {/* 아이디 행 */}
+        <div className="grid grid-cols-2 divide-x divide-border py-5 border-b border-border">
+          <div className="flex flex-col gap-2 pr-8">
+            <span className="text-sm text-text-secondary">아이디</span>
+            <span className="text-base text-text-primary">{user?.login_id ?? '-'}</span>
+          </div>
+          <div className="flex flex-col gap-2 pl-8">
+            <span className="text-sm text-text-secondary">역할</span>
+            <span className="text-base text-text-primary">{user ? (ROLE_LABEL[user.current_role] ?? user.current_role) : '-'}</span>
           </div>
         </div>
 
-        <div className="px-8 py-2">
-          {/* 아이디 행 */}
-          <div className="grid grid-cols-2 divide-x divide-border py-5 border-b border-border">
-            <div className="flex flex-col gap-2 pr-8">
-              <span className="text-sm text-text-secondary">아이디</span>
-              <span className="text-base text-text-primary font-mono">{user?.login_id ?? '-'}</span>
+        {/* 이메일 행 */}
+        <div className="py-5">
+          <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-text-secondary">이메일</span>
+              <span className="text-base text-text-primary">{user?.email ?? '-'}</span>
+              {emailSuccess && !showEmailForm && (
+                <p className="text-xs text-green-600">이메일이 변경되었습니다.</p>
+              )}
             </div>
-            <div className="flex flex-col gap-2 pl-8">
-              <span className="text-sm text-text-secondary">역할</span>
-              <span className="text-base text-text-primary">{user ? (ROLE_LABEL[user.current_role] ?? user.current_role) : '-'}</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setShowEmailForm((v) => !v); setEmailError(''); setEmailSuccess(false); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary border border-border rounded-lg hover:bg-gray-50 transition-colors shrink-0"
+            >
+              {showEmailForm ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  취소
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                  변경
+                </>
+              )}
+            </button>
           </div>
 
-          {/* 이메일 행 */}
-          <div className="py-5">
-            <div className="flex items-start justify-between">
-              <div className="flex flex-col gap-2">
-                <span className="text-sm text-text-secondary">이메일</span>
-                <span className="text-base text-text-primary">{user?.email ?? '-'}</span>
-                {emailSuccess && !showEmailForm && (
-                  <p className="text-xs text-green-600">이메일이 변경되었습니다.</p>
-                )}
+          {showEmailForm && (
+            <form onSubmit={handleChangeEmail} className="flex flex-col gap-4 max-w-sm mt-5">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="newEmail" className="text-sm font-medium text-text-primary">새 이메일</label>
+                <input id="newEmail" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className={inputClass} />
               </div>
-              <button
-                type="button"
-                onClick={() => { setShowEmailForm((v) => !v); setEmailError(''); setEmailSuccess(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary border border-border rounded-lg hover:bg-gray-50 transition-colors shrink-0"
-              >
-                {showEmailForm ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    취소
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                    변경
-                  </>
-                )}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="emailPassword" className="text-sm font-medium text-text-primary">비밀번호 확인</label>
+                <input id="emailPassword" type="password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className={inputClass} />
+              </div>
+              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
+              <button type="submit" disabled={emailLoading} className="w-fit px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium disabled:opacity-50">
+                {emailLoading ? '변경 중...' : '변경'}
               </button>
-            </div>
-
-            {showEmailForm && (
-              <form onSubmit={handleChangeEmail} className="flex flex-col gap-4 max-w-sm mt-5">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="newEmail" className="text-sm font-medium text-text-primary">새 이메일</label>
-                  <input id="newEmail" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className={inputClass} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="emailPassword" className="text-sm font-medium text-text-primary">비밀번호 확인</label>
-                  <input id="emailPassword" type="password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className={inputClass} />
-                </div>
-                {emailError && <p className="text-sm text-red-500">{emailError}</p>}
-                <button type="submit" disabled={emailLoading} className="w-fit px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium disabled:opacity-50">
-                  {emailLoading ? '변경 중...' : '변경'}
-                </button>
-              </form>
-            )}
-          </div>
+            </form>
+          )}
         </div>
       </div>
 
