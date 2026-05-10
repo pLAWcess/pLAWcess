@@ -14,13 +14,16 @@ const NAV_ITEMS = [
   { href: '/announcements', label: '공지사항' },
 ];
 
-export default function LandingNavbar() {
+type Props = { initialUser?: AuthUser | null };
+
+export default function LandingNavbar({ initialUser }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
+  const [authChecked, setAuthChecked] = useState(initialUser !== undefined);
 
   useEffect(() => {
+    if (initialUser !== undefined) return;
     const cached = getUser();
     if (cached) {
       setUser(cached);
