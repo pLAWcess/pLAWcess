@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
-import { hashAnalysisInput } from "@/lib/hash";
-import { buildSingleAnalysisHash } from "@/lib/qualHash";
+import { hashAnalysisInput, buildSingleAnalysisHash } from "@/lib/hash";
 import type { StoredAttachment } from "@/lib/attachments";
 import { summarizeQualitative, type QualitativeActivity, type StarItem } from "@/lib/gemini";
 

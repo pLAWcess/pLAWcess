@@ -1,6 +1,6 @@
 import { prisma, Prisma } from "@plawcess/database";
 import { analyzeSingleActivity, type StarItem } from "./gemini";
-import { buildSingleAnalysisHash } from "./qualHash";
+import { buildSingleAnalysisHash } from "./hash";
 import type { StoredAttachment } from "./attachments";
 
 // PATCH(인라인 분석)와 POST /analyze/[index] 두 엔드포인트가 공유하는 단일 활동 분석 로직.
