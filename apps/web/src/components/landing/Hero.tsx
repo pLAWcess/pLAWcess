@@ -1,6 +1,10 @@
 import Link from 'next/link';
 
-export default function Hero() {
+interface Props {
+  startHref: string;
+}
+
+export default function Hero({ startHref }: Props) {
   return (
     <section className="relative overflow-hidden py-24 sm:py-32">
       {/* Background Glow (Stripe-inspired) */}
@@ -27,7 +31,7 @@ export default function Hero() {
         {/* Actions */}
         <div className="mt-12 flex justify-center">
           <Link
-            href="/mentee/dashboard/basic-info"
+            href={startHref}
             className="group relative flex h-14 items-center justify-center gap-2 overflow-hidden rounded-2xl bg-brand px-8 text-lg font-bold text-white shadow-xl shadow-brand/20 transition-all hover:bg-brand-dark hover:shadow-brand/30 hover:-translate-y-1"
           >
             <span>시작하기</span>
