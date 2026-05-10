@@ -7,6 +7,7 @@ const menteeNavItems = [
   { label: '기본정보', href: '/mentee/dashboard/basic-info' },
   { label: '정량 데이터', href: '/mentee/dashboard/quantitative' },
   { label: '정성 데이터', href: '/mentee/dashboard/qualitative' },
+  { label: '자기소개서', href: '/mentee/dashboard/personal-statement' },
   { label: '프로세스 신청', href: '/mentee/applications' },
   { label: '합격 아카이브', href: '/mentee/archive' },
   { label: '공지사항', href: '/mentee/announcements' },

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getUser, saveUser, clearAllCache, type AuthUser } from '@/lib/api';
+import { getUser, saveUser, type AuthUser } from '@/lib/api';
 import UserMenu from '@/components/layout/UserMenu';
 import NotificationBell from '@/components/layout/NotificationBell';
 
@@ -14,21 +14,26 @@ const NAV_ITEMS = [
   { href: '/announcements', label: '공지사항' },
 ];
 
-export default function LandingNavbar() {
+type Props = { initialUser?: AuthUser | null };
+
+export default function LandingNavbar({ initialUser }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
+  const [authChecked, setAuthChecked] = useState(initialUser !== undefined);
 
   useEffect(() => {
+    if (initialUser !== undefined) return;
     const cached = getUser();
     if (cached) {
       setUser(cached);
+      setAuthChecked(true);
     } else {
-      fetchUser();
+      fetchUser().finally(() => setAuthChecked(true));
     }
   }, []);
 
-  async function fetchUser() {
+  async function fetchUser(): Promise<void> {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'include' });
       if (!res.ok) return;
@@ -52,7 +57,6 @@ export default function LandingNavbar() {
       method: 'POST',
       credentials: 'include',
     });
-    clearAllCache();
     setUser(null);
     router.push('/');
   }
@@ -60,9 +64,11 @@ export default function LandingNavbar() {
   return (
     <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
       {/* Left: Logo */}
-      <Link href="/" className="text-brand font-bold text-lg tracking-tight">
-        pLAWcess
-      </Link>
+      <div className="flex-1">
+        <Link href="/" className="text-brand font-bold text-lg tracking-tight">
+          pLAWcess
+        </Link>
+      </div>
 
       {/* Center: Nav items */}
       <nav className="flex items-center gap-6" aria-label="주요 메뉴">
@@ -105,8 +111,10 @@ export default function LandingNavbar() {
       </nav>
 
       {/* Right: Action buttons */}
-      <div className="flex items-center gap-2">
-        {user ? (
+      <div className="flex-1 flex items-center justify-end gap-2">
+        {!authChecked ? (
+          <div className="h-9" />
+        ) : user ? (
           <>
             <NotificationBell />
             <UserMenu user={user} onLogout={handleLogout} />

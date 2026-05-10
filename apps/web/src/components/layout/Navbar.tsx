@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { clearAllCache, saveUser, getUser, type AuthUser } from '@/lib/api';
+import { saveUser, getUser, type AuthUser } from '@/lib/api';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
 
@@ -55,7 +55,6 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
       method: 'POST',
       credentials: 'include',
     });
-    clearAllCache();
     router.push('/');
   }
 

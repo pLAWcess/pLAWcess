@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearAllCache } from '@/lib/api';
 import DeleteAccountModal from './DeleteAccountModal';
 
 export default function AccountSettings() {
@@ -25,7 +24,6 @@ export default function AccountSettings() {
         throw new Error(error.error || '회원탈퇴 중 오류가 발생했습니다.');
       }
 
-      clearAllCache();
       router.push('/login');
     } catch (error) {
       throw error;

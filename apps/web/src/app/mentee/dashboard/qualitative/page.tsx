@@ -968,6 +968,7 @@ export default function QualitativePage() {
     '교내': [], '대외': [], '사회경험': [], '자격·시험': [],
   });
   const [analysis, setAnalysis] = useState<QualitativeData['analysis'] | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
   const [summarizing, setSummarizing] = useState(false);
@@ -1001,7 +1002,10 @@ export default function QualitativePage() {
   }, []);
 
   useEffect(() => {
-    getQualitative(YEAR).then(applyData).catch(() => {});
+    getQualitative(YEAR)
+      .then(applyData)
+      .catch(() => {})
+      .finally(() => setPageLoading(false));
   }, [applyData]);
 
   // 탭 이동 시 STAR 펼침 상태 초기화 (탭 진입 시 기본은 접힘)
@@ -1401,7 +1405,33 @@ export default function QualitativePage() {
         </div>
       </div>
 
-      {activeTab === '대시보드' ? renderDashboard() : renderCategoryTab(activeTab)}
+      {pageLoading ? (
+        <div className="flex flex-col gap-6 animate-pulse">
+          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+            <div className="h-6 w-40 bg-gray-200 rounded mb-4" />
+            <div className="space-y-3">
+              <div className="h-5 w-full bg-gray-100 rounded" />
+              <div className="h-5 w-3/4 bg-gray-100 rounded" />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+            <div className="h-6 w-32 bg-gray-200 rounded mb-6" />
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="h-5 w-5 bg-gray-200 rounded" />
+                  <div className="h-5 flex-1 bg-gray-100 rounded" />
+                  <div className="h-5 w-16 bg-gray-100 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+            <div className="h-6 w-24 bg-gray-200 rounded mb-4" />
+            <div className="h-5 w-1/2 bg-gray-100 rounded" />
+          </div>
+        </div>
+      ) : activeTab === '대시보드' ? renderDashboard() : renderCategoryTab(activeTab)}
     </div>
   );
 }

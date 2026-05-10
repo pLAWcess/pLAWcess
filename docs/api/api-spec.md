@@ -80,14 +80,8 @@
     "academicStatus": "재학"
   },
   "admission": {
-    "가": {
-      "first":  { "school": "string", "isSpecial": false },
-      "second": { "school": "string", "isSpecial": false }
-    },
-    "나": {
-      "first":  { "school": "string", "isSpecial": false },
-      "second": { "school": "string", "isSpecial": false }
-    }
+    "가": { "school": "string", "isSpecial": false },
+    "나": { "school": "string", "isSpecial": false }
   }
 }
 ```
@@ -106,19 +100,13 @@
     "academicStatus": "재학"
   },
   "admission": {
-    "가": {
-      "first":  { "school": "string", "isSpecial": false },
-      "second": { "school": "string", "isSpecial": false }
-    },
-    "나": {
-      "first":  { "school": "string", "isSpecial": false },
-      "second": { "school": "string", "isSpecial": false }
-    }
+    "가": { "school": "string", "isSpecial": false },
+    "나": { "school": "string", "isSpecial": false }
   }
 }
 ```
 
-`admission.{가|나}.{first|second}.school` 빈 문자열은 DB 컬럼이 NULL로 저장된다. `isSpecial` 미지정 시 기본값 `false` 유지.
+`admission.{가|나}.school` 빈 문자열은 DB 컬럼이 NULL로 저장된다. `isSpecial` 미지정 시 기본값 `false` 유지.
 
 **PATCH Response 200:** `{ "success": true }`
 

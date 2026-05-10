@@ -1,4 +1,4 @@
-import LandingNavbar from '@/components/landing/LandingNavbar';
+import LandingNavbarServer from '@/components/landing/LandingNavbarServer';
 import Footer from '@/components/layout/Footer';
 import type { Metadata } from 'next';
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <LandingNavbar />
+      <LandingNavbarServer />
       <main className="flex-1 bg-page-bg">
         <div className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
           <h1 className="text-3xl font-extrabold text-text-primary tracking-tight">

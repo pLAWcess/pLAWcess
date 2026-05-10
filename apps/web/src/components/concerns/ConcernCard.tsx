@@ -9,13 +9,26 @@ type Props = {
   placeholder: string;
   initialValue: string;
   onSave?: (value: string) => Promise<void>;
+  onEditingChange?: (isEditing: boolean) => void;
 };
 
-export default function ConcernCard({ title, description, placeholder, initialValue, onSave }: Props) {
+export default function ConcernCard({ title, description, placeholder, initialValue, onSave, onEditingChange }: Props) {
   const [data, setData] = useState(initialValue);
   const [draft, setDraft] = useState(initialValue);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  function startEditing() {
+    setDraft(data);
+    setIsEditing(true);
+    onEditingChange?.(true);
+  }
+
+  function cancelEditing() {
+    setDraft(data);
+    setIsEditing(false);
+    onEditingChange?.(false);
+  }
 
   async function handleSave() {
     setIsSaving(true);
@@ -23,6 +36,7 @@ export default function ConcernCard({ title, description, placeholder, initialVa
       if (onSave) await onSave(draft);
       setData(draft);
       setIsEditing(false);
+      onEditingChange?.(false);
     } finally {
       setIsSaving(false);
     }
@@ -34,12 +48,12 @@ export default function ConcernCard({ title, description, placeholder, initialVa
         <h2 className="text-base font-semibold text-text-primary">{title}</h2>
         {isEditing ? (
           <EditButtons
-            onCancel={() => { setDraft(data); setIsEditing(false); }}
+            onCancel={cancelEditing}
             onSave={handleSave}
             disabled={isSaving}
           />
         ) : (
-          <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
+          <EditButton onClick={startEditing} />
         )}
       </div>
       <p className="text-xs text-text-secondary mb-4">{description}</p>

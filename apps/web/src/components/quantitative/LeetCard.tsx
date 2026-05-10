@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
-import SelectField from '@/components/ui/SelectField';
 import type { LeetSection } from '@/lib/api';
 
 export type LeetData = LeetSection;
@@ -10,9 +9,6 @@ export type LeetData = LeetSection;
 type Props = {
   initialData: LeetData;
   onSave?: (data: LeetData) => Promise<void>;
-  year: string;
-  yearOptions: string[];
-  onYearChange: (year: string) => void;
 };
 
 function toDisplay(val: number | null): string {
@@ -24,7 +20,7 @@ function fromInput(val: string): number | null {
   return isNaN(n) ? null : n;
 }
 
-export default function LeetCard({ initialData, onSave, year, yearOptions, onYearChange }: Props) {
+export default function LeetCard({ initialData, onSave }: Props) {
   const [data, setData] = useState<LeetData>(initialData);
   const [draft, setDraft] = useState<LeetData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
@@ -57,9 +53,6 @@ export default function LeetCard({ initialData, onSave, year, yearOptions, onYea
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">LEET 성적</h2>
         <div className="flex items-center gap-3">
-          <div className="w-28">
-            <SelectField value={year} options={yearOptions} onChange={onYearChange} />
-          </div>
           {isEditing
             ? <EditButtons onCancel={() => { setDraft(data); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
             : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
