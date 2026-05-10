@@ -13,15 +13,15 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     redirect('/login');
   }
 
+  let role: string | undefined;
   try {
     const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error('JWT_SECRET not set');
-    }
-    jwt.verify(token, secret);
+    if (!secret) throw new Error('JWT_SECRET not set');
+    const payload = jwt.verify(token, secret) as { current_role?: string };
+    role = payload.current_role;
   } catch {
     redirect('/login');
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return <DashboardShell role={role}>{children}</DashboardShell>;
 }

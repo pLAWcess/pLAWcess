@@ -1,9 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { getUser } from '@/lib/api';
 
 const menteeNavItems = [
   { label: '기본정보', href: '/mentee/dashboard/basic-info' },
@@ -37,23 +35,19 @@ const adminNavItems: NavItem[] = [
 interface SidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
+  initialRole?: string;
 }
 
-export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarProps) {
   const pathname = usePathname();
-  const [userRole, setUserRole] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    setUserRole(getUser()?.current_role);
-  }, []);
 
   const navItems: NavItem[] = pathname.startsWith('/mentor')
     ? mentorNavItems
     : pathname.startsWith('/admin')
     ? adminNavItems
-    : userRole === 'mentor'
+    : initialRole === 'mentor'
     ? mentorNavItems
-    : userRole === 'admin'
+    : initialRole === 'admin'
     ? adminNavItems
     : menteeNavItems;
 
