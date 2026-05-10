@@ -132,6 +132,7 @@ model User {
   created_match_results MatchResult[]  @relation("MatchCreatedBy")
   admin_memos           AdminMemo[]
   password_reset_tokens PasswordResetToken[]
+  created_announcements Announcement[] @relation("AnnouncementCreatedBy")
 
   @@map("users")
 }
@@ -453,6 +454,25 @@ model PasswordResetToken {
 
   @@index([user_id])
   @@map("password_reset_tokens")
+}
+
+// ----------------------------------------------------------------
+// 10. announcements (#176)
+//    - 관리자 작성 공지. 멘티/멘토/admin 모두 읽기 가능.
+//    - hard delete (soft delete 미적용)
+// ----------------------------------------------------------------
+model Announcement {
+  announcement_id    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title              String   @db.VarChar(100)
+  body               String   @db.Text
+  created_by_user_id String   @db.Uuid
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  created_by User @relation("AnnouncementCreatedBy", fields: [created_by_user_id], references: [user_id])
+
+  @@index([created_at])
+  @@map("announcements")
 }
 
 // ================================================================

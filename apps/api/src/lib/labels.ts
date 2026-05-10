@@ -73,3 +73,23 @@ export function labelToDate(label: string): Date | null {
 export function yearToLabel(y: number | null | undefined): string {
   return y == null ? "" : y.toString();
 }
+
+// ---------- application_status (BE enum → FE label) ----------
+const APPLICATION_STATUS_TO_LABEL: Record<string, string> = {
+  submitted: "pending",
+  approved: "approved",
+  rejected: "rejected",
+  revision_requested: "revision",
+};
+const LABEL_TO_APPLICATION_STATUS: Record<string, string> = {
+  pending: "submitted",
+  approved: "approved",
+  rejected: "rejected",
+  revision: "revision_requested",
+};
+export function applicationStatusToLabel(s: string | null | undefined): string {
+  return s ? (APPLICATION_STATUS_TO_LABEL[s] ?? "") : "";
+}
+export function labelToApplicationStatus(label: string): string | null {
+  return LABEL_TO_APPLICATION_STATUS[label] ?? null;
+}
