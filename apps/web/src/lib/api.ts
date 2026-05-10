@@ -614,6 +614,64 @@ export async function patchAdminApplication(
   return jsonOrError(res, "신청 수정 실패");
 }
 
+// 회원 상세 -------------------------------------------------------
+
+export type AdminUserGender = "male" | "female" | "other";
+export type AdminUserAcademicStatus = "enrolled" | "on_leave" | "completed" | "graduated" | "expelled";
+export type AdminUserCurrentRole = "none" | "mentee" | "mentor" | "admin";
+
+export type AdminUserParticipation = { year: number; role: "mentee" | "mentor" };
+
+export type AdminUserDetail = {
+  userId: string;
+  name: string;
+  birthYear: number | null;
+  gender: AdminUserGender | null;
+  phone: string;
+  email: string;
+  studentId: string;
+  firstMajor: string;
+  secondMajor: string;
+  schoolName: string;
+  academicStatus: AdminUserAcademicStatus | null;
+  accountStatus: AdminAccountStatus;
+  currentRole: AdminUserCurrentRole;
+  currentLawschool: string | null;
+  cohort: number | null;
+  participation: AdminUserParticipation[];
+};
+
+export async function getAdminUser(userId: string): Promise<AdminUserDetail> {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+    headers: headers(), credentials: "include",
+  });
+  return jsonOrError(res, "회원 상세 조회 실패");
+}
+
+export type PatchAdminUserBody = {
+  name?: string;
+  birthYear?: number | null;
+  gender?: AdminUserGender | null;
+  phone?: string;
+  studentId?: string;
+  firstMajor?: string;
+  secondMajor?: string;
+  schoolName?: string;
+  accountStatus?: AdminAccountStatus;
+  currentRole?: AdminUserCurrentRole;
+};
+
+export async function patchAdminUser(
+  userId: string,
+  body: PatchAdminUserBody,
+): Promise<AdminUserDetail> {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+    method: "PATCH", headers: headers(), credentials: "include",
+    body: JSON.stringify(body),
+  });
+  return jsonOrError(res, "회원 정보 저장 실패");
+}
+
 // 매칭 적격 풀 ------------------------------------------------------
 
 export async function getEligibleMatchingPool(year?: number): Promise<EligiblePool> {
