@@ -3,12 +3,14 @@ import { prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
 
 const MAX_TITLE = 100;
+const MAX_BODY = 10000;
 
 type AnnouncementRow = {
   announcement_id: string;
   title: string;
   body: string;
   created_at: Date;
+  updated_at: Date;
   created_by: { name: string };
 };
 
@@ -18,6 +20,7 @@ function toResponse(row: AnnouncementRow) {
     title: row.title,
     body: row.body,
     createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
     author: row.created_by.name,
   };
 }
@@ -43,8 +46,11 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (content.length < 1) {
-    return NextResponse.json({ error: "body 는 1자 이상이어야 합니다." }, { status: 400 });
+  if (content.length < 1 || content.length > MAX_BODY) {
+    return NextResponse.json(
+      { error: `body 는 1~${MAX_BODY}자여야 합니다.` },
+      { status: 400 },
+    );
   }
 
   const created = await prisma.announcement.create({

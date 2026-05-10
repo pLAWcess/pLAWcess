@@ -25,6 +25,7 @@ export async function GET(
     title: row.title,
     body: row.body,
     createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
     author: row.created_by.name,
   });
 }
