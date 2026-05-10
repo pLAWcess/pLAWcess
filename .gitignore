@@ -25,4 +25,4 @@ out/
 /docs/2026-05-11-176-fe-work.md
 
 # git worktrees
-.worktrees/
+.worktrees/.claude/
