@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getUser, saveUser, type AuthUser } from '@/lib/api';
+import { getUser, saveUser, clearUser, type AuthUser } from '@/lib/api';
 import UserMenu from '@/components/layout/UserMenu';
 import NotificationBell from '@/components/layout/NotificationBell';
 
@@ -40,6 +40,7 @@ export default function LandingNavbarAuth({ initialUser }: Props) {
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    clearUser();
     setUser(null);
     router.push('/');
   }

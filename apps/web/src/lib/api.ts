@@ -42,6 +42,10 @@ export function getUser(): AuthUser | null {
   } catch { return null; }
 }
 
+export function clearUser() {
+  try { localStorage.removeItem(USER_KEY); } catch {}
+}
+
 export async function getQuantitative(year: string): Promise<QuantitativeData> {
   const res = await fetch(
     `${API_BASE}/api/mentee/quantitative?year=${encodeURIComponent(year)}`,

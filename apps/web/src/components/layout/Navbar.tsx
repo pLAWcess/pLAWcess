@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { saveUser, getUser, type AuthUser } from '@/lib/api';
+import { saveUser, getUser, clearUser, type AuthUser } from '@/lib/api';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
 
@@ -54,6 +54,8 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
       method: 'POST',
       credentials: 'include',
     });
+    clearUser();
+    setUser(null);
     router.push('/');
   }
 
