@@ -85,9 +85,9 @@ export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarPro
   const navContent = (
     <nav className="flex flex-col gap-1 px-2">
       {isSections(config)
-        ? config.map((section) => (
-            <div key={section.section} className="flex flex-col gap-1">
-              <p className="px-3 pt-4 pb-1 text-xs font-semibold text-text-placeholder uppercase tracking-wide first:pt-0">
+        ? config.map((section, i) => (
+            <div key={section.section} className={`flex flex-col gap-1${i > 0 ? ' border-t border-border mt-2 pt-2' : ''}`}>
+              <p className="px-3 pt-3 pb-1 text-xs font-semibold text-text-placeholder uppercase tracking-wide">
                 {section.section}
               </p>
               {section.items.map((item) => (
