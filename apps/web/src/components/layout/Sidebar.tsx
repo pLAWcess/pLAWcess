@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-type NavItem = { label: string; href: string; match?: string; exact?: boolean };
+type NavItem = { label: string; href: string; match?: string; exact?: boolean; dividerBefore?: boolean };
 type NavSection = { section: string; items: NavItem[] };
 type NavConfig = NavItem[] | NavSection[];
 
@@ -18,7 +18,7 @@ const menteeNavItems: NavItem[] = [
   { label: '자기소개서', href: '/mentee/dashboard/personal-statement' },
   { label: '프로세스 신청', href: '/mentee/applications' },
   { label: '합격 아카이브', href: '/mentee/archive' },
-  { label: '공지사항', href: '/mentee/announcements' },
+  { label: '공지사항', href: '/mentee/announcements', dividerBefore: true },
   { label: '설정', href: '/settings', exact: true },
 ];
 
@@ -28,7 +28,7 @@ const mentorNavItems: NavItem[] = [
   { label: '정량 데이터', href: '/mentor/dashboard/quantitative' },
   { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
   { label: '합격 아카이브', href: '/mentor/archive' },
-  { label: '공지사항', href: '/mentor/announcements' },
+  { label: '공지사항', href: '/mentor/announcements', dividerBefore: true },
   { label: '설정', href: '/settings', exact: true },
 ];
 
@@ -102,9 +102,14 @@ export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarPro
               ))}
             </div>
           ))
-        : config.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
-          ))
+        : config.flatMap((item) =>
+            item.dividerBefore
+              ? [
+                  <div key={`d-${item.href}`} className="border-t border-border mt-2 pt-1" />,
+                  <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />,
+                ]
+              : [<NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />]
+          )
       }
     </nav>
   );
