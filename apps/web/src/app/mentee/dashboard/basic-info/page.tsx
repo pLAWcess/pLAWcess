@@ -179,10 +179,7 @@ export default function BasicInfoPage() {
           <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-gray-200" />
-              <div className="flex flex-col gap-2">
-                <div className="h-7 w-24 bg-gray-200 rounded" />
-                <div className="h-5 w-32 bg-gray-100 rounded" />
-              </div>
+              <div className="h-7 w-24 bg-gray-200 rounded" />
             </div>
             <EditButton onClick={() => {}} />
           </div>
