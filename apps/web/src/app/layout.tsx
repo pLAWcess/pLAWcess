@@ -11,10 +11,10 @@ const pretendard = localFont({
 
 export const metadata: Metadata = {
   title: "pLAWcess",
-  description: "법학전문대학원 진학 멘토링 플랫폼",
+  description: "로스쿨 진학 멘토링 플랫폼",
   openGraph: {
     title: "pLAWcess",
-    description: "법학전문대학원 진학 멘토링 플랫폼",
+    description: "로스쿨 진학 멘토링 플랫폼",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
 };
