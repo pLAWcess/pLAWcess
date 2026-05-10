@@ -18,17 +18,19 @@ export default function LandingNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const cached = getUser();
     if (cached) {
       setUser(cached);
+      setAuthChecked(true);
     } else {
-      fetchUser();
+      fetchUser().finally(() => setAuthChecked(true));
     }
   }, []);
 
-  async function fetchUser() {
+  async function fetchUser(): Promise<void> {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'include' });
       if (!res.ok) return;
@@ -105,7 +107,9 @@ export default function LandingNavbar() {
 
       {/* Right: Action buttons */}
       <div className="flex items-center gap-2">
-        {user ? (
+        {!authChecked ? (
+          <div className="w-44 h-9" />
+        ) : user ? (
           <>
             <NotificationBell />
             <UserMenu user={user} onLogout={handleLogout} />
