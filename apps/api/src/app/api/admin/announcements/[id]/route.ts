@@ -14,14 +14,14 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: { title?: unknown; body?: unknown; isPublished?: unknown };
+  let body: { title?: unknown; body?: unknown; isPublished?: unknown; isPinned?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const data: { title?: string; body?: string; is_published?: boolean } = {};
+  const data: { title?: string; body?: string; is_published?: boolean; is_pinned?: boolean } = {};
 
   if (body.title !== undefined) {
     if (typeof body.title !== "string") {
@@ -58,6 +58,13 @@ export async function PATCH(
     data.is_published = body.isPublished;
   }
 
+  if (body.isPinned !== undefined) {
+    if (typeof body.isPinned !== "boolean") {
+      return NextResponse.json({ error: "isPinned 는 boolean 이어야 합니다." }, { status: 400 });
+    }
+    data.is_pinned = body.isPinned;
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "수정할 필드가 없습니다." }, { status: 400 });
   }
@@ -81,6 +88,8 @@ export async function PATCH(
     title: updated.title,
     body: updated.body,
     isPublished: updated.is_published,
+    isPinned: updated.is_pinned,
+    viewCount: updated.view_count,
     createdAt: updated.created_at.toISOString(),
     updatedAt: updated.updated_at.toISOString(),
     deletedAt: updated.deleted_at?.toISOString() ?? null,

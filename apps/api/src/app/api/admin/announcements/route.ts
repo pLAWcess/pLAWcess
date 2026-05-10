@@ -11,6 +11,8 @@ type AnnouncementRow = {
   title: string;
   body: string;
   is_published: boolean;
+  is_pinned: boolean;
+  view_count: number;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -23,6 +25,8 @@ function toResponse(row: AnnouncementRow) {
     title: row.title,
     body: row.body,
     isPublished: row.is_published,
+    isPinned: row.is_pinned,
+    viewCount: row.view_count,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
     deletedAt: row.deleted_at?.toISOString() ?? null,
@@ -76,7 +80,7 @@ export async function GET(req: NextRequest) {
 
   const [rows, totalCount] = await prisma.$transaction([
     prisma.announcement.findMany({
-      orderBy: { created_at: "desc" },
+      orderBy: [{ is_pinned: "desc" }, { created_at: "desc" }],
       skip: (page - 1) * limit,
       take: limit,
       include: { created_by: { select: { name: true } } },

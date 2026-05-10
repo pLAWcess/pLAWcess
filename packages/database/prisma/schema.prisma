@@ -467,6 +467,8 @@ model Announcement {
   title              String    @db.VarChar(100)
   body               String    @db.Text
   is_published       Boolean   @default(true)
+  is_pinned          Boolean   @default(false)
+  view_count         Int       @default(0)
   created_by_user_id String    @db.Uuid
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
@@ -476,6 +478,7 @@ model Announcement {
 
   @@index([created_at])
   @@index([is_published])
+  @@index([is_pinned])
   @@index([deleted_at])
   @@map("announcements")
 }

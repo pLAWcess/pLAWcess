@@ -541,6 +541,8 @@ export type AnnouncementRow = {
   announcementId: string;
   title: string;
   body: string;
+  isPinned: boolean;
+  viewCount: number;
   createdAt: string;
   updatedAt: string;
   author: string;
@@ -721,7 +723,7 @@ export async function createAnnouncement(
 
 export async function updateAnnouncement(
   id: string,
-  body: { title?: string; body?: string; isPublished?: boolean },
+  body: { title?: string; body?: string; isPublished?: boolean; isPinned?: boolean },
 ): Promise<AdminAnnouncementRow> {
   const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, {
     method: "PATCH", headers: headers(), credentials: "include",

@@ -8,6 +8,85 @@ import {
   type AdminAnnouncementRow,
 } from '@/lib/api';
 
+function EditModal({
+  target,
+  onClose,
+  onSaved,
+}: {
+  target: AdminAnnouncementRow;
+  onClose: () => void;
+  onSaved: (updated: AdminAnnouncementRow) => void;
+}) {
+  const [title, setTitle] = useState(target.title);
+  const [body, setBody] = useState(target.body);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateAnnouncement(target.announcementId, {
+        title: title.trim(),
+        body: body.trim(),
+      });
+      onSaved(updated);
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '저장 실패');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-text-primary">공지사항 수정</h2>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors text-text-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-6 py-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-primary">
+              제목
+              <span className="ml-2 text-xs font-normal text-text-placeholder">{title.length}/100</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value.slice(0, 100))}
+              className="px-3 py-2.5 text-sm border border-border-input rounded-md focus:outline-none focus:border-brand transition-colors"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-primary">본문</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={8}
+              className="px-3 py-2.5 text-sm border border-border-input rounded-md focus:outline-none focus:border-brand transition-colors resize-none"
+            />
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+          <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50">
+            취소
+          </button>
+          <button onClick={handleSave} disabled={saving || !title.trim() || !body.trim()} className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50">
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminAnnouncementsManageClient({
   initialList,
 }: {
@@ -18,6 +97,7 @@ export default function AdminAnnouncementsManageClient({
   const [error, setError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<AdminAnnouncementRow | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -61,6 +141,17 @@ export default function AdminAnnouncementsManageClient({
   }
 
   return (
+    <>
+    {editTarget && (
+      <EditModal
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={(updated) => {
+          setList((prev) => prev.map((item) => item.announcementId === updated.announcementId ? updated : item));
+          setEditTarget(null);
+        }}
+      />
+    )}
     <div className="flex flex-col gap-8 w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">공지사항 관리</h1>
@@ -98,6 +189,12 @@ export default function AdminAnnouncementsManageClient({
                   {!isDeleted && (
                     <div className="shrink-0 flex gap-2">
                       <button
+                        onClick={() => setEditTarget(a)}
+                        className="text-xs border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+                      >
+                        수정
+                      </button>
+                      <button
                         onClick={() => handleTogglePublish(a)}
                         disabled={togglingId === a.announcementId}
                         className="text-xs border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -120,5 +217,6 @@ export default function AdminAnnouncementsManageClient({
         )}
       </section>
     </div>
+    </>
   );
 }
