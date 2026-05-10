@@ -12,15 +12,15 @@ export default function AnnouncementDetail({ id, backPath }: { id: string; backP
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setNotFound(false);
-    setError(null);
-    getAnnouncement(id)
-      .then((res) => {
+    async function load() {
+      setLoading(true);
+      setNotFound(false);
+      setError(null);
+      try {
+        const res = await getAnnouncement(id);
         if (cancelled) return;
         setAnnouncement(res);
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : '조회 실패';
         if (msg.includes('없') || msg.includes('not found') || msg.includes('404')) {
@@ -28,10 +28,11 @@ export default function AnnouncementDetail({ id, backPath }: { id: string; backP
         } else {
           setError(msg);
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+    load();
     return () => { cancelled = true; };
   }, [id]);
 

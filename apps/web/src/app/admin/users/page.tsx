@@ -184,24 +184,24 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    const fetcher = role === 'mentee'
-      ? getAdminUsers('mentee', page, PAGE_SIZE)
-      : getAdminUsers('mentor', page, PAGE_SIZE);
-    fetcher
-      .then((res) => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = role === 'mentee'
+          ? await getAdminUsers('mentee', page, PAGE_SIZE)
+          : await getAdminUsers('mentor', page, PAGE_SIZE);
         if (cancelled) return;
         setRows(res.data as unknown as T[]);
         setTotalCount(res.totalCount);
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : '조회 실패');
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+    load();
     return () => { cancelled = true; };
   }, [role, page]);
 

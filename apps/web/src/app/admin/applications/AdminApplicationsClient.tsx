@@ -429,30 +429,30 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   const editing = editingId ? data.find((r) => r.applicationId === editingId) ?? null : null;
 
   useEffect(() => {
-    if (year == null) {
-      setData([]);
-      setTotalCount(0);
-      return;
-    }
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    const fetcher = role === 'mentee'
-      ? getAdminApplications('mentee', { year, page, limit: PAGE_SIZE })
-      : getAdminApplications('mentor', { year, page, limit: PAGE_SIZE });
-    fetcher
-      .then((res) => {
+    async function load() {
+      if (year == null) {
+        setData([]);
+        setTotalCount(0);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = role === 'mentee'
+          ? await getAdminApplications('mentee', { year, page, limit: PAGE_SIZE })
+          : await getAdminApplications('mentor', { year, page, limit: PAGE_SIZE });
         if (cancelled) return;
         setData(res.data as unknown as T[]);
         setTotalCount(res.totalCount);
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : '조회 실패');
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+    load();
     return () => { cancelled = true; };
   }, [role, year, page]);
 

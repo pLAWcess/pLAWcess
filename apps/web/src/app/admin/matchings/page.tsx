@@ -69,22 +69,23 @@ export default function AdminMatchingsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setPoolLoading(true);
-    setPoolError(null);
-    getEligibleMatchingPool()
-      .then((res) => {
+    async function load() {
+      setPoolLoading(true);
+      setPoolError(null);
+      try {
+        const res = await getEligibleMatchingPool();
         if (cancelled) return;
         setMentees(res.mentees);
         setMentors(res.mentors);
         setYear(res.year);
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         setPoolError(e instanceof Error ? e.message : '매칭 적격 풀 조회 실패');
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setPoolLoading(false);
-      });
+      }
+    }
+    load();
     return () => { cancelled = true; };
   }, []);
 

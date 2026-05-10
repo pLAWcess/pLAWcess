@@ -46,15 +46,21 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ user
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getAdminUser(userId)
-      .then((res) => { if (!cancelled) setUser(res); })
-      .catch((e: unknown) => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getAdminUser(userId);
+        if (cancelled) return;
+        setUser(res);
+      } catch (e: unknown) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : '조회 실패');
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
     return () => { cancelled = true; };
   }, [userId]);
 

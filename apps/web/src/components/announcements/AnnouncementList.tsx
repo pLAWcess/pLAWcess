@@ -11,20 +11,21 @@ export default function AnnouncementList({ basePath }: { basePath: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    listAnnouncements()
-      .then((res) => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await listAnnouncements();
         if (cancelled) return;
         setList(res.data);
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : '공지사항 조회 실패');
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+    load();
     return () => { cancelled = true; };
   }, []);
 

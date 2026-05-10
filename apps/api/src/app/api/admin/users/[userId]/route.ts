@@ -2,21 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
 
-type UserRow = {
-  user_id: string;
-  name: string;
-  birth_date: Date | null;
-  gender: string | null;
-  phone: string | null;
-  email: string;
-  student_id: string | null;
-  undergrad_first_major: string | null;
-  undergrad_second_major: string | null;
-  undergrad_school_name: string | null;
-  account_status: string;
-  current_role: string;
-};
-
 type ParticipationItem = { year: number; role: "mentee" | "mentor" };
 
 async function buildUserDetail(userId: string) {
