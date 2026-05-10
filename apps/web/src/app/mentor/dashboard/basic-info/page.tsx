@@ -1,225 +1,31 @@
-'use client';
+import { cookies } from 'next/headers';
+import MentorBasicInfoClient from './MentorBasicInfoClient';
+import { serverFetch } from '@/lib/server-fetch';
+import { emptyMentorPersonalInfo, type MentorPersonalInfo } from '@/constants/mentor-basic-info';
+import type { MentorBasicInfoData } from '@/lib/api';
 
-import { useState, useEffect } from 'react';
-import SelectField from '@/components/ui/SelectField';
-import AutocompleteField from '@/components/ui/AutocompleteField';
-import { EditButton, EditButtons } from '@/components/ui/EditButton';
-import {
-  type MentorPersonalInfo,
-  emptyMentorPersonalInfo,
-  fieldRows,
-} from '@/constants/mentor-basic-info';
-import { getMentorBasicInfo, patchMentorBasicInfo } from '@/lib/api';
+const YEAR = encodeURIComponent('2026학년도');
 
-const YEAR = '2026학년도';
+export default async function MentorBasicInfoPage() {
+  const token = (await cookies()).get('plawcess_token')?.value ?? '';
+  const raw = await serverFetch<MentorBasicInfoData>(`/api/mentor/basic-info?year=${YEAR}`, token);
 
-export default function MentorBasicInfoPage() {
-  const [personalInfo, setPersonalInfo] = useState<MentorPersonalInfo>(emptyMentorPersonalInfo);
-  const [draft, setDraft] = useState<MentorPersonalInfo>(emptyMentorPersonalInfo);
-  const [isEditing, setIsEditing] = useState(false);
-  const [birthDateError, setBirthDateError] = useState('');
-  const [yearErrors, setYearErrors] = useState<Partial<Record<keyof MentorPersonalInfo, string>>>({});
-  const [saving, setSaving] = useState(false);
+  const initialData: MentorPersonalInfo = raw
+    ? {
+        ...emptyMentorPersonalInfo,
+        name: raw.personal.name,
+        affiliation: raw.personal.lawschool,
+        birthDate: raw.personal.birthDate,
+        gender: raw.personal.gender,
+        lawSchoolGrade: raw.personal.lawschoolGrade ? `${raw.personal.lawschoolGrade}기` : '',
+        academicStatus: raw.personal.academicStatus,
+        militaryStatus: raw.personal.militaryStatus,
+        major1: raw.personal.major1,
+        major2: raw.personal.major2,
+        admissionYear: raw.personal.admissionYear,
+        graduationYear: raw.personal.graduationYear,
+      }
+    : emptyMentorPersonalInfo;
 
-  const YEAR_FIELDS: (keyof MentorPersonalInfo)[] = ['admissionYear', 'graduationYear'];
-
-  function validateYear(val: string): string {
-    if (val === '') return '';
-    return /^\d{4}$/.test(val) ? '' : '연도는 숫자 4자리로 입력해주세요 (예: 2021)';
-  }
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-
-  useEffect(() => {
-    getMentorBasicInfo(YEAR)
-      .then((data) => {
-        setPersonalInfo({
-          ...emptyMentorPersonalInfo,
-          name: data.personal.name,
-          affiliation: data.personal.lawschool,  // "소속 로스쿨" ← MentorRecord.lawschool_name
-          birthDate: data.personal.birthDate,
-          gender: data.personal.gender,
-          lawSchoolGrade: data.personal.lawschoolGrade ? `${data.personal.lawschoolGrade}기` : '',
-          academicStatus: data.personal.academicStatus,
-          militaryStatus: data.personal.militaryStatus,
-          major1: data.personal.major1,
-          major2: data.personal.major2,
-          admissionYear: data.personal.admissionYear,
-          graduationYear: data.personal.graduationYear,
-        });
-      })
-      .catch(() => setLoadError('기본정보를 불러오지 못했습니다.'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function handleSave() {
-    if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(draft.birthDate) && draft.birthDate !== '') {
-      setBirthDateError('YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)');
-      return;
-    }
-    setBirthDateError('');
-    const newYearErrors: Partial<Record<keyof MentorPersonalInfo, string>> = {};
-    for (const field of YEAR_FIELDS) {
-      const err = validateYear(draft[field]);
-      if (err) newYearErrors[field] = err;
-    }
-    setYearErrors(newYearErrors);
-    if (Object.keys(newYearErrors).length > 0) return;
-    setSaving(true);
-    try {
-      // "2024학년도" → 2024 (Int) | "" → null
-      const gradeNum = draft.lawSchoolGrade ? parseInt(draft.lawSchoolGrade, 10) : null;
-      await patchMentorBasicInfo(YEAR, {
-        personal: {
-          birthDate: draft.birthDate,
-          gender: draft.gender,
-          academicStatus: draft.academicStatus,
-          militaryStatus: draft.militaryStatus,
-          major1: draft.major1,
-          major2: draft.major2,
-          admissionYear: draft.admissionYear,
-          graduationYear: draft.graduationYear,
-          lawschool: draft.affiliation,  // FE affiliation ("소속 로스쿨") → BE MentorRecord.lawschool_name
-          lawschoolGrade: Number.isFinite(gradeNum) ? gradeNum : null,
-        },
-      });
-      setPersonalInfo(draft);
-      setIsEditing(false);
-    } catch {
-      setBirthDateError('저장에 실패했습니다. 다시 시도해주세요.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleCancel() {
-    setBirthDateError('');
-    setYearErrors({});
-    setIsEditing(false);
-  }
-
-  function handleChange(key: keyof MentorPersonalInfo, value: string) {
-    setDraft((prev) => ({ ...prev, [key]: value }));
-    if (key === 'birthDate') {
-      setBirthDateError(value !== '' && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(value) ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)' : '');
-    }
-    if (YEAR_FIELDS.includes(key)) {
-      setYearErrors((prev) => ({ ...prev, [key]: validateYear(value) }));
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-6 page-container w-full animate-pulse">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>
-          <p className="text-sm text-text-secondary mt-1">
-            멘티 시절 작성한 기본정보가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
-          </p>
-        </div>
-        <div className="bg-white rounded-xl border border-border shadow-sm">
-          <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gray-200" />
-              <div className="h-7 w-24 bg-gray-200 rounded" />
-            </div>
-            <EditButton onClick={() => {}} />
-          </div>
-          <div className="px-8 py-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className={`grid grid-cols-2 divide-x divide-border py-5 ${i < 4 ? 'border-b border-border' : ''}`}>
-                {[0, 1].map((col) => (
-                  <div key={col} className={`flex flex-col gap-2 ${col === 1 ? 'pl-8' : ''}`}>
-                    <div className="h-5 w-16 bg-gray-200 rounded" />
-                    <div className="h-6 w-28 bg-gray-100 rounded" />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-6 page-container w-full">
-      {/* 페이지 타이틀 */}
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">기본정보</h1>
-        <p className="text-sm text-text-secondary mt-1">
-          멘티 시절 작성한 기본정보가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
-        </p>
-      </div>
-
-      {loadError && (
-        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-          {loadError}
-        </div>
-      )}
-
-      {/* 개인정보 카드 */}
-      <div className="bg-white rounded-xl border border-border shadow-sm">
-        <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-brand-muted flex items-center justify-center text-brand">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-text-primary">{personalInfo.name}</p>
-            </div>
-          </div>
-          {isEditing
-            ? <EditButtons onCancel={handleCancel} onSave={handleSave} saving={saving} disabled={!!birthDateError || Object.values(yearErrors).some(Boolean)} />
-            : <EditButton onClick={() => { setDraft(personalInfo); setIsEditing(true); }} />
-          }
-        </div>
-
-        <div className="px-8 py-2">
-          {fieldRows.map((row, rowIdx) => (
-            <div
-              key={rowIdx}
-              className={`grid grid-cols-2 divide-x divide-border py-5 ${rowIdx < fieldRows.length - 1 ? 'border-b border-border' : ''}`}
-            >
-              {row.map(({ label, key, type, options }, colIdx) => (
-                <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-text-secondary shrink-0">{label}</span>
-                    {key === 'birthDate' && birthDateError && (
-                      <p className="text-xs text-red-500 flex-1 text-center">{birthDateError}</p>
-                    )}
-                    {yearErrors[key] && (
-                      <p className="text-xs text-red-500 flex-1 text-center">{yearErrors[key]}</p>
-                    )}
-                  </div>
-                  <div className="h-6">
-                    {isEditing ? (
-                      type === 'select' ? (
-                        <SelectField value={draft[key]} options={options as string[]} onChange={(val) => handleChange(key, val)} />
-                      ) : type === 'autocomplete' ? (
-                        <AutocompleteField value={draft[key]} options={options!} onChange={(val) => handleChange(key, val)} placeholder={key === 'affiliation' ? '로스쿨 검색' : '학과 검색'} />
-                      ) : (
-                        <input
-                          type={type}
-                          value={draft[key]}
-                          onChange={(e) => handleChange(key, e.target.value)}
-                          placeholder={key === 'birthDate' ? '예: 2000.03.15.' : undefined}
-                          className="w-full border-b border-border-input bg-transparent text-base text-text-primary h-6 py-0 focus:outline-none focus:border-brand placeholder:text-text-placeholder"
-                        />
-                      )
-                    ) : (
-                      <span className="text-base text-text-primary">{personalInfo[key]}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <MentorBasicInfoClient initialData={initialData} />;
 }
