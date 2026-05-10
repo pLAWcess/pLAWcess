@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
 import { hashAnalysisInput } from "@/lib/hash";
+import { buildSingleAnalysisHash } from "@/lib/qualHash";
+import { collectFilesByActivity, processActivityAttachments, MAX_FILES_PER_ACTIVITY, MAX_TOTAL_BYTES_PER_REQUEST, type StoredAttachment } from "@/lib/attachments";
+import { runSingleAnalysisInPlace } from "@/lib/qualitativeAnalysis";
+import type { StarItem } from "@/lib/gemini";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -32,6 +36,7 @@ type ActivityForm = {
   endDate: string;
   ongoing: boolean;
   content: string;
+  attachments?: StoredAttachment[];
 };
 
 type StarAnalysisJson = {
@@ -70,7 +75,7 @@ function computeActivitiesAnalyzed(
   return activities.map((a, i) => {
     const stored = hashes[String(i)];
     if (!stored) return false;
-    const current = hashAnalysisInput({ activity: a, activity_index: i });
+    const current = buildSingleAnalysisHash(a, i, a.attachments);
     return stored === current;
   });
 }
@@ -82,6 +87,7 @@ function computeSummaryOutdated(
   storedHash: string | null
 ): boolean {
   if (!storedHash) return true;
+  // 통합 분석 hash는 hashAnalysisInput을 직접 쓰던 기존 형태 유지
   const current = hashAnalysisInput({
     activities,
     career_goal: careerGoal,
@@ -90,7 +96,7 @@ function computeSummaryOutdated(
   return current !== storedHash;
 }
 
-function buildResponse(record: FullRecord) {
+function buildResponse(record: FullRecord, extras?: { inlineStar?: StarItem; inlineSkipped?: boolean }) {
   const activities = (record?.qualitative_activities ?? []) as ActivityForm[];
   const hashes = (record?.star_input_hashes ?? {}) as Record<string, string>;
   const starAnalysis = (record?.star_analysis ?? null) as StarAnalysisJson | null;
@@ -112,6 +118,8 @@ function buildResponse(record: FullRecord) {
       ),
       activitiesAnalyzed: computeActivitiesAnalyzed(activities, hashes),
     },
+    inlineStar: extras?.inlineStar,
+    inlineSkipped: extras?.inlineSkipped,
   };
 }
 
@@ -136,8 +144,16 @@ export async function GET(req: NextRequest) {
 
 // ----------------------------------------------------------------
 // PATCH /api/mentee/qualitative?year=2026학년도
-// Body: { careerGoal?: string, activities?: ActivityForm[] }
-// 분석 호출 없음 — 단순 저장만
+//
+// 두 가지 Content-Type 지원:
+//   - application/json
+//       Body: { careerGoal?: string, activities?: ActivityForm[] }
+//       단순 저장만. 분석 호출 없음.
+//   - multipart/form-data
+//       Field "payload": JSON.stringify({ careerGoal?, activities?, analyze_index? })
+//       Field "files_${activityIndex}_${fileIndex}": File
+//       활동별로 첨부 처리(문서 텍스트 추출, 이미지 base64 보존) → 활동 attachments 갱신.
+//       analyze_index가 있으면 곧바로 단일 STAR 분석까지 실행해서 응답에 inlineStar 포함.
 // ----------------------------------------------------------------
 export async function PATCH(req: NextRequest) {
   const userId = getUserId(req);
@@ -147,16 +163,28 @@ export async function PATCH(req: NextRequest) {
 
   const processYear = getProcessYear(req);
 
+  const exists = await prisma.user.findUnique({ where: { user_id: userId }, select: { user_id: true } });
+  if (!exists) {
+    return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    return handleMultipartPatch(req, userId, processYear);
+  }
+  return handleJsonPatch(req, userId, processYear);
+}
+
+// ----------------------------------------------------------------
+// JSON PATCH — 기존 동작 (텍스트만 저장)
+// ----------------------------------------------------------------
+async function handleJsonPatch(req: NextRequest, userId: string, processYear: number) {
   let body: { careerGoal?: string; activities?: ActivityForm[] };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "요청 본문이 올바르지 않습니다." }, { status: 400 });
-  }
-
-  const exists = await prisma.user.findUnique({ where: { user_id: userId }, select: { user_id: true } });
-  if (!exists) {
-    return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
   }
 
   const updateData: Record<string, unknown> = {};
@@ -175,6 +203,144 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json(buildResponse(record));
+}
+
+// ----------------------------------------------------------------
+// Multipart PATCH — 첨부 파일 처리 + 인라인 분석
+// ----------------------------------------------------------------
+async function handleMultipartPatch(req: NextRequest, userId: string, processYear: number) {
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "multipart 요청을 해석하지 못했습니다." }, { status: 400 });
+  }
+
+  const payloadRaw = form.get("payload");
+  if (typeof payloadRaw !== "string") {
+    return NextResponse.json({ error: "payload 필드가 필요합니다." }, { status: 400 });
+  }
+
+  let payload: { careerGoal?: string; activities?: ActivityForm[]; analyze_index?: number };
+  try {
+    payload = JSON.parse(payloadRaw);
+  } catch {
+    return NextResponse.json({ error: "payload JSON 파싱 실패." }, { status: 400 });
+  }
+
+  const baseActivities: ActivityForm[] = Array.isArray(payload.activities) ? payload.activities : [];
+  const filesByIdx = collectFilesByActivity(form);
+
+  // 한 요청 본문 사전 가드 — Vercel body limit(4.5MB) 안에 들어가도록.
+  // Vercel 게이트웨이가 차단하기 전에 자체 차단해 친절한 에러 반환.
+  // 활동당 합계 한도는 없다. 4MB를 넘는 신규 첨부는 프론트가 직렬 PATCH로 청크 분할해서 보낸다.
+  for (const [idx, files] of filesByIdx.entries()) {
+    const total = files.reduce((sum, f) => sum + f.size, 0);
+    if (total > MAX_TOTAL_BYTES_PER_REQUEST) {
+      const limitMb = MAX_TOTAL_BYTES_PER_REQUEST / 1024 / 1024;
+      return NextResponse.json(
+        {
+          error: `한 요청 본문 한도(${limitMb}MB)를 초과합니다 — 활동 ${idx + 1}의 이번 배치 합계 ${(total / 1024 / 1024).toFixed(1)}MB. 파일을 더 작게 나누거나 일부를 제거해주세요.`,
+        },
+        { status: 413 }
+      );
+    }
+  }
+
+  const allErrors: string[] = [];
+  const mergedActivities: ActivityForm[] = [];
+  // analyze_index 활동의 새 이미지(메모리만 거치는 base64)를 따로 모은다
+  let imagesForAnalyze: { filename: string; mimeType: string; base64: string }[] = [];
+
+  for (let i = 0; i < baseActivities.length; i++) {
+    const a = baseActivities[i];
+    const newFiles = filesByIdx.get(i) ?? [];
+    if (newFiles.length === 0) {
+      mergedActivities.push(a);
+      continue;
+    }
+
+    const existing = (a.attachments ?? []).slice();
+    const totalAfter = existing.length + newFiles.length;
+    if (totalAfter > MAX_FILES_PER_ACTIVITY) {
+      allErrors.push(
+        `활동 ${i + 1}: 첨부는 활동당 최대 ${MAX_FILES_PER_ACTIVITY}개입니다 (기존 ${existing.length}, 신규 ${newFiles.length}).`
+      );
+    }
+
+    const { result, errors } = await processActivityAttachments(newFiles);
+    for (const e of errors) allErrors.push(`활동 ${i + 1}: ${e}`);
+
+    const merged: StoredAttachment[] = [...existing, ...result.stored].slice(0, MAX_FILES_PER_ACTIVITY);
+    mergedActivities.push({ ...a, attachments: merged });
+
+    if (payload.analyze_index === i) {
+      imagesForAnalyze = result.images;
+    }
+  }
+
+  const updateData: Record<string, unknown> = {
+    qualitative_activities: mergedActivities,
+  };
+  if (payload.careerGoal !== undefined) {
+    updateData.career_goal = payload.careerGoal ? CAREER_ENUM[payload.careerGoal] ?? null : null;
+  }
+
+  await prisma.menteeRecord.upsert({
+    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+    create: { user_id: userId, process_year: processYear, ...updateData },
+    update: updateData,
+  });
+
+  // 인라인 분석
+  let inlineStar: StarItem | undefined;
+  let inlineSkipped: boolean | undefined;
+  if (
+    typeof payload.analyze_index === "number" &&
+    payload.analyze_index >= 0 &&
+    payload.analyze_index < mergedActivities.length
+  ) {
+    try {
+      const r = await runSingleAnalysisInPlace({
+        userId,
+        processYear,
+        index: payload.analyze_index,
+        images: imagesForAnalyze,
+      });
+      if (r.kind === "hit") {
+        inlineStar = r.star;
+        inlineSkipped = true;
+      } else if (r.kind === "computed") {
+        inlineStar = r.star;
+        inlineSkipped = false;
+      }
+    } catch (err) {
+      console.error("[qualitative PATCH multipart] 인라인 분석 실패", err);
+      // 저장은 이미 끝났으니 분석 실패만 알린다 (활동은 저장된 상태)
+      const updated = await prisma.menteeRecord.findUnique({
+        where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+        select: SELECT_FIELDS,
+      });
+      return NextResponse.json(
+        {
+          ...buildResponse(updated),
+          inlineError: "AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요.",
+          attachmentErrors: allErrors,
+        },
+        { status: 200 }
+      );
+    }
+  }
+
+  const updated = await prisma.menteeRecord.findUnique({
+    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+    select: SELECT_FIELDS,
+  });
+
+  return NextResponse.json({
+    ...buildResponse(updated, { inlineStar, inlineSkipped }),
+    attachmentErrors: allErrors.length > 0 ? allErrors : undefined,
+  });
 }
 
 // ----------------------------------------------------------------

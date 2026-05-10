@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
 import { hashAnalysisInput } from "@/lib/hash";
-import { analyzeSingleActivity, type QualitativeActivity, type StarItem } from "@/lib/gemini";
+import { buildSingleAnalysisHash } from "@/lib/qualHash";
+import type { StarItem } from "@/lib/gemini";
+import { runSingleAnalysisInPlace } from "@/lib/qualitativeAnalysis";
+import type { StoredAttachment } from "@/lib/attachments";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -21,25 +24,35 @@ const CAREER_LABEL: Record<string, string> = {
   judge: "판사",
 };
 
+type ActivityWithAttachments = {
+  name: string;
+  organization: string;
+  startDate: string;
+  endDate: string;
+  ongoing: boolean;
+  content: string;
+  attachments?: StoredAttachment[];
+};
+
 type StarAnalysisJson = {
   activities?: StarItem[];
   [k: string]: unknown;
 };
 
 function computeActivitiesAnalyzed(
-  activities: QualitativeActivity[],
+  activities: ActivityWithAttachments[],
   hashes: Record<string, string>
 ): boolean[] {
   return activities.map((a, i) => {
     const stored = hashes[String(i)];
     if (!stored) return false;
-    const current = hashAnalysisInput({ activity: a, activity_index: i });
+    const current = buildSingleAnalysisHash(a, i, a.attachments);
     return stored === current;
   });
 }
 
 function computeSummaryOutdated(
-  activities: QualitativeActivity[],
+  activities: ActivityWithAttachments[],
   careerGoal: string | null,
   starAnalysis: StarAnalysisJson | null,
   storedHash: string | null
@@ -78,7 +91,7 @@ type FullRecord = {
 };
 
 function buildResponse(record: FullRecord, extras: { skipped: boolean; star?: StarItem }) {
-  const activities = (record.qualitative_activities ?? []) as QualitativeActivity[];
+  const activities = (record.qualitative_activities ?? []) as ActivityWithAttachments[];
   const hashes = (record.star_input_hashes ?? {}) as Record<string, string>;
   const starAnalysis = record.star_analysis as StarAnalysisJson | null;
 
@@ -105,8 +118,9 @@ function buildResponse(record: FullRecord, extras: { skipped: boolean; star?: St
 // POST /api/mentee/qualitative/analyze/{index}?year=YYYY
 //
 // 단일 활동에 대해서만 STAR 분석을 수행한다.
-// 기존 star_analysis.activities 배열에서 해당 인덱스만 교체(없으면 push).
-// ai_summary_hash 는 null 로 마킹해서 통합 분석이 outdated 됨을 표시한다.
+// 분석 본 로직은 lib/qualitativeAnalysis.ts (PATCH multipart 흐름과 공유).
+// 이 엔드포인트는 이미지 없이(저장된 문서 추출 텍스트만으로) 재분석하는 용도.
+// 새 이미지를 분석에 포함시키려면 PATCH multipart로 다시 보내야 한다.
 // ----------------------------------------------------------------
 export async function POST(
   req: NextRequest,
@@ -125,62 +139,40 @@ export async function POST(
 
   const processYear = getProcessYear(req);
 
-  const record = await prisma.menteeRecord.findUnique({
+  // 사전 검증 — record 자체가 없거나 index 범위 밖이면 즉시 반환
+  const pre = await prisma.menteeRecord.findUnique({
     where: { user_id_process_year: { user_id: userId, process_year: processYear } },
-    select: SELECT_FIELDS,
+    select: { qualitative_activities: true },
   });
-
-  if (!record) {
+  if (!pre) {
     return NextResponse.json({ error: "정성 데이터가 없습니다. 먼저 활동을 저장해주세요." }, { status: 400 });
   }
-
-  const activities = (record.qualitative_activities ?? []) as QualitativeActivity[];
+  const activities = (pre.qualitative_activities ?? []) as ActivityWithAttachments[];
   if (index >= activities.length) {
     return NextResponse.json({ error: "해당 인덱스의 활동이 없습니다." }, { status: 400 });
   }
-  const activity = activities[index];
 
-  const inputHash = hashAnalysisInput({ activity, activity_index: index });
-  const storedHashes = (record.star_input_hashes ?? {}) as Record<string, string>;
-  const oldStar = (record.star_analysis ?? null) as StarAnalysisJson | null;
-  const existingItem = oldStar?.activities?.find((s) => s.activity_index === index);
-
-  // 캐시 hit: 동일 입력이고 이미 분석된 결과가 있으면 skip
-  if (storedHashes[String(index)] === inputHash && existingItem) {
-    return NextResponse.json(buildResponse(record, { skipped: true, star: existingItem }));
-  }
-
-  let starItem: StarItem;
+  let result;
   try {
-    starItem = await analyzeSingleActivity({
-      activity,
-      activity_index: index,
-      career_goal: record.career_goal,
-    });
+    result = await runSingleAnalysisInPlace({ userId, processYear, index });
   } catch (err) {
     console.error("[qualitative/analyze/{index}] Gemini 호출 실패", err);
     return NextResponse.json({ error: "AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 
-  // star_analysis.activities 갱신: 해당 index 교체 또는 push 후 정렬
-  const oldActivities = oldStar?.activities ?? [];
-  const filtered = oldActivities.filter((s) => s.activity_index !== index);
-  const newActivities = [...filtered, starItem].sort((a, b) => a.activity_index - b.activity_index);
-  const newStar: StarAnalysisJson = { ...(oldStar ?? {}), activities: newActivities };
+  if (result.kind === "noActivity") {
+    return NextResponse.json({ error: "해당 인덱스의 활동이 없습니다." }, { status: 400 });
+  }
 
-  // star_input_hashes 갱신
-  const newHashes = { ...storedHashes, [String(index)]: inputHash };
-
-  const updated = await prisma.menteeRecord.update({
+  const updated = await prisma.menteeRecord.findUnique({
     where: { user_id_process_year: { user_id: userId, process_year: processYear } },
-    data: {
-      star_analysis: newStar as unknown as Prisma.InputJsonValue,
-      star_input_hashes: newHashes as unknown as Prisma.InputJsonValue,
-      // 통합 분석은 입력이 바뀌었으므로 outdated
-      ai_summary_hash: null,
-    },
     select: SELECT_FIELDS,
   });
 
-  return NextResponse.json(buildResponse(updated, { skipped: false, star: starItem }));
+  return NextResponse.json(
+    buildResponse(updated as FullRecord, {
+      skipped: result.kind === "hit",
+      star: result.star,
+    })
+  );
 }

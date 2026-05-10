@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
-  getQualitative, patchQualitative, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
+  getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
-  type StoryOutline,
+  type StoryOutline, type Attachment,
 } from '@/lib/api';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
@@ -28,6 +28,71 @@ const EMPTY_FORM: Omit<ActivityForm, 'category'> = {
 };
 
 const YEAR = new Date().getFullYear().toString();
+
+// ----------------------------------------------------------------
+// 첨부 파일 정책 (서버 attachments.ts와 일치)
+// - 파일 단일 ≤ 4MB (Vercel serverless body limit 4.5MB 안에 한 파일이 들어가야 함)
+// - 한 요청 본문 ≤ 4MB → 4MB 넘으면 문서 청크를 직렬 PATCH로 분할해서 보낸다
+// - 활동당 누적 합계엔 한도 없음 (단, 이미지는 마지막 analyze PATCH에 다 들어가야 해서 이미지 합계 ≤ 4MB)
+// ----------------------------------------------------------------
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
+const MAX_TOTAL_BYTES_PER_REQUEST = 4 * 1024 * 1024;
+const MAX_FILES_PER_ACTIVITY = 5;
+const IMAGE_MIMES = new Set(['image/jpeg', 'image/png']);
+const ACCEPTED_MIME = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'image/jpeg',
+  'image/png',
+]);
+const ACCEPTED_EXT = ['.pdf', '.docx', '.pptx', '.jpg', '.jpeg', '.png'];
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function getAttachmentLabel(a: Attachment): string {
+  return a.kind.toUpperCase();
+}
+
+// 합계가 maxSize 이하가 되도록 항목들을 순서대로 청크로 분할.
+// 단일 항목이 maxSize 초과하면 그 항목 단독 청크로 들어간다 (호출자가 별도 처리).
+function chunkBySize<T>(items: T[], maxSize: number, sizeOf: (item: T) => number): T[][] {
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let currentSize = 0;
+  for (const item of items) {
+    const s = sizeOf(item);
+    if (currentSize + s > maxSize && current.length > 0) {
+      chunks.push(current);
+      current = [item];
+      currentSize = s;
+    } else {
+      current.push(item);
+      currentSize += s;
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+// 파일 단위 검증 — 거부 사유를 반환하거나 null이면 통과
+function validateFileForUpload(file: File): string | null {
+  if (file.size === 0) return `${file.name}: 빈 파일입니다.`;
+  if (file.size > MAX_FILE_BYTES) {
+    return `${file.name}: 파일 크기가 너무 큽니다 (${formatFileSize(file.size)}, 최대 ${MAX_FILE_BYTES / 1024 / 1024}MB).`;
+  }
+  if (!ACCEPTED_MIME.has(file.type)) {
+    if (/\.(doc|ppt)$/i.test(file.name)) {
+      return `${file.name}: 레거시 형식은 지원하지 않습니다. .docx/.pptx로 변환해 업로드해주세요.`;
+    }
+    return `${file.name}: 지원하지 않는 형식입니다. PDF, DOCX, PPTX, JPG, PNG만 가능해요.`;
+  }
+  return null;
+}
 
 // ----------------------------------------------------------------
 // 작은 SVG 아이콘들
@@ -153,10 +218,189 @@ function DateInput({
 
 // ----------------------------------------------------------------
 // 입력 폼 카드 (활동 추가/수정 공용)
+// 첨부 영역 — 기존 첨부(서버 보관 메타) + 새로 추가한 File들을 한 리스트로 관리
 // ----------------------------------------------------------------
+function AttachmentSection({
+  existing,
+  newFiles,
+  onRemoveExisting,
+  onAddFiles,
+  onRemoveNewFile,
+  disabled,
+}: {
+  existing: Attachment[];
+  newFiles: File[];
+  onRemoveExisting: (idx: number) => void;
+  onAddFiles: (files: File[]) => void;
+  onRemoveNewFile: (idx: number) => void;
+  disabled?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const total = existing.length + newFiles.length;
+  const remainingSlots = Math.max(0, MAX_FILES_PER_ACTIVITY - total);
+  const newFilesBytes = newFiles.reduce((sum, f) => sum + f.size, 0);
+  const newImagesBytes = newFiles
+    .filter((f) => IMAGE_MIMES.has(f.type))
+    .reduce((sum, f) => sum + f.size, 0);
+  const imagesOverLimit = newImagesBytes > MAX_TOTAL_BYTES_PER_REQUEST;
+
+  function tryAddFiles(picked: FileList | File[]) {
+    const arr = Array.from(picked);
+    const errors: string[] = [];
+    const accepted: File[] = [];
+    let imagesBytesUsed = newImagesBytes;
+    for (const f of arr) {
+      if (accepted.length + total >= MAX_FILES_PER_ACTIVITY) {
+        errors.push(`첨부는 활동당 최대 ${MAX_FILES_PER_ACTIVITY}개까지 가능합니다.`);
+        break;
+      }
+      const err = validateFileForUpload(f);
+      if (err) {
+        errors.push(err);
+        continue;
+      }
+      // 이미지는 마지막 analyze PATCH에 한 번에 들어가야 해서 합계 4MB 한도 유지
+      if (IMAGE_MIMES.has(f.type) && imagesBytesUsed + f.size > MAX_TOTAL_BYTES_PER_REQUEST) {
+        errors.push(
+          `${f.name}: 이미지는 분석 시 한 번에 전송돼서 합계 ${MAX_TOTAL_BYTES_PER_REQUEST / 1024 / 1024}MB를 넘을 수 없어요 (현재 ${formatFileSize(imagesBytesUsed)} 사용 중).`
+        );
+        continue;
+      }
+      if (IMAGE_MIMES.has(f.type)) imagesBytesUsed += f.size;
+      accepted.push(f);
+    }
+    if (errors.length > 0) alert(errors.join('\n'));
+    if (accepted.length > 0) onAddFiles(accepted);
+  }
+
+  return (
+    <div className="flex flex-col gap-2 mb-6">
+      <div className="flex items-center justify-between">
+        <label className="text-sm text-text-secondary">파일 첨부 <span className="text-text-placeholder">(선택)</span></label>
+        <span className="text-xs text-text-placeholder">
+          {total} / {MAX_FILES_PER_ACTIVITY}개 · 신규 {formatFileSize(newFilesBytes)}
+        </span>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept={ACCEPTED_EXT.join(',')}
+        className="hidden"
+        disabled={disabled || remainingSlots === 0}
+        onChange={(e) => {
+          if (e.target.files) tryAddFiles(e.target.files);
+          if (inputRef.current) inputRef.current.value = '';
+        }}
+      />
+
+      <div
+        onClick={() => {
+          if (disabled || remainingSlots === 0) return;
+          inputRef.current?.click();
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!disabled && remainingSlots > 0) setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          if (disabled || remainingSlots === 0) return;
+          if (e.dataTransfer.files.length > 0) tryAddFiles(e.dataTransfer.files);
+        }}
+        className={`flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-xl transition-colors ${
+          remainingSlots === 0 || disabled
+            ? 'border-border bg-gray-50 cursor-not-allowed opacity-60'
+            : dragOver
+              ? 'border-brand bg-brand-light/30 cursor-pointer'
+              : 'border-border cursor-pointer hover:bg-gray-50'
+        }`}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-placeholder mb-2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        <span className="text-sm text-text-secondary">
+          {remainingSlots === 0
+            ? '첨부 가능 개수를 모두 사용했어요'
+            : imagesOverLimit
+              ? '이미지 합계 한도 초과 — 일부 제거해주세요'
+              : '클릭하거나 파일을 드래그하여 업로드'}
+        </span>
+        <span className="text-xs text-text-placeholder mt-1">
+          PDF, DOCX, PPTX, JPG, PNG (각 {MAX_FILE_BYTES / 1024 / 1024}MB, 활동당 최대 {MAX_FILES_PER_ACTIVITY}개 · 이미지 합계 {MAX_TOTAL_BYTES_PER_REQUEST / 1024 / 1024}MB 이하)
+        </span>
+      </div>
+
+      {(existing.length > 0 || newFiles.length > 0) && (
+        <ul className="flex flex-col gap-1.5 mt-2">
+          {existing.map((a, i) => (
+            <li key={`exist-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 bg-page-bg rounded-md">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white text-text-secondary border border-border">
+                  {getAttachmentLabel(a)}
+                </span>
+                <span className="text-sm text-text-primary truncate">{a.filename}</span>
+                <span className="shrink-0 text-xs text-text-placeholder">{formatFileSize(a.size)}</span>
+                {a.type === 'document' && a.extractedText === '' && (
+                  <span className="shrink-0 text-xs text-amber-700" title="텍스트가 추출되지 않아 분석에 포함되지 않습니다">⚠ 추출 실패</span>
+                )}
+                {a.type === 'document' && a.truncated && a.extractedText !== '' && (
+                  <span className="shrink-0 text-xs text-amber-700" title="길이 한도를 넘어 일부만 분석에 사용됩니다">일부 생략</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemoveExisting(i)}
+                disabled={disabled}
+                className="shrink-0 text-text-placeholder hover:text-red-500 disabled:opacity-40"
+                title="첨부 제거"
+              >
+                <IconTrash />
+              </button>
+            </li>
+          ))}
+          {newFiles.map((f, i) => (
+            <li key={`new-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 bg-blue-50/60 rounded-md">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white text-brand border border-blue-100">신규</span>
+                <span className="text-sm text-text-primary truncate">{f.name}</span>
+                <span className="shrink-0 text-xs text-text-placeholder">{formatFileSize(f.size)}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemoveNewFile(i)}
+                disabled={disabled}
+                className="shrink-0 text-text-placeholder hover:text-red-500 disabled:opacity-40"
+                title="첨부 제거"
+              >
+                <IconTrash />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {existing.some((a) => a.type === 'image') && (
+        <p className="text-xs text-text-placeholder mt-1">
+          ※ 이미지는 분석 시점에만 사용되고 보관되지 않습니다. 재분석 시 같은 이미지를 다시 업로드해주세요.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ActivityFormCard({
   form,
   onChange,
+  newFiles,
+  onAddFiles,
+  onRemoveNewFile,
   onCancel,
   onSubmit,
   submitting,
@@ -164,13 +408,24 @@ function ActivityFormCard({
 }: {
   form: ActivityForm;
   onChange: (form: ActivityForm) => void;
+  newFiles: File[];
+  onAddFiles: (files: File[]) => void;
+  onRemoveNewFile: (idx: number) => void;
   onCancel: () => void;
   onSubmit: () => void;
   submitting: boolean;
   submitLabel?: string;
 }) {
+  const existing = form.attachments ?? [];
+
+  function removeExistingAttachment(idx: number) {
+    const next = existing.filter((_, i) => i !== idx);
+    onChange({ ...form, attachments: next });
+  }
+
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="relative">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
       <h2 className="text-base font-semibold text-text-primary mb-6">활동 정보 입력</h2>
       <hr className="border-border mb-6" />
 
@@ -225,18 +480,14 @@ function ActivityFormCard({
         <p className="text-xs text-text-secondary">구체적인 역할, 성과, 배운 점 등을 포함하여 작성하면 더 정확한 분석이 가능합니다.</p>
       </div>
 
-      <div className="flex flex-col gap-2 mb-6">
-        <label className="text-sm text-text-secondary">파일 첨부</label>
-        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-placeholder mb-2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <span className="text-sm text-text-secondary">클릭하거나 파일을 드래그하여 업로드</span>
-          <span className="text-xs text-text-placeholder mt-1">PDF, DOC, DOCX, JPG, PNG (최대 10MB)</span>
-        </div>
-      </div>
+      <AttachmentSection
+        existing={existing}
+        newFiles={newFiles}
+        onRemoveExisting={removeExistingAttachment}
+        onAddFiles={onAddFiles}
+        onRemoveNewFile={onRemoveNewFile}
+        disabled={submitting}
+      />
 
       <div className="grid grid-cols-2 gap-4">
         <button onClick={onCancel} disabled={submitting}
@@ -248,6 +499,8 @@ function ActivityFormCard({
           {submitting ? '저장 중...' : submitLabel}
         </button>
       </div>
+      </div>
+      {submitting && <LoadingOverlay message="AI가 활동을 분석하고 있어요..." />}
     </div>
   );
 }
@@ -379,6 +632,7 @@ function ActivityCard({
   const keywords = star?.keywords ?? [];
   const bodyText = star?.summary ?? activity.content;
   const isAiSummary = !!star?.summary;
+  const attachments = activity.attachments ?? [];
 
   return (
     <div className="flex flex-col gap-3 relative">
@@ -407,6 +661,32 @@ function ActivityCard({
           <div className="flex flex-wrap gap-2 mt-4">
             {keywords.map((k, i) => (
               <span key={i} className="px-2.5 py-1 text-xs rounded-md bg-blue-50 text-blue-600">{k}</span>
+            ))}
+          </div>
+        )}
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-border">
+            {attachments.map((a, i) => (
+              <span
+                key={i}
+                title={
+                  a.type === 'document'
+                    ? a.extractedText === ''
+                      ? '텍스트 추출 실패 — 분석에 포함되지 않습니다'
+                      : a.truncated
+                        ? '길이 한도를 넘어 일부만 분석에 사용됨'
+                        : '추출된 텍스트가 분석에 사용되었습니다'
+                    : '이미지는 분석 시점에만 사용됩니다 (원본 미보관)'
+                }
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md ${
+                  a.type === 'document' && a.extractedText === ''
+                    ? 'bg-amber-50 text-amber-700'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                <span className="font-semibold">{getAttachmentLabel(a)}</span>
+                <span className="truncate max-w-[160px]">{a.filename}</span>
+              </span>
             ))}
           </div>
         )}
@@ -694,8 +974,23 @@ export default function QualitativePage() {
   const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set());
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityForm | null>(null);
+  const [editFiles, setEditFiles] = useState<File[]>([]);
+  const [draftFiles, setDraftFiles] = useState<Record<string, File[]>>({});
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
   const [selectedUnified, setSelectedUnified] = useState<string | null>(null);
+
+  function getDraftFiles(category: CategoryTab, index: number): File[] {
+    return draftFiles[`${category}:${index}`] ?? [];
+  }
+  function setDraftFilesAt(category: CategoryTab, index: number, files: File[]) {
+    setDraftFiles((d) => ({ ...d, [`${category}:${index}`]: files }));
+  }
+  function clearDraftFilesAt(category: CategoryTab, index: number) {
+    setDraftFiles((d) => {
+      const { [`${category}:${index}`]: _, ...rest } = d;
+      return rest;
+    });
+  }
 
   const applyData = useCallback((data: QualitativeData) => {
     setCareerGoal((data.careerGoal as CareerGoal) || '');
@@ -759,51 +1054,142 @@ export default function QualitativePage() {
     }
   }
 
+  // 활동 저장 + 인라인 STAR 분석을 한 번에 처리.
+  // 새 파일이 있으면 multipart, 없으면 JSON PATCH 후 별도 analyze 호출.
+  // 합계가 한 요청 한도를 넘기는 신규 첨부는 청크로 직렬 업로드.
+  // 문서는 4MB 청크로 나눠 PATCH N번 (분석 없음) → 마지막에 이미지 + analyze 1번.
+  // 이미지는 분석 시점에 한 번에 메모리로 들어가야 해서 합계 4MB 한도 유지.
+  async function saveAndAnalyze(
+    nextActivities: ActivityForm[],
+    analyzeIdx: number,
+    newFiles: File[]
+  ): Promise<{ ok: boolean; attachmentErrors?: string[] }> {
+    if (newFiles.length === 0) {
+      // 첨부 변경 없음 — 기존 JSON PATCH + analyze
+      const saved = await patchQualitative(YEAR, { activities: nextActivities });
+      applyData(saved);
+      await triggerSingleAnalysis(analyzeIdx);
+      return { ok: true };
+    }
+
+    const totalBytes = newFiles.reduce((s, f) => s + f.size, 0);
+
+    // 케이스 1: 합계가 한 요청 한도 안에 들어가면 단일 PATCH
+    if (totalBytes <= MAX_TOTAL_BYTES_PER_REQUEST) {
+      const filesByIdx = new Map<number, File[]>();
+      filesByIdx.set(analyzeIdx, newFiles);
+      const saved = await patchQualitativeMultipart(
+        YEAR,
+        { activities: nextActivities, analyzeIndex: analyzeIdx },
+        filesByIdx
+      );
+      applyData(saved);
+      if (saved.inlineStar) setExpandedSet((p) => new Set([...p, analyzeIdx]));
+      if (saved.inlineError) alert(saved.inlineError);
+      return { ok: true, attachmentErrors: saved.attachmentErrors };
+    }
+
+    // 케이스 2: 합계 4MB 초과 — 문서/이미지 분리 + 직렬 청크 업로드
+    const docs = newFiles.filter((f) => !IMAGE_MIMES.has(f.type));
+    const images = newFiles.filter((f) => IMAGE_MIMES.has(f.type));
+
+    const imagesBytes = images.reduce((s, f) => s + f.size, 0);
+    if (imagesBytes > MAX_TOTAL_BYTES_PER_REQUEST) {
+      throw new Error(
+        `이미지 합계 ${formatFileSize(imagesBytes)}가 한 요청 한도(${MAX_TOTAL_BYTES_PER_REQUEST / 1024 / 1024}MB)를 초과해 분석에 포함될 수 없습니다. 이미지 일부를 제거해주세요.`
+      );
+    }
+
+    const docBatches = chunkBySize(docs, MAX_TOTAL_BYTES_PER_REQUEST, (f) => f.size);
+    const collectedErrors: string[] = [];
+    let activitiesState = nextActivities;
+
+    // 1) 문서 청크들 직렬 업로드 (analyze_index 없이 — 저장만)
+    for (const batch of docBatches) {
+      const filesByIdx = new Map<number, File[]>();
+      filesByIdx.set(analyzeIdx, batch);
+      const saved = await patchQualitativeMultipart(
+        YEAR,
+        { activities: activitiesState }, // analyzeIndex 없음
+        filesByIdx
+      );
+      applyData(saved);
+      activitiesState = (saved.activities ?? activitiesState) as ActivityForm[];
+      if (saved.attachmentErrors?.length) collectedErrors.push(...saved.attachmentErrors);
+    }
+
+    // 2) 이미지 + analyze 마지막 PATCH
+    const finalFilesByIdx = new Map<number, File[]>();
+    if (images.length > 0) finalFilesByIdx.set(analyzeIdx, images);
+    const finalSaved = await patchQualitativeMultipart(
+      YEAR,
+      { activities: activitiesState, analyzeIndex: analyzeIdx },
+      finalFilesByIdx
+    );
+    applyData(finalSaved);
+    if (finalSaved.inlineStar) setExpandedSet((p) => new Set([...p, analyzeIdx]));
+    if (finalSaved.inlineError) alert(finalSaved.inlineError);
+    if (finalSaved.attachmentErrors?.length) collectedErrors.push(...finalSaved.attachmentErrors);
+
+    return { ok: true, attachmentErrors: collectedErrors.length > 0 ? collectedErrors : undefined };
+  }
+
   async function submitDraft(category: CategoryTab, index: number) {
     if (submitting) return;
     setSubmitting(true);
+    setAnalyzingIdx(serverActivities.length); // 추가 직후 인덱스
     try {
       const draft = drafts[category][index];
       const next = [...serverActivities, draft];
-      const saved = await patchQualitative(YEAR, { activities: next });
-      applyData(saved);
-      removeDraft(category, index);
       const newIdx = next.length - 1;
-      triggerSingleAnalysis(newIdx);
+      const files = getDraftFiles(category, index);
+      const { attachmentErrors } = await saveAndAnalyze(next, newIdx, files);
+      if (attachmentErrors && attachmentErrors.length > 0) {
+        alert('일부 첨부 처리에 문제가 있었어요:\n' + attachmentErrors.join('\n'));
+      }
+      removeDraft(category, index);
+      clearDraftFilesAt(category, index);
     } catch (err) {
       console.error(err);
-      alert('저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+      alert(err instanceof Error ? err.message : '저장에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
+      setAnalyzingIdx(null);
     }
   }
 
   function startEdit(idx: number) {
     setEditingIdx(idx);
     setEditDraft({ ...serverActivities[idx] });
+    setEditFiles([]);
   }
 
   function cancelEdit() {
     setEditingIdx(null);
     setEditDraft(null);
+    setEditFiles([]);
   }
 
   async function saveEdit() {
     if (editingIdx === null || !editDraft || submitting) return;
     setSubmitting(true);
+    setAnalyzingIdx(editingIdx);
     try {
       const next = serverActivities.map((a, i) => (i === editingIdx ? editDraft : a));
-      const saved = await patchQualitative(YEAR, { activities: next });
-      applyData(saved);
       const idx = editingIdx;
+      const { attachmentErrors } = await saveAndAnalyze(next, idx, editFiles);
+      if (attachmentErrors && attachmentErrors.length > 0) {
+        alert('일부 첨부 처리에 문제가 있었어요:\n' + attachmentErrors.join('\n'));
+      }
       setEditingIdx(null);
       setEditDraft(null);
-      triggerSingleAnalysis(idx);
+      setEditFiles([]);
     } catch (err) {
       console.error(err);
-      alert('수정에 실패했어요. 잠시 후 다시 시도해주세요.');
+      alert(err instanceof Error ? err.message : '수정에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
+      setAnalyzingIdx(null);
     }
   }
 
@@ -929,6 +1315,9 @@ export default function QualitativePage() {
                 key={`edit-${x.idx}`}
                 form={editDraft}
                 onChange={(updated) => setEditDraft(updated)}
+                newFiles={editFiles}
+                onAddFiles={(files) => setEditFiles((prev) => [...prev, ...files])}
+                onRemoveNewFile={(idx) => setEditFiles((prev) => prev.filter((_, i) => i !== idx))}
                 onCancel={cancelEdit}
                 onSubmit={saveEdit}
                 submitting={submitting}
@@ -955,7 +1344,21 @@ export default function QualitativePage() {
             key={`draft-${i}`}
             form={form}
             onChange={(updated) => updateDraft(category, i, updated)}
-            onCancel={() => removeDraft(category, i)}
+            newFiles={getDraftFiles(category, i)}
+            onAddFiles={(files) =>
+              setDraftFilesAt(category, i, [...getDraftFiles(category, i), ...files])
+            }
+            onRemoveNewFile={(idx) =>
+              setDraftFilesAt(
+                category,
+                i,
+                getDraftFiles(category, i).filter((_, k) => k !== idx)
+              )
+            }
+            onCancel={() => {
+              removeDraft(category, i);
+              clearDraftFilesAt(category, i);
+            }}
             onSubmit={() => submitDraft(category, i)}
             submitting={submitting}
           />

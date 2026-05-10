@@ -1,7 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "src/app/api/mentee/qualitative/analyze/route.ts": {
+    "src/app/api/mentee/qualitative/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/mentee/qualitative/analyze/[index]/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/mentee/qualitative/summary/route.ts": {
       "maxDuration": 300
     }
   }

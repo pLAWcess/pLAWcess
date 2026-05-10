@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
 import { hashAnalysisInput } from "@/lib/hash";
+import { buildSingleAnalysisHash } from "@/lib/qualHash";
+import type { StoredAttachment } from "@/lib/attachments";
 import { summarizeQualitative, type QualitativeActivity, type StarItem } from "@/lib/gemini";
+
+type ActivityWithAttachments = QualitativeActivity & { attachments?: StoredAttachment[] };
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -27,19 +31,20 @@ type StarAnalysisJson = {
 };
 
 function computeActivitiesAnalyzed(
-  activities: QualitativeActivity[],
+  activities: ActivityWithAttachments[],
   hashes: Record<string, string>
 ): boolean[] {
+  // PATCH/analyze 엔드포인트와 동일한 정규화로 hash 산출 — drift 방지.
   return activities.map((a, i) => {
     const stored = hashes[String(i)];
     if (!stored) return false;
-    const current = hashAnalysisInput({ activity: a, activity_index: i });
+    const current = buildSingleAnalysisHash(a, i, a.attachments);
     return stored === current;
   });
 }
 
 function computeSummaryOutdated(
-  activities: QualitativeActivity[],
+  activities: ActivityWithAttachments[],
   careerGoal: string | null,
   starAnalysis: StarAnalysisJson | null,
   storedHash: string | null
@@ -78,7 +83,7 @@ type FullRecord = {
 };
 
 function buildResponse(record: FullRecord, extras: { skipped: boolean }) {
-  const activities = (record.qualitative_activities ?? []) as QualitativeActivity[];
+  const activities = (record.qualitative_activities ?? []) as ActivityWithAttachments[];
   const hashes = (record.star_input_hashes ?? {}) as Record<string, string>;
   const starAnalysis = record.star_analysis as StarAnalysisJson | null;
 
@@ -121,7 +126,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "정성 데이터가 없습니다. 먼저 활동을 저장해주세요." }, { status: 400 });
   }
 
-  const activities = (record.qualitative_activities ?? []) as QualitativeActivity[];
+  const activities = (record.qualitative_activities ?? []) as ActivityWithAttachments[];
   if (!Array.isArray(activities) || activities.length === 0) {
     return NextResponse.json({ error: "분석할 활동이 없습니다." }, { status: 400 });
   }
