@@ -454,3 +454,221 @@ export async function deleteQualitativeActivity(year: string, index: number): Pr
   if (!res.ok) throw new Error("활동 삭제 실패");
   return res.json();
 }
+
+// ----------------------------------------------------------------
+// #176 Admin API
+// ----------------------------------------------------------------
+
+export type Paged<T> = {
+  data: T[];
+  totalCount: number;
+  page: number;
+  limit: number;
+};
+
+export type AdminAccountStatus = "active" | "inactive" | "blocked";
+export type ApplicationStatusLabel = "pending" | "approved" | "rejected" | "revision";
+
+export type AdminMenteeRow = {
+  userId: string;
+  name: string;
+  studentId: string;
+  firstMajor: string | null;
+  secondMajor: string | null;
+  phone: string;
+  accountStatus: AdminAccountStatus;
+};
+
+export type AdminMentorRow = {
+  userId: string;
+  name: string;
+  studentId: string;
+  lawSchool: string | null;
+  cohort: number | null;
+  phone: string;
+  accountStatus: AdminAccountStatus;
+};
+
+export type AdminMenteeApplicationRow = {
+  applicationId: string;
+  name: string;
+  studentId: string;
+  major: string;
+  status: ApplicationStatusLabel;
+  memo: string | null;
+  submittedAt: string | null;
+};
+
+export type AdminMentorApplicationRow = {
+  applicationId: string;
+  name: string;
+  studentId: string;
+  school: string | null;
+  status: ApplicationStatusLabel;
+  memo: string | null;
+  submittedAt: string | null;
+};
+
+export type EligibleMentee = {
+  applicationId: string;
+  userId: string;
+  name: string;
+  studentId: string;
+  major: string;
+  accountStatus: AdminAccountStatus;
+};
+
+export type EligibleMentor = {
+  applicationId: string;
+  userId: string;
+  name: string;
+  studentId: string;
+  lawSchool: string | null;
+  accountStatus: AdminAccountStatus;
+};
+
+export type EligiblePool = {
+  year: number;
+  mentees: EligibleMentee[];
+  mentors: EligibleMentor[];
+};
+
+export type AnnouncementRow = {
+  announcementId: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  author: string;
+};
+
+function buildPaging(page?: number, limit?: number): string {
+  const params = new URLSearchParams();
+  if (page !== undefined) params.set("page", String(page));
+  if (limit !== undefined) params.set("limit", String(limit));
+  const s = params.toString();
+  return s ? `&${s}` : "";
+}
+
+async function jsonOrError<T>(res: Response, fallback: string): Promise<T> {
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? fallback);
+  }
+  return res.json();
+}
+
+// 회원관리 ----------------------------------------------------------
+
+export async function getAdminUsers(
+  role: "mentee",
+  page?: number, limit?: number,
+): Promise<Paged<AdminMenteeRow>>;
+export async function getAdminUsers(
+  role: "mentor",
+  page?: number, limit?: number,
+): Promise<Paged<AdminMentorRow>>;
+export async function getAdminUsers(
+  role: "mentee" | "mentor",
+  page?: number, limit?: number,
+): Promise<Paged<AdminMenteeRow> | Paged<AdminMentorRow>> {
+  const res = await fetch(
+    `${API_BASE}/api/admin/users?role=${role}${buildPaging(page, limit)}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "회원 목록 조회 실패");
+}
+
+// 신청관리 ----------------------------------------------------------
+
+export async function getAdminApplications(
+  role: "mentee",
+  options?: { year?: number; page?: number; limit?: number },
+): Promise<Paged<AdminMenteeApplicationRow>>;
+export async function getAdminApplications(
+  role: "mentor",
+  options?: { year?: number; page?: number; limit?: number },
+): Promise<Paged<AdminMentorApplicationRow>>;
+export async function getAdminApplications(
+  role: "mentee" | "mentor",
+  options?: { year?: number; page?: number; limit?: number },
+): Promise<Paged<AdminMenteeApplicationRow> | Paged<AdminMentorApplicationRow>> {
+  const params = new URLSearchParams({ role });
+  if (options?.year !== undefined) params.set("year", String(options.year));
+  if (options?.page !== undefined) params.set("page", String(options.page));
+  if (options?.limit !== undefined) params.set("limit", String(options.limit));
+  const res = await fetch(
+    `${API_BASE}/api/admin/applications?${params.toString()}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "신청 목록 조회 실패");
+}
+
+// 매칭 적격 풀 ------------------------------------------------------
+
+export async function getEligibleMatchingPool(year?: number): Promise<EligiblePool> {
+  const qs = year !== undefined ? `?year=${year}` : "";
+  const res = await fetch(
+    `${API_BASE}/api/admin/matchings/eligible${qs}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "매칭 적격 풀 조회 실패");
+}
+
+// 공지사항 (admin) -------------------------------------------------
+
+export async function listAdminAnnouncements(
+  page?: number, limit?: number,
+): Promise<Paged<AnnouncementRow>> {
+  const params = new URLSearchParams();
+  if (page !== undefined) params.set("page", String(page));
+  if (limit !== undefined) params.set("limit", String(limit));
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_BASE}/api/admin/announcements${qs ? `?${qs}` : ""}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "공지사항 목록 조회 실패");
+}
+
+export async function createAnnouncement(
+  body: { title: string; body: string },
+): Promise<AnnouncementRow> {
+  const res = await fetch(`${API_BASE}/api/admin/announcements`, {
+    method: "POST", headers: headers(), credentials: "include",
+    body: JSON.stringify(body),
+  });
+  return jsonOrError(res, "공지사항 작성 실패");
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, {
+    method: "DELETE", headers: headers(), credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "공지사항 삭제 실패");
+  }
+}
+
+// 공지사항 (공개) ---------------------------------------------------
+
+export async function listAnnouncements(
+  page?: number, limit?: number,
+): Promise<Paged<AnnouncementRow>> {
+  const params = new URLSearchParams();
+  if (page !== undefined) params.set("page", String(page));
+  if (limit !== undefined) params.set("limit", String(limit));
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_BASE}/api/announcements${qs ? `?${qs}` : ""}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "공지사항 목록 조회 실패");
+}
+
+export async function getAnnouncement(id: string): Promise<AnnouncementRow> {
+  const res = await fetch(`${API_BASE}/api/announcements/${id}`, {
+    headers: headers(), credentials: "include",
+  });
+  return jsonOrError(res, "공지사항 조회 실패");
+}
