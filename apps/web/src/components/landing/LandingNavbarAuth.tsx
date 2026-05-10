@@ -38,6 +38,12 @@ export default function LandingNavbarAuth({ initialUser }: Props) {
     fetchUser();
   }, [initialUser]);
 
+  // 로그인 상태면 API 서버 콜드스타트 미리 깨우기
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/health', { method: 'GET', credentials: 'include' }).catch(() => {});
+  }, [user]);
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     clearUser();

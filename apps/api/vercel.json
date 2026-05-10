@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["hnd1"],
   "functions": {
     "src/app/api/mentee/qualitative/route.ts": {
       "maxDuration": 300
