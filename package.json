@@ -1,6 +1,17 @@
 {
   "name": "plawcess",
   "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@google/genai",
+      "@prisma/engines",
+      "prisma",
+      "protobufjs",
+      "sharp",
+      "tesseract.js",
+      "unrs-resolver"
+    ]
+  },
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
