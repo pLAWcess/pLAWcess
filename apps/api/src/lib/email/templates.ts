@@ -26,11 +26,3 @@ export function resetPasswordCodeMail(code: string): MailContent {
     html: `<div style="font-family:sans-serif;font-size:15px;">인증 코드는 <strong style="font-size:20px;">${code}</strong> 입니다.<br/>5분 안에 입력해주세요.${FOOTER_HTML}</div>`,
   };
 }
-
-export function findIdMail(loginId: string): MailContent {
-  return {
-    subject: "[pLAWcess] 아이디 안내",
-    text: `회원님의 아이디는 ${loginId} 입니다.${FOOTER_TEXT}`,
-    html: `<div style="font-family:sans-serif;font-size:15px;">회원님의 아이디는 <strong>${loginId}</strong> 입니다.${FOOTER_HTML}</div>`,
-  };
-}
