@@ -28,7 +28,8 @@ const adminNavItems: NavItem[] = [
   { label: '회원관리', href: '/admin/users' },
   { label: '신청관리', href: '/admin/applications' },
   { label: '매칭관리', href: '/admin/matchings', match: '/admin/matchings' },
-  { label: '공지사항 작성', href: '/admin/announcements/create', match: '/admin/announcements' },
+  { label: '공지사항 작성', href: '/admin/announcements/create', exact: true },
+  { label: '공지사항 관리', href: '/admin/announcements', exact: true },
   { label: '멘토 계정 생성', href: '/admin/mentors/create', match: '/admin/mentors' },
 ];
 

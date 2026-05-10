@@ -719,6 +719,17 @@ export async function createAnnouncement(
   return jsonOrError(res, "공지사항 작성 실패");
 }
 
+export async function updateAnnouncement(
+  id: string,
+  body: { title?: string; body?: string; isPublished?: boolean },
+): Promise<AdminAnnouncementRow> {
+  const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, {
+    method: "PATCH", headers: headers(), credentials: "include",
+    body: JSON.stringify(body),
+  });
+  return jsonOrError(res, "공지사항 수정 실패");
+}
+
 export async function deleteAnnouncement(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/admin/announcements/${id}`, {
     method: "DELETE", headers: headers(), credentials: "include",

@@ -1,40 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  listAdminAnnouncements,
-  createAnnouncement,
-  deleteAnnouncement,
-  type AdminAnnouncementRow,
-} from '@/lib/api';
+import { useState } from 'react';
+import { createAnnouncement } from '@/lib/api';
 
 export default function AdminAnnouncementsCreatePage() {
-  const [list, setList] = useState<AdminAnnouncementRow[]>([]);
-  const [listLoading, setListLoading] = useState(true);
-  const [listError, setListError] = useState<string | null>(null);
-
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-
-  async function refresh() {
-    setListLoading(true);
-    setListError(null);
-    try {
-      const res = await listAdminAnnouncements();
-      setList(res.data);
-    } catch (e: unknown) {
-      setListError(e instanceof Error ? e.message : '목록 조회 실패');
-    } finally {
-      setListLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    refresh();
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,8 +16,7 @@ export default function AdminAnnouncementsCreatePage() {
     setSaving(true);
     setSubmitError(null);
     try {
-      const created = await createAnnouncement({ title: title.trim(), body: body.trim() });
-      setList((prev) => [created, ...prev]);
+      await createAnnouncement({ title: title.trim(), body: body.trim() });
       setTitle('');
       setBody('');
       setMessage('공지사항이 게시되었습니다.');
@@ -55,28 +28,14 @@ export default function AdminAnnouncementsCreatePage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('이 공지사항을 삭제할까요? (복구 불가)')) return;
-    try {
-      await deleteAnnouncement(id);
-      setList((prev) => prev.filter((a) => a.announcementId !== id));
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '삭제 실패');
-      // 404 등 — 서버 상태와 동기화
-      refresh();
-    }
-  }
-
   return (
     <div className="flex flex-col gap-8 w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">공지사항 작성</h1>
-        <p className="mt-1 text-sm text-text-secondary">새 공지사항을 작성하고 게시된 공지를 관리합니다</p>
+        <p className="mt-1 text-sm text-text-secondary">새 공지사항을 작성합니다</p>
       </div>
 
-      {/* 작성 폼 */}
       <section className="bg-white border border-border rounded-xl px-8 py-6">
-        <h2 className="text-base font-semibold text-text-primary mb-5">새 공지사항</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-primary">
@@ -126,38 +85,6 @@ export default function AdminAnnouncementsCreatePage() {
             </button>
           </div>
         </form>
-      </section>
-
-      {/* 게시된 공지 목록 */}
-      <section className="bg-white border border-border rounded-xl px-8 py-6">
-        <h2 className="text-base font-semibold text-text-primary mb-5">게시된 공지사항</h2>
-        {listLoading ? (
-          <p className="py-6 text-sm text-text-secondary">로딩 중...</p>
-        ) : listError ? (
-          <p className="py-6 text-sm text-red-500">{listError}</p>
-        ) : list.length === 0 ? (
-          <p className="py-6 text-sm text-text-secondary">게시된 공지사항이 없습니다.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {list.map((a) => (
-              <li key={a.announcementId} className="py-5 flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-text-primary">{a.title}</p>
-                  <p className="mt-1 text-sm text-text-secondary line-clamp-2">{a.body}</p>
-                  <p className="mt-2 text-xs text-text-placeholder">
-                    {a.author} · {new Date(a.createdAt).toLocaleDateString('ko-KR')}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDelete(a.announcementId)}
-                  className="shrink-0 text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  삭제
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
     </div>
   );
