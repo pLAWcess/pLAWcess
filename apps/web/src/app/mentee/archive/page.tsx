@@ -182,7 +182,7 @@ export default function ArchivePage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-text-primary mb-2">선배 한마디</p>
-                  <p className="text-sm text-text-secondary leading-relaxed italic">"{c.mentorMessage}"</p>
+                  <p className="text-sm text-text-secondary leading-relaxed italic">&quot;{c.mentorMessage}&quot;</p>
                 </div>
               </div>
             )}

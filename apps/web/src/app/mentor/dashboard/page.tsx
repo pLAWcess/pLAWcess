@@ -94,7 +94,7 @@ export default function MentorDashboardPage() {
               </div>
               {mentee.desiredMentor && (
                 <p className="text-xs text-text-secondary italic border-t border-border pt-3">
-                  "{mentee.desiredMentor}"
+                  &quot;{mentee.desiredMentor}&quot;
                 </p>
               )}
             </div>

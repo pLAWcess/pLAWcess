@@ -23,17 +23,6 @@ export default function LandingNavbar({ initialUser }: Props) {
   const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
   const [authChecked, setAuthChecked] = useState(initialUser !== undefined);
 
-  useEffect(() => {
-    if (initialUser !== undefined) return;
-    const cached = getUser();
-    if (cached) {
-      setUser(cached);
-      setAuthChecked(true);
-    } else {
-      fetchUser().finally(() => setAuthChecked(true));
-    }
-  }, []);
-
   async function fetchUser(): Promise<void> {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'include' });
@@ -52,6 +41,18 @@ export default function LandingNavbar({ initialUser }: Props) {
       // 미로그인 상태
     }
   }
+
+  useEffect(() => {
+    if (initialUser !== undefined) return;
+    const cached = getUser();
+    if (cached) {
+      setUser(cached);
+      setAuthChecked(true);
+    } else {
+      fetchUser().finally(() => setAuthChecked(true));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', {

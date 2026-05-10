@@ -16,16 +16,7 @@ interface NavbarProps {
 
 export default function Navbar({ onMenuToggle }: NavbarProps) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    const cachedUser = getUser();
-    if (cachedUser) {
-      setUser(cachedUser);
-    } else {
-      fetchUser();
-    }
-  }, []);
+  const [user, setUser] = useState<AuthUser | null>(() => getUser());
 
   async function fetchUser() {
     try {
@@ -50,6 +41,11 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
       console.error('사용자 정보 조회 실패:', error);
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!getUser()) fetchUser();
+  }, []);
 
   async function handleLogout() {
     await fetch(`${API_BASE}/api/auth/logout`, {

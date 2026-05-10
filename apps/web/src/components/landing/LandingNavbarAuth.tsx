@@ -11,18 +11,7 @@ type Props = { initialUser: AuthUser | null };
 
 export default function LandingNavbarAuth({ initialUser }: Props) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(initialUser);
-  const [authChecked, setAuthChecked] = useState(true);
-
-  useEffect(() => {
-    if (initialUser !== null) return;
-    const cached = getUser();
-    if (cached) {
-      setUser(cached);
-    } else {
-      fetchUser();
-    }
-  }, []);
+  const [user, setUser] = useState<AuthUser | null>(() => initialUser ?? getUser());
 
   async function fetchUser(): Promise<void> {
     try {
@@ -43,13 +32,17 @@ export default function LandingNavbarAuth({ initialUser }: Props) {
     }
   }
 
+  useEffect(() => {
+    if (initialUser !== null || getUser()) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUser();
+  }, [initialUser]);
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     setUser(null);
     router.push('/');
   }
-
-  if (!authChecked) return <div className="h-9" />;
 
   return user ? (
     <>

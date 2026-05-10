@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
@@ -11,19 +11,16 @@ function ResetPasswordForm() {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
+  const [resetToken] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return sessionStorage.getItem('resetToken') ?? '';
+  });
+  const [error, setError] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return sessionStorage.getItem('resetToken') ? '' : '유효하지 않은 접근입니다. 비밀번호 찾기를 다시 시도해주세요.';
+  });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  const [resetToken, setResetToken] = useState('');
-
-  useEffect(() => {
-    const token = sessionStorage.getItem('resetToken');
-    if (!token) {
-      setError('유효하지 않은 접근입니다. 비밀번호 찾기를 다시 시도해주세요.');
-    } else {
-      setResetToken(token);
-    }
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
