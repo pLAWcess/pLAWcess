@@ -215,12 +215,12 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
           <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
           <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* 연도 선택 커스텀 드롭다운 */}
           <div className="relative" ref={yearDropdownRef}>
             <button
               onClick={() => setYearDropdownOpen((o) => !o)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               <span className="text-sm font-semibold text-text-primary">
                 {selectedYear != null ? `${selectedYear}년` : '연도'}
@@ -261,7 +261,7 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
           {current && (
             <button
               onClick={toggleActive}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap ${
                 current.is_active
                   ? 'text-text-secondary border-border hover:bg-gray-50'
                   : 'text-brand border-brand/40 bg-brand/5 hover:bg-brand/10'
@@ -273,14 +273,14 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
           <button
             onClick={handleAddYear}
             disabled={addingYear}
-            className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             + 새 연도
           </button>
           {current && (
             <button
               onClick={handleDelete}
-              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors whitespace-nowrap"
             >
               연도 삭제
             </button>
