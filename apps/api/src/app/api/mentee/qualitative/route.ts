@@ -297,11 +297,16 @@ async function handleMultipartPatch(req: NextRequest, userId: string, processYea
     select: { qualitative_activities: true },
   });
   const oldActivities = (existingRecord?.qualitative_activities ?? []) as ActivityForm[];
-  // contentHash → storagePath 매핑 (정리 대상 결정에 사용)
-  const oldPathByHash = new Map<string, string>();
+
+  // 보안 정규화: 클라이언트가 보낸 attachments는 storagePath/mimeType 등을 위조해
+  // 다른 사용자의 객체를 다운로드/삭제 트리거할 수 있으므로 신뢰하지 않는다.
+  // 정식 메타는 항상 DB의 기존 row에서 contentHash로 매칭해 가져온다.
+  const oldAttByHash = new Map<string, StoredAttachment>();
   for (const a of oldActivities) {
     for (const att of a.attachments ?? []) {
-      if (att.storagePath) oldPathByHash.set(att.contentHash, att.storagePath);
+      if (att?.contentHash && att?.storagePath) {
+        oldAttByHash.set(att.contentHash, att);
+      }
     }
   }
 
@@ -313,8 +318,26 @@ async function handleMultipartPatch(req: NextRequest, userId: string, processYea
   for (let i = 0; i < baseActivities.length; i++) {
     const a = baseActivities[i];
     const newFiles = filesByIdx.get(i) ?? [];
-    // 클라이언트가 보낸 기존 attachments 목록은 "유지하라"는 의도 — 그대로 둔다.
-    const kept = (a.attachments ?? []).slice();
+
+    // 클라이언트가 보낸 attachments는 contentHash만 신뢰. 그 외 필드는 무시하고
+    // DB의 기존 row를 그대로 사용한다. DB에 없는 contentHash는 거부.
+    const clientHashes = (a.attachments ?? [])
+      .map((att) => att?.contentHash)
+      .filter((h): h is string => typeof h === "string" && h.length > 0);
+    const kept: StoredAttachment[] = [];
+    const seen = new Set<string>();
+    for (const hash of clientHashes) {
+      if (seen.has(hash)) continue;
+      const row = oldAttByHash.get(hash);
+      if (!row) {
+        allErrors.push(
+          `활동 ${i + 1}: 알 수 없는 첨부(contentHash=${hash.slice(0, 8)}…)는 무시되었습니다.`
+        );
+        continue;
+      }
+      kept.push(row);
+      seen.add(hash);
+    }
 
     if (newFiles.length === 0) {
       mergedActivities.push({ ...a, attachments: kept });
@@ -366,8 +389,8 @@ async function handleMultipartPatch(req: NextRequest, userId: string, processYea
     for (const att of a.attachments ?? []) newHashes.add(att.contentHash);
   }
   const toDelete: string[] = [];
-  for (const [hash, path] of oldPathByHash.entries()) {
-    if (!newHashes.has(hash)) toDelete.push(path);
+  for (const [hash, att] of oldAttByHash.entries()) {
+    if (!newHashes.has(hash)) toDelete.push(att.storagePath);
   }
   if (toDelete.length > 0) await removeMany(toDelete);
 

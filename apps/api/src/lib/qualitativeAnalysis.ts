@@ -158,12 +158,21 @@ async function buildGeminiPayloadForActivity(
     }
 
     // Storage에서 다운로드 — 메모리 miss인 첨부만 egress 발생
+    // storagePath가 비어 있으면(=legacy 데이터/잘못된 입력) 분석 누락이 silent 일어나지 않도록
+    // 명시적으로 에러를 던져 호출자가 surface하게 한다.
+    if (!a.storagePath) {
+      throw new Error(
+        `첨부 '${a.filename}'의 storagePath가 비어 있어 분석에 포함할 수 없습니다. 파일을 다시 업로드해주세요.`
+      );
+    }
     let bytes: Uint8Array;
     try {
       bytes = await downloadBytes(a.storagePath);
     } catch (err) {
       console.error("[buildGeminiPayload] Storage 다운로드 실패", a.storagePath, err);
-      continue;
+      throw new Error(
+        `첨부 '${a.filename}'을(를) Storage에서 가져오지 못해 분석을 진행할 수 없습니다.`
+      );
     }
 
     if (a.type === "image") {
