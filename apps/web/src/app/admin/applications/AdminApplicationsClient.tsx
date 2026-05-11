@@ -564,11 +564,11 @@ function ApplicationPanel<T extends AdminApplicationRow>({
       </div>
 
       <div className="overflow-x-auto">
-      <table className="w-full table-auto min-w-[560px]">
+      <table className="w-full table-auto min-w-[600px]">
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
-              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none">
+              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap">
                 {col.sortable ? (
                   <button onClick={() => onSort(col.key)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     {col.label}
@@ -593,7 +593,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
             processed.map((row) => (
               <tr key={row.applicationId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle">
+                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
                     {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}

@@ -139,9 +139,9 @@ export default function PersonalStatementsClient({
         <table className="w-full table-auto min-w-[400px]">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">학교명</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">상태</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">최근 업데이트</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">학교명</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">상태</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">최근 업데이트</th>
               <th className="py-3" />
             </tr>
           </thead>

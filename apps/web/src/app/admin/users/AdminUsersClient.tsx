@@ -76,18 +76,18 @@ function UsersPageContent({ initialMenteeData }: { initialMenteeData: Paged<Admi
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">회원관리</h1>
           <p className="mt-1 text-sm text-text-secondary">회원 정보를 조회하고 관리합니다</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
             {STATUS_FILTER_OPTIONS.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => setStatusFilter(value)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                   statusFilter === value
                     ? 'bg-white text-text-primary shadow-sm'
                     : 'text-text-secondary hover:text-text-primary'
@@ -97,7 +97,7 @@ function UsersPageContent({ initialMenteeData }: { initialMenteeData: Paged<Admi
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
+          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" />
             </svg>
@@ -260,11 +260,11 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
       </div>
 
       <div className="overflow-x-auto">
-      <table className="w-full table-auto min-w-[500px]">
+      <table className="w-full table-auto min-w-[600px]">
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
-              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none">
+              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap">
                 {col.sortable ? (
                   <button onClick={() => onSort(col.key)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     {col.label}
@@ -286,7 +286,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
             processed.map((row) => (
               <tr key={row.userId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle">
+                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
                     {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}
