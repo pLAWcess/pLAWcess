@@ -15,6 +15,7 @@ export default function DashboardShell({ children, role, initialUser }: { childr
     <div className="flex flex-col h-screen">
       <Navbar
         onMenuToggle={isMobile ? () => setMobileOpen((o) => !o) : undefined}
+        mobileOpen={mobileOpen}
         initialUser={initialUser}
       />
       <div className="flex flex-1 overflow-hidden">

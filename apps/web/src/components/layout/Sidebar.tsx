@@ -137,23 +137,20 @@ export default function Sidebar({ mobileOpen, onClose, initialRole, initialUser,
 
       {/* 모바일 드롭다운 */}
       {isMobile && mobileOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
-          <div className="fixed top-16 left-0 right-0 z-50 bg-white border-b border-border shadow-md px-4 py-3">
-            {navContent}
-            {initialUser && (
-              <div className="mt-2 pt-3 border-t border-border flex items-center justify-between">
-                <span className="text-sm font-medium text-text-primary">{initialUser.name}</span>
-                <button
-                  onClick={handleLogout}
-                  className="text-xs text-text-secondary hover:text-red-500 transition-colors"
-                >
-                  로그아웃
-                </button>
-              </div>
-            )}
-          </div>
-        </>
+        <div className="fixed top-16 left-0 right-0 z-50 bg-white border-t border-border shadow-md px-4 py-3">
+          {navContent}
+          {initialUser && (
+            <div className="mt-2 pt-3 border-t border-border flex items-center justify-between">
+              <span className="text-sm font-medium text-text-primary">{initialUser.name}</span>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-text-secondary hover:text-red-500 transition-colors"
+              >
+                로그아웃
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </>
   );
