@@ -20,6 +20,7 @@ out/
 
 # superpowers (local design/plan docs)
 /.superpowers/
+/docs/superpowers/
 
 # 로컬 작업 로그 (#176 등 — 원격에 안 올림)
 /docs/2026-05-11-176-fe-work.md
