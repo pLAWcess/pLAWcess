@@ -114,7 +114,7 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
   return (
     <div className="flex flex-col gap-6 page-container w-full">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">설정</h1>
+        <h1 className="text-2xl font-bold text-text-primary">계정</h1>
         <p className="text-sm text-text-secondary mt-1">계정 정보를 확인하고 관리하세요</p>
       </div>
 
