@@ -1,14 +1,13 @@
 import { cookies } from 'next/headers';
 import BasicInfoClient from './BasicInfoClient';
-import { serverFetch } from '@/lib/server-fetch';
+import { serverFetch, getActiveProcessYear } from '@/lib/server-fetch';
 import { emptyPersonalInfo, emptyAdmissionInfo, type PersonalInfo, type AdmissionInfo } from '@/constants/basic-info';
 import type { BasicInfoData, AdmissionSlot } from '@/lib/api';
 
-const YEAR = encodeURIComponent('2026학년도');
-
 export default async function BasicInfoPage() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
-  const raw = await serverFetch<BasicInfoData>(`/api/mentee/basic-info?year=${YEAR}`, token);
+  const year = await getActiveProcessYear(token);
+  const raw = await serverFetch<BasicInfoData>(`/api/mentee/basic-info?year=${encodeURIComponent(year)}`, token);
 
   let initialPersonal: PersonalInfo = emptyPersonalInfo;
   let initialAdmission: AdmissionInfo = emptyAdmissionInfo;
@@ -45,6 +44,7 @@ export default async function BasicInfoPage() {
       initialPersonal={initialPersonal}
       initialAdmission={initialAdmission}
       initialPreferredGroup={initialPreferredGroup}
+      year={year}
     />
   );
 }

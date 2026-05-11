@@ -44,7 +44,6 @@ const EMPTY_FORM: Omit<ActivityForm, 'category'> = {
   content: '',
 };
 
-const YEAR = new Date().getFullYear().toString();
 
 // ----------------------------------------------------------------
 // 첨부 파일 정책 (서버 attachments.ts와 일치)
@@ -1041,7 +1040,7 @@ function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
 // ================================================================
 // 페이지
 // ================================================================
-export default function QualitativeClient({ initialData }: { initialData?: QualitativeData }) {
+export default function QualitativeClient({ initialData, year }: { initialData?: QualitativeData; year: string }) {
   const didInitRef = useRef(false);
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
   const [careerGoal, setCareerGoal] = useState<CareerGoal>(initialData?.careerGoal || '');

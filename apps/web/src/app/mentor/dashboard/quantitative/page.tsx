@@ -1,9 +1,7 @@
 import { cookies } from 'next/headers';
 import QuantitativeClient from './QuantitativeClient';
-import { serverFetch } from '@/lib/server-fetch';
+import { serverFetch, getActiveProcessYear } from '@/lib/server-fetch';
 import type { QuantitativeData } from '@/lib/api';
-
-const YEAR = encodeURIComponent('2026학년도');
 
 const EMPTY: QuantitativeData = {
   leet: {
@@ -16,7 +14,8 @@ const EMPTY: QuantitativeData = {
 
 export default async function MentorQuantitativePage() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
-  const data = await serverFetch<QuantitativeData>(`/api/mentee/quantitative?year=${YEAR}`, token) ?? EMPTY;
+  const year = await getActiveProcessYear(token);
+  const data = await serverFetch<QuantitativeData>(`/api/mentee/quantitative?year=${encodeURIComponent(year)}`, token) ?? EMPTY;
 
   return (
     <div className="flex flex-col gap-6 page-container w-full">
@@ -26,7 +25,7 @@ export default async function MentorQuantitativePage() {
           멘티 시절 작성한 정량 데이터가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
         </p>
       </div>
-      <QuantitativeClient initialData={data} />
+      <QuantitativeClient initialData={data} year={year} />
     </div>
   );
 }

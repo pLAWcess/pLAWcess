@@ -10,7 +10,6 @@ import {
   type TextAnswer,
 } from '@/lib/api';
 
-const YEAR = new Date().getFullYear().toString();
 const AUTO_SAVE_MS = 60_000;
 
 const HwpEditor = dynamic(() => import('./HwpEditor'), {
@@ -27,8 +26,10 @@ type Mode = 'hwp' | 'text';
 
 export default function PersonalStatementClient({
   initialData,
+  year,
 }: {
   initialData: PersonalStatementData;
+  year: string;
 }) {
   const [activeTab, setActiveTab] = useState<Group>(() =>
     initialData.ga.school ? 'ga' : 'na',
@@ -76,14 +77,14 @@ export default function PersonalStatementClient({
           const file = new File([bytes.buffer as ArrayBuffer], 'personal-statement.hwp', {
             type: 'application/x-hwp',
           });
-          await uploadPersonalStatement(YEAR, activeTab, file);
+          await uploadPersonalStatement(year, activeTab, file);
           setData((prev) => ({
             ...prev,
             [activeTab]: { ...prev[activeTab], hwp: uint8ToBase64(bytes) },
           }));
         } else {
           const answers = buildAnswers(activeTab);
-          await saveTextAnswers(YEAR, activeTab, answers);
+          await saveTextAnswers(year, activeTab, answers);
         }
         setSavedAt((prev) => ({ ...prev, [activeTab]: new Date() }));
         dirtyRef.current[activeTab] = false;
@@ -117,14 +118,14 @@ export default function PersonalStatementClient({
         const file = new File([bytes.buffer as ArrayBuffer], 'personal-statement.hwp', {
           type: 'application/x-hwp',
         });
-        await uploadPersonalStatement(YEAR, activeTab, file);
+        await uploadPersonalStatement(year, activeTab, file);
         setData((prev) => ({
           ...prev,
           [activeTab]: { ...prev[activeTab], hwp: uint8ToBase64(bytes) },
         }));
       } else {
         const answers = buildAnswers(activeTab);
-        await saveTextAnswers(YEAR, activeTab, answers);
+        await saveTextAnswers(year, activeTab, answers);
         setData((prev) => ({
           ...prev,
           [activeTab]: { ...prev[activeTab], textAnswers: answers },

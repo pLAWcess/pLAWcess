@@ -51,9 +51,10 @@ const adminNavSections: NavSection[] = [
     ],
   },
   {
-    section: '계정',
+    section: '설정',
     items: [
-      { label: '설정', href: '/settings', exact: true },
+      { label: '연도 설정', href: '/admin/settings/year' },
+      { label: '계정', href: '/settings', exact: true },
     ],
   },
 ];

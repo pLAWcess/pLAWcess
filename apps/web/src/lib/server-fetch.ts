@@ -17,6 +17,11 @@ export async function serverFetch<T>(path: string, token: string): Promise<T | n
   }
 }
 
+export async function getActiveProcessYear(token: string): Promise<string> {
+  const schedule = await serverFetch<{ process_year: number }>('/api/cycle-schedules/active', token);
+  return schedule ? String(schedule.process_year) : String(new Date().getFullYear());
+}
+
 export async function getAuthUser(token: string): Promise<AuthUser | null> {
   if (!token) return null;
   const fromJwt = await decodeSessionToken(token);

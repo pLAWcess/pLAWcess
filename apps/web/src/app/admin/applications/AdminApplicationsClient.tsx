@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
-  patchCycleSchedule, deleteCycleSchedule, createCycleSchedule, type CycleSchedule,
+  patchCycleSchedule, type CycleSchedule,
   getAdminApplications,
   patchAdminApplication,
   type AdminMenteeApplicationRow,
@@ -114,7 +114,6 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [draft, setDraft] = useState<ScheduleDraft | null>(null);
   const [saving, setSaving] = useState(false);
-  const [addingYear, setAddingYear] = useState(false);
 
   const current = schedules.find((s) => s.process_year === selectedYear) ?? null;
 
@@ -169,43 +168,6 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
     }
   }
 
-  async function toggleActive() {
-    if (!selectedYear || !current) return;
-    const newActive = !current.is_active;
-    const updated = await patchCycleSchedule(selectedYear, { is_active: newActive });
-    setSchedules((prev) => prev.map((s) =>
-      s.process_year === selectedYear ? updated : newActive ? { ...s, is_active: false } : s
-    ));
-  }
-
-  async function handleDelete() {
-    if (!selectedYear || !current) return;
-    if (!confirm(`${selectedYear}년 스케줄을 정말 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
-    try {
-      await deleteCycleSchedule(selectedYear);
-      const next = schedules.filter((s) => s.process_year !== selectedYear);
-      setSchedules(next);
-      setSelectedYear(next.length > 0 ? next[0].process_year : null);
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '삭제 실패');
-    }
-  }
-
-  async function handleAddYear() {
-    const nextYear = schedules.length > 0
-      ? Math.max(...schedules.map((s) => s.process_year)) + 1
-      : new Date().getFullYear();
-    setAddingYear(true);
-    try {
-      const created = await createCycleSchedule(nextYear);
-      setSchedules((prev) => [created, ...prev]);
-      setSelectedYear(created.process_year);
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '연도 생성 실패');
-    } finally {
-      setAddingYear(false);
-    }
-  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -254,37 +216,6 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
             )}
           </div>
 
-          {/* 구분선 */}
-          <div className="w-px h-5 bg-border" />
-
-          {/* 액션 버튼 그룹 */}
-          {current && (
-            <button
-              onClick={toggleActive}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap ${
-                current.is_active
-                  ? 'text-text-secondary border-border hover:bg-gray-50'
-                  : 'text-brand border-brand/40 bg-brand/5 hover:bg-brand/10'
-              }`}
-            >
-              {current.is_active ? '노출 끄기' : '노출 켜기'}
-            </button>
-          )}
-          <button
-            onClick={handleAddYear}
-            disabled={addingYear}
-            className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 whitespace-nowrap"
-          >
-            + 새 연도
-          </button>
-          {current && (
-            <button
-              onClick={handleDelete}
-              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors whitespace-nowrap"
-            >
-              연도 삭제
-            </button>
-          )}
         </div>
       </div>
 

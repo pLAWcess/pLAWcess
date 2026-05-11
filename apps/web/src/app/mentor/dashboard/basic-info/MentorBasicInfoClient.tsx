@@ -10,7 +10,6 @@ import {
 } from '@/constants/mentor-basic-info';
 import { patchMentorBasicInfo } from '@/lib/api';
 
-const YEAR = '2026학년도';
 const YEAR_FIELDS: (keyof MentorPersonalInfo)[] = ['admissionYear', 'graduationYear'];
 
 function validateYear(val: string): string {
@@ -18,9 +17,9 @@ function validateYear(val: string): string {
   return /^\d{4}$/.test(val) ? '' : '연도는 숫자 4자리로 입력해주세요 (예: 2021)';
 }
 
-type Props = { initialData: MentorPersonalInfo };
+type Props = { initialData: MentorPersonalInfo; year: string };
 
-export default function MentorBasicInfoClient({ initialData }: Props) {
+export default function MentorBasicInfoClient({ initialData, year }: Props) {
   const [personalInfo, setPersonalInfo] = useState<MentorPersonalInfo>(initialData);
   const [draft, setDraft] = useState<MentorPersonalInfo>(initialData);
   const [isEditing, setIsEditing] = useState(false);
@@ -44,7 +43,7 @@ export default function MentorBasicInfoClient({ initialData }: Props) {
     setSaving(true);
     try {
       const gradeNum = draft.lawSchoolGrade ? parseInt(draft.lawSchoolGrade, 10) : null;
-      await patchMentorBasicInfo(YEAR, {
+      await patchMentorBasicInfo(year, {
         personal: {
           birthDate: draft.birthDate,
           gender: draft.gender,

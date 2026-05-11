@@ -1,14 +1,13 @@
 import { cookies } from 'next/headers';
 import MentorBasicInfoClient from './MentorBasicInfoClient';
-import { serverFetch } from '@/lib/server-fetch';
+import { serverFetch, getActiveProcessYear } from '@/lib/server-fetch';
 import { emptyMentorPersonalInfo, type MentorPersonalInfo } from '@/constants/mentor-basic-info';
 import type { MentorBasicInfoData } from '@/lib/api';
 
-const YEAR = encodeURIComponent('2026학년도');
-
 export default async function MentorBasicInfoPage() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
-  const raw = await serverFetch<MentorBasicInfoData>(`/api/mentor/basic-info?year=${YEAR}`, token);
+  const year = await getActiveProcessYear(token);
+  const raw = await serverFetch<MentorBasicInfoData>(`/api/mentor/basic-info?year=${encodeURIComponent(year)}`, token);
 
   const initialData: MentorPersonalInfo = raw
     ? {
@@ -27,5 +26,5 @@ export default async function MentorBasicInfoPage() {
       }
     : emptyMentorPersonalInfo;
 
-  return <MentorBasicInfoClient initialData={initialData} />;
+  return <MentorBasicInfoClient initialData={initialData} year={year} />;
 }
