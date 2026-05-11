@@ -337,7 +337,7 @@ export type StoryOutline = {
 };
 
 export type QualitativeData = {
-  careerGoal: "변호사" | "검사" | "판사" | "";
+  careerGoal: string;
   activities: QualitativeActivity[];
   analysis: {
     isAnalyzed: boolean;

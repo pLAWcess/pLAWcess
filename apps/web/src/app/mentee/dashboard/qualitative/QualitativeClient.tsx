@@ -14,7 +14,8 @@ type CategoryTab = Exclude<Tab, '대시보드'>;
 const DEFAULT_CATEGORY: ActivityCategory = '교내';
 
 const CAREER_OPTIONS = ['변호사', '검사', '판사'] as const;
-type CareerGoal = typeof CAREER_OPTIONS[number] | '';
+type PresetOption = typeof CAREER_OPTIONS[number];
+type CareerGoal = string;
 
 type ActivityForm = QualitativeActivity;
 
@@ -526,15 +527,33 @@ function CareerGoalCard({
   value: CareerGoal;
   onSave: (value: CareerGoal) => Promise<void>;
 }) {
+  const isPreset = (v: string): v is PresetOption => (CAREER_OPTIONS as readonly string[]).includes(v);
+
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<CareerGoal>(value);
+  const [draftOption, setDraftOption] = useState<PresetOption | '기타' | ''>(() =>
+    isPreset(value) ? value : value ? '기타' : ''
+  );
+  const [draftCustom, setDraftCustom] = useState(() => (isPreset(value) || !value ? '' : value));
   const [saving, setSaving] = useState(false);
 
-  function startEdit() { setDraft(value); setIsEditing(true); }
-  function handleCancel() { setDraft(value); setIsEditing(false); }
+  function startEdit() {
+    setDraftOption(isPreset(value) ? value : value ? '기타' : '');
+    setDraftCustom(isPreset(value) || !value ? '' : value);
+    setIsEditing(true);
+  }
+  function handleCancel() { setIsEditing(false); }
   async function handleSave() {
+    const toSave = draftOption === '기타' ? draftCustom : draftOption;
     setSaving(true);
-    try { await onSave(draft); setIsEditing(false); } finally { setSaving(false); }
+    try { await onSave(toSave); setIsEditing(false); } finally { setSaving(false); }
+  }
+
+  function handleOptionClick(option: PresetOption | '기타') {
+    if (option === '기타') {
+      setDraftOption(draftOption === '기타' ? '' : '기타');
+    } else {
+      setDraftOption(draftOption === option ? '' : option);
+    }
   }
 
   return (
@@ -545,21 +564,32 @@ function CareerGoalCard({
           ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={saving} />
           : <EditButton onClick={startEdit} />}
       </div>
-      <div className="min-h-[40px] flex items-center">
+      <div className="min-h-[40px] flex flex-col gap-3">
         {isEditing ? (
-          <div className="flex gap-2">
-            {CAREER_OPTIONS.map((option) => {
-              const selected = draft === option;
-              return (
-                <button key={option} type="button" onClick={() => setDraft(selected ? '' : option)}
-                  className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
-                    selected ? 'bg-brand text-white border-brand' : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
-                  }`}>
-                  {option}
-                </button>
-              );
-            })}
-          </div>
+          <>
+            <div className="flex gap-2">
+              {([...CAREER_OPTIONS, '기타'] as const).map((option) => {
+                const selected = draftOption === option;
+                return (
+                  <button key={option} type="button" onClick={() => handleOptionClick(option)}
+                    className={`px-5 py-2 text-sm font-medium rounded-md border transition-colors ${
+                      selected ? 'bg-brand text-white border-brand' : 'bg-transparent text-text-secondary border-border hover:border-brand hover:text-text-primary'
+                    }`}>
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+            {draftOption === '기타' && (
+              <input
+                type="text"
+                value={draftCustom}
+                onChange={(e) => setDraftCustom(e.target.value)}
+                placeholder="희망 진로를 입력하세요"
+                className="w-full max-w-sm px-4 py-2 text-sm border border-border rounded-md focus:outline-none focus:border-brand"
+              />
+            )}
+          </>
         ) : (
           <p className={`text-base ${value ? 'text-text-primary' : 'text-text-placeholder'}`}>
             {value || '선택되지 않음'}
@@ -963,7 +993,7 @@ function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
 export default function QualitativeClient({ initialData }: { initialData?: QualitativeData }) {
   const didInitRef = useRef(false);
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
-  const [careerGoal, setCareerGoal] = useState<CareerGoal>((initialData?.careerGoal as CareerGoal) || '');
+  const [careerGoal, setCareerGoal] = useState<CareerGoal>(initialData?.careerGoal || '');
   const [serverActivities, setServerActivities] = useState<ActivityForm[]>(
     (initialData?.activities ?? []).map((a) => ({ ...a, category: a.category ?? DEFAULT_CATEGORY }))
   );
