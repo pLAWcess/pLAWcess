@@ -60,12 +60,12 @@ export default function Navbar({ onMenuToggle, initialUser }: NavbarProps) {
       </div>
       <div className="flex items-center gap-2">
         <NotificationBell />
-        {user ? <span className="hidden md:block"><UserMenu user={user} onLogout={handleLogout} /></span> : null}
+        {user && !onMenuToggle ? <UserMenu user={user} onLogout={handleLogout} /> : null}
         {onMenuToggle && (
           <button
             onClick={onMenuToggle}
             aria-label="메뉴"
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="6" x2="21" y2="6" />

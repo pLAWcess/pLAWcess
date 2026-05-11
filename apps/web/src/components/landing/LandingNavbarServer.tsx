@@ -3,8 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { serverFetch } from '@/lib/server-fetch';
 import type { AuthUser } from '@/lib/api';
-import LandingNavbarAuth from './LandingNavbarAuth';
-import LandingNavbarMobile from './LandingNavbarMobile';
+import LandingNavbarInner from './LandingNavbarInner';
 
 export default async function LandingNavbarServer() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
@@ -23,13 +22,8 @@ export default async function LandingNavbarServer() {
           </Link>
         </div>
 
-        {/* Right: Auth (desktop) + hamburger */}
-        <div className="flex items-center gap-2">
-          <div className="hidden md:flex items-center gap-2">
-            <LandingNavbarAuth initialUser={initialUser} />
-          </div>
-          <LandingNavbarMobile user={initialUser} />
-        </div>
+        {/* Center + Right: JS로 모바일/데스크탑 분기 */}
+        <LandingNavbarInner initialUser={initialUser} />
       </div>
     </header>
   );

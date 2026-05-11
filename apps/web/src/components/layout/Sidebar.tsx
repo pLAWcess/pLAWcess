@@ -63,6 +63,7 @@ interface SidebarProps {
   onClose?: () => void;
   initialRole?: string;
   initialUser?: AuthUser | null;
+  isMobile?: boolean;
 }
 
 function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose?: () => void }) {
@@ -85,7 +86,7 @@ function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string;
   );
 }
 
-export default function Sidebar({ mobileOpen, onClose, initialRole, initialUser }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onClose, initialRole, initialUser, isMobile }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -128,15 +129,17 @@ export default function Sidebar({ mobileOpen, onClose, initialRole, initialUser 
   return (
     <>
       {/* 데스크탑 사이드바 */}
-      <aside className="hidden md:flex w-44 bg-white border-r border-border flex-col py-6 shrink-0">
-        {navContent}
-      </aside>
+      {!isMobile && (
+        <aside className="w-44 bg-white border-r border-border flex flex-col py-6 shrink-0">
+          {navContent}
+        </aside>
+      )}
 
       {/* 모바일 드롭다운 */}
-      {mobileOpen && (
+      {isMobile && mobileOpen && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={onClose} />
-          <div className="md:hidden fixed top-16 left-0 right-0 z-50 bg-white border-b border-border shadow-md px-4 py-3">
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+          <div className="fixed top-16 left-0 right-0 z-50 bg-white border-b border-border shadow-md px-4 py-3">
             {navContent}
             {initialUser && (
               <div className="mt-2 pt-3 border-t border-border flex items-center justify-between">
