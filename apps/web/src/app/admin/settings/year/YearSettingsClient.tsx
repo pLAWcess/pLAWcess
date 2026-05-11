@@ -57,17 +57,17 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 page-container">
+    <div className="flex flex-col gap-6 page-container w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">연도 설정</h1>
         <p className="mt-1 text-sm text-text-secondary">서비스 전체에 적용될 활성 입시 연도를 관리합니다</p>
       </div>
 
       {/* 현재 활성 연도 */}
-      <section className="bg-white border border-border rounded-xl px-8 py-6">
+      <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
         <h2 className="text-base font-semibold text-text-primary mb-3">현재 활성 연도</h2>
         {active ? (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
             <span className="text-xl font-bold text-text-primary">{yearLabel(active.process_year)}</span>
             <span className="text-sm text-text-secondary">현재 멘티·멘토가 이 연도 데이터를 보고 있습니다</span>
@@ -88,7 +88,7 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
       </div>
 
       {/* 연도 목록 */}
-      <section className="bg-white border border-border rounded-xl px-8 py-6">
+      <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-text-primary">전체 연도</h2>
           <button
@@ -105,7 +105,7 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
         ) : (
           <ul className="divide-y divide-border">
             {schedules.map((s) => (
-              <li key={s.process_year} className="flex items-center justify-between py-4 gap-4">
+              <li key={s.process_year} className="flex flex-wrap items-center justify-between py-4 gap-3">
                 <div className="flex items-center gap-3">
                   {s.is_active ? (
                     <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
@@ -117,10 +117,10 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
                     <span className="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 rounded-full">활성</span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {!s.is_active && (
-                    confirming === s.process_year ? (
-                      <div className="flex items-center gap-2">
+                {!s.is_active && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {confirming === s.process_year ? (
+                      <>
                         <span className="text-xs text-text-secondary">{yearLabel(s.process_year)}으로 전환할까요?</span>
                         <button
                           onClick={() => handleSetActive(s.process_year)}
@@ -134,7 +134,7 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
                         >
                           취소
                         </button>
-                      </div>
+                      </>
                     ) : (
                       <button
                         onClick={() => setConfirming(s.process_year)}
@@ -142,17 +142,15 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
                       >
                         활성으로 설정
                       </button>
-                    )
-                  )}
-                  {!s.is_active && (
+                    )}
                     <button
                       onClick={() => handleDelete(s.process_year)}
                       className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
                     >
                       삭제
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
