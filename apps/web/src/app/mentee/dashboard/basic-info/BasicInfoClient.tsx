@@ -132,7 +132,7 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
 
       {/* 기본정보 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm">
-        <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
+        <div className="flex items-center justify-between px-4 sm:px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-brand-muted flex items-center justify-center text-brand">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -151,14 +151,14 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
           }
         </div>
 
-        <div className="px-8 py-2">
+        <div className="px-4 sm:px-8 py-2">
           {fieldRows.map((row, rowIdx) => (
             <div
               key={rowIdx}
-              className={`grid grid-cols-2 divide-x divide-border py-5 ${rowIdx < fieldRows.length - 1 ? 'border-b border-border' : ''}`}
+              className={`grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border py-5 ${rowIdx < fieldRows.length - 1 ? 'border-b border-border' : ''}`}
             >
               {row.map(({ label, key, type, options }, colIdx) => (
-                <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
+                <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' sm:pl-8 pt-4 sm:pt-0' : ''}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-text-secondary shrink-0">{label}</span>
                     {key === 'birthDate' && birthDateError && (
@@ -195,7 +195,7 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
       </div>
 
       {/* 희망 학교 및 전형 카드 */}
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-base font-semibold text-text-primary">희망 학교 및 전형</h2>
           {isAdmissionEditing
@@ -204,12 +204,12 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
           }
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-y-4 sm:gap-y-0">
           {(['가', '나'] as const).map((group) => {
             const item = isAdmissionEditing ? admissionDraft[group] : admissionInfo[group];
             const isPreferred = isAdmissionEditing ? preferredGroupDraft === group : preferredGroup === group;
             return (
-              <div key={group} className={`${group === '나' ? 'pl-8' : 'pr-8'} rounded-lg transition-colors ${isPreferred ? 'bg-brand-light' : ''}`}>
+              <div key={group} className={`${group === '나' ? 'sm:pl-8' : 'sm:pr-8'} rounded-lg transition-colors ${isPreferred ? 'bg-brand-light' : ''}`}>
                 <div className="flex items-center gap-3 mb-5">
                   <span className="inline-block text-sm font-semibold text-brand bg-brand-light px-3 py-1 rounded">{group}군</span>
                   {isAdmissionEditing ? (

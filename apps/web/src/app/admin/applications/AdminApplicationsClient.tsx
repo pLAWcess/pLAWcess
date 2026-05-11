@@ -215,12 +215,12 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
           <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
           <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* 연도 선택 커스텀 드롭다운 */}
           <div className="relative" ref={yearDropdownRef}>
             <button
               onClick={() => setYearDropdownOpen((o) => !o)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               <span className="text-sm font-semibold text-text-primary">
                 {selectedYear != null ? `${selectedYear}년` : '연도'}
@@ -261,7 +261,7 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
           {current && (
             <button
               onClick={toggleActive}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap ${
                 current.is_active
                   ? 'text-text-secondary border-border hover:bg-gray-50'
                   : 'text-brand border-brand/40 bg-brand/5 hover:bg-brand/10'
@@ -273,14 +273,14 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
           <button
             onClick={handleAddYear}
             disabled={addingYear}
-            className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             + 새 연도
           </button>
           {current && (
             <button
               onClick={handleDelete}
-              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors whitespace-nowrap"
             >
               연도 삭제
             </button>
@@ -289,7 +289,7 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
       </div>
 
       {/* 사업 스케줄 */}
-      <section className="bg-white border border-border rounded-xl px-8 py-6">
+      <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-semibold text-text-primary">pLAWcess 사업 스케줄</h2>
           {current && (
@@ -535,23 +535,23 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   };
 
   return (
-    <section className="bg-white border border-border rounded-xl px-8 py-6">
-      <div className="flex items-center justify-between mb-4 gap-4">
+    <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
         <div className="flex items-center gap-2 text-text-placeholder">
           <SearchIcon />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="검색..."
-            className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
+            className="w-44 sm:w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
           />
         </div>
-        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
+        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border overflow-x-auto">
           {(['all', 'approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 statusFilter === s
                   ? 'bg-white text-text-primary shadow-sm'
                   : 'text-text-secondary hover:text-text-primary'
@@ -563,11 +563,12 @@ function ApplicationPanel<T extends AdminApplicationRow>({
         </div>
       </div>
 
-      <table className="w-full table-auto">
+      <div className="overflow-x-auto">
+      <table className="w-full table-auto min-w-[600px]">
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
-              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none">
+              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap">
                 {col.sortable ? (
                   <button onClick={() => onSort(col.key)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     {col.label}
@@ -592,7 +593,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
             processed.map((row) => (
               <tr key={row.applicationId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle">
+                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
                     {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}
@@ -613,6 +614,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
           )}
         </tbody>
       </table>
+      </div>
 
       <div className="flex items-center justify-between mt-5">
         <span className="text-xs text-text-secondary">
@@ -704,7 +706,7 @@ function ApplicationEditModal<T extends AdminApplicationRow>({
         <div className="px-6 py-5 flex flex-col gap-6 overflow-y-auto">
           <div>
             <p className="text-xs font-medium text-text-secondary mb-2">신청자 정보</p>
-            <div className="bg-page-bg border border-border rounded-md px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+            <div className="bg-page-bg border border-border rounded-md px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
               <div>
                 <span className="block text-xs text-text-secondary">이름</span>
                 <p className="text-sm font-medium text-text-primary">{target.name}</p>
@@ -720,7 +722,7 @@ function ApplicationEditModal<T extends AdminApplicationRow>({
 
           <div>
             <p className="text-sm font-medium text-text-primary mb-3">신청 상태</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {(['approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
                 <button
                   key={s}

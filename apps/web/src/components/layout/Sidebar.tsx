@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { clearUser, type AuthUser } from '@/lib/api';
 
 type NavItem = { label: string; href: string; match?: string; exact?: boolean; dividerBefore?: boolean };
 type NavSection = { section: string; items: NavItem[] };
@@ -61,6 +62,7 @@ interface SidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
   initialRole?: string;
+  initialUser?: AuthUser | null;
 }
 
 function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose?: () => void }) {
@@ -83,8 +85,16 @@ function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string;
   );
 }
 
-export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onClose, initialRole, initialUser }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    clearUser();
+    onClose?.();
+    router.push('/');
+  }
 
   const isAdmin = pathname.startsWith('/admin') || initialRole === 'admin';
   const isMentor = pathname.startsWith('/mentor') || initialRole === 'mentor';
@@ -117,19 +127,31 @@ export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarPro
 
   return (
     <>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={onClose} />
-      )}
-      <aside
-        className={`
-          fixed top-16 left-0 h-[calc(100vh-4rem)] z-50 w-44 bg-white border-r border-border flex flex-col py-6 shrink-0
-          transition-transform duration-200
-          md:static md:top-auto md:h-auto md:translate-x-0 md:z-auto
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-      >
+      {/* 데스크탑 사이드바 */}
+      <aside className="hidden md:flex w-44 bg-white border-r border-border flex-col py-6 shrink-0">
         {navContent}
       </aside>
+
+      {/* 모바일 드롭다운 */}
+      {mobileOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={onClose} />
+          <div className="md:hidden fixed top-16 left-0 right-0 z-50 bg-white border-b border-border shadow-md px-4 py-3">
+            {navContent}
+            {initialUser && (
+              <div className="mt-2 pt-3 border-t border-border flex items-center justify-between">
+                <span className="text-sm font-medium text-text-primary">{initialUser.name}</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-xs text-text-secondary hover:text-red-500 transition-colors"
+                >
+                  로그아웃
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </>
   );
 }

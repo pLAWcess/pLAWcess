@@ -62,7 +62,7 @@ export default function GpaCard({ initialData, onSave }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">GPA</h2>
         {isEditing
@@ -71,7 +71,7 @@ export default function GpaCard({ initialData, onSave }: Props) {
         }
       </div>
 
-      <div className="grid grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-8">
         {/* 전체 평점 평균 */}
         <div className="flex flex-col gap-2">
           <span className="text-sm text-text-secondary">전체 평점 평균</span>
@@ -166,7 +166,7 @@ export default function GpaCard({ initialData, onSave }: Props) {
             </div>
             <p className="text-xs text-text-secondary">학업 성적표를 불러오기 위해 KUPID 계정으로 로그인해주세요.</p>
           </div>
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm text-text-secondary">ID</label>
               <input

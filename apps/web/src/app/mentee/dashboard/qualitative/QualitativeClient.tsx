@@ -450,11 +450,11 @@ function ActivityFormCard({
 
   return (
     <div className="relative">
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-base font-semibold text-text-primary mb-6">활동 정보 입력</h2>
       <hr className="border-border mb-6" />
 
-      <div className="grid grid-cols-2 gap-8 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-6">
         <div className="flex flex-col gap-2">
           <label className="text-sm text-text-secondary">활동명 <span className="text-red-500">*</span></label>
           <input type="text" value={form.name} onChange={(e) => onChange({ ...form, name: e.target.value })}
@@ -469,7 +469,7 @@ function ActivityFormCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-6">
         <div className="flex flex-col gap-2">
           <label className="text-sm text-text-secondary">시작일</label>
           <DateInput
@@ -563,7 +563,7 @@ function CareerGoalCard({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-text-primary">희망 진로</h2>
         {isEditing
@@ -661,7 +661,7 @@ function ActivityCard({
 
   return (
     <div className="flex flex-col gap-3 relative">
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
           <button
@@ -785,7 +785,7 @@ function ActivityListTable({
   selectedUnified: string | null;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-lg font-semibold text-text-primary mb-1">활동 목록</h2>
       <p className="text-xs text-text-secondary mb-3">
         오른쪽 키워드를 누르면 의미가 같은 활동별 키워드가 강조돼요.
@@ -979,7 +979,7 @@ function StoryOutlineCard({ outline }: { outline: StoryOutline }) {
     { label: '결론', text: outline.conclusion },
   ];
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-lg font-semibold text-text-primary mb-1">AI 추천 자소서 흐름</h2>
       <p className="text-sm text-text-secondary mb-5">분석 결과를 바탕으로 자소서의 흐름을 제안해 드려요.</p>
       <div className="flex flex-col gap-3">
@@ -1537,14 +1537,14 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
 
       {pageLoading ? (
         <div className="flex flex-col gap-6 animate-pulse">
-          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+          <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
             <div className="h-6 w-40 bg-gray-200 rounded mb-4" />
             <div className="space-y-3">
               <div className="h-5 w-full bg-gray-100 rounded" />
               <div className="h-5 w-3/4 bg-gray-100 rounded" />
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+          <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
             <div className="h-6 w-32 bg-gray-200 rounded mb-6" />
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
@@ -1556,7 +1556,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
               ))}
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+          <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
             <div className="h-6 w-24 bg-gray-200 rounded mb-4" />
             <div className="h-5 w-1/2 bg-gray-100 rounded" />
           </div>
