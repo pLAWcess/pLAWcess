@@ -60,7 +60,7 @@ export default function Navbar({ onMenuToggle, initialUser }: NavbarProps) {
       </div>
       <div className="flex items-center gap-2">
         <NotificationBell />
-        {user ? <UserMenu user={user} onLogout={handleLogout} /> : null}
+        {user ? <span className="hidden md:block"><UserMenu user={user} onLogout={handleLogout} /></span> : null}
         {onMenuToggle && (
           <button
             onClick={onMenuToggle}

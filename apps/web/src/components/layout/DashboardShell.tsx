@@ -13,7 +13,7 @@ export default function DashboardShell({ children, role, initialUser }: { childr
     <div className="flex flex-col h-screen">
       <Navbar onMenuToggle={() => setMobileOpen((o) => !o)} initialUser={initialUser} />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} initialRole={role} />
+        <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} initialRole={role} initialUser={initialUser} />
         <main className="flex-1 overflow-auto bg-page-bg">
           <div className="px-4 py-6 md:px-10 md:py-8">{children}</div>
         </main>
