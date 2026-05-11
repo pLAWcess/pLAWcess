@@ -10,6 +10,12 @@ const YEAR = new Date().getFullYear().toString();
 
 type Filter = 'all' | 'uploaded' | 'missing';
 
+const FILTER_OPTIONS: { value: Filter; label: string }[] = [
+  { value: 'all', label: '전체' },
+  { value: 'uploaded', label: '업로드됨' },
+  { value: 'missing', label: '미업로드' },
+];
+
 export default function PersonalStatementsClient({
   initialTemplates,
 }: {
@@ -26,7 +32,7 @@ export default function PersonalStatementsClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = SCHOOLS.filter((school) => {
-    if (search && !school.includes(search)) return false;
+    if (search.trim() && !school.includes(search.trim())) return false;
     if (filter === 'uploaded') return !!templates[school];
     if (filter === 'missing') return !templates[school];
     return true;
@@ -76,16 +82,31 @@ export default function PersonalStatementsClient({
     }
   }
 
-  const uploadedCount = SCHOOLS.filter((s) => !!templates[s]).length;
-  const missingCount = SCHOOLS.length - uploadedCount;
-
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">자기소개서 양식 관리</h1>
-        <p className="text-sm text-text-secondary mt-1">
-          학교별 자기소개서 양식을 업로드합니다. 멘티는 지망 학교에 맞는 양식을 자동으로 확인할 수 있습니다.
-        </p>
+    <div className="flex flex-col gap-8">
+      {/* 헤더 */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">자기소개서 양식 관리</h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            학교별 자기소개서 양식을 업로드합니다. 멘티는 지망 학교에 맞는 양식을 자동으로 확인할 수 있습니다.
+          </p>
+        </div>
+        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
+          {FILTER_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => handleFilterChange(value)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                filter === value
+                  ? 'bg-white text-text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <input
@@ -96,84 +117,76 @@ export default function PersonalStatementsClient({
         onChange={handleFileChange}
       />
 
-      {/* 검색 + 필터 */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-placeholder"
-            width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      {/* 패널 */}
+      <div className="bg-white border border-border rounded-xl px-8 py-6">
+        {/* 검색 */}
+        <div className="flex items-center gap-2 text-text-placeholder mb-4">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
             type="text"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="학교명 검색"
-            className="w-full pl-8 pr-3 h-9 text-sm border border-border rounded-lg bg-white focus:outline-none focus:border-brand placeholder:text-text-placeholder"
+            placeholder="학교명 검색..."
+            className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
           />
         </div>
 
-        <div className="flex items-center gap-1 bg-white border border-border rounded-lg p-1">
-          {([
-            ['all', `전체 ${SCHOOLS.length}`],
-            ['uploaded', `업로드됨 ${uploadedCount}`],
-            ['missing', `미업로드 ${missingCount}`],
-          ] as [Filter, string][]).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => handleFilterChange(value)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                filter === value
-                  ? 'bg-brand text-white'
-                  : 'text-text-secondary hover:bg-gray-100'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+        {/* 목록 */}
+        <table className="w-full table-auto">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">학교명</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">상태</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">최근 업데이트</th>
+              <th className="py-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {pageSchools.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-10 text-center text-sm text-text-secondary">
+                  {search.trim() ? `'${search}'에 해당하는 학교가 없습니다.` : '조건에 맞는 학교가 없습니다.'}
+                </td>
+              </tr>
+            ) : (
+              pageSchools.map((school) => {
+                const template = templates[school];
+                const isUploading = uploading === school;
+                return (
+                  <tr key={school} className="border-b border-border last:border-b-0">
+                    <td className="py-4 pr-4 text-sm font-medium text-text-primary align-middle">
+                      {school}
+                    </td>
+                    <td className="py-4 pr-4 align-middle">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        template ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-text-secondary'
+                      }`}>
+                        {template ? '업로드됨' : '미업로드'}
+                      </span>
+                    </td>
+                    <td className="py-4 pr-4 text-sm text-text-secondary align-middle">
+                      {template ? new Date(template.updated_at).toLocaleDateString('ko-KR') : '—'}
+                    </td>
+                    <td className="py-4 text-right align-middle">
+                      <button
+                        onClick={() => triggerUpload(school)}
+                        disabled={isUploading}
+                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        {isUploading ? '업로드 중...' : template ? '파일 교체' : '업로드'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
 
-      <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-        {pageSchools.length === 0 ? (
-          <div className="px-8 py-12 text-center text-sm text-text-secondary">
-            {search ? `'${search}'에 해당하는 학교가 없습니다.` : '조건에 맞는 학교가 없습니다.'}
-          </div>
-        ) : (
-          pageSchools.map((school, idx) => {
-            const template = templates[school];
-            const isUploading = uploading === school;
-            return (
-              <div
-                key={school}
-                className={`px-8 py-5 flex items-center justify-between ${
-                  idx < pageSchools.length - 1 ? 'border-b border-border' : ''
-                }`}
-              >
-                <div>
-                  <p className="text-base font-medium text-text-primary">{school}</p>
-                  <p className="text-sm text-text-secondary mt-0.5">
-                    {template
-                      ? `최근 업데이트: ${new Date(template.updated_at).toLocaleDateString('ko-KR')}`
-                      : '양식 미업로드'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => triggerUpload(school)}
-                  disabled={isUploading}
-                  className="px-4 py-2 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                >
-                  {isUploading ? '업로드 중...' : template ? '파일 교체' : '업로드'}
-                </button>
-              </div>
-            );
-          })
-        )}
-
-        <div className="px-8 py-4 border-t border-border flex items-center justify-between bg-gray-50/50">
+        {/* 페이지네이션 */}
+        <div className="flex items-center justify-between mt-5">
           <span className="text-xs text-text-secondary">
             총 {filtered.length}개 · {safePage} / {totalPages} 페이지
           </span>
