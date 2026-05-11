@@ -194,6 +194,9 @@ model MenteeRecord {
   ai_summary_hash   String?   @db.VarChar(64) // 통합 분석(키워드+자소서) 캐시 hash
   star_input_hashes Json? // 활동별 단일 STAR 분석 캐시: { "0": hash, "1": hash, ... }
 
+  // 자기소개서 (.hwp 바이너리)
+  personal_statement_hwp Bytes?
+
   // 4단계: 기타 고민
   strengths_weaknesses String? @db.Text
   desired_mentor       String? @db.Text

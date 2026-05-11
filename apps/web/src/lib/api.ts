@@ -774,3 +774,50 @@ export async function getAnnouncement(id: string): Promise<AnnouncementRow> {
   });
   return jsonOrError(res, "공지사항 조회 실패");
 }
+
+// ----------------------------------------------------------------
+// Personal Statement
+// ----------------------------------------------------------------
+
+export async function getPersonalStatement(year: string): Promise<{ hwp: string | null }> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/personal-statement?year=${encodeURIComponent(year)}`,
+    { credentials: "include" },
+  );
+  return jsonOrError(res, "자기소개서 조회 실패");
+}
+
+export async function uploadPersonalStatement(year: string, file: File): Promise<void> {
+  const body = new FormData();
+  body.append("hwp", file);
+  const res = await fetch(
+    `${API_BASE}/api/mentee/personal-statement?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", credentials: "include", body },
+  );
+  await jsonOrError(res, "자기소개서 저장 실패");
+}
+
+export async function getAdminPersonalStatement(
+  userId: string,
+  year: string,
+): Promise<{ hwp: string | null }> {
+  const res = await fetch(
+    `${API_BASE}/api/admin/users/${userId}/personal-statement?year=${encodeURIComponent(year)}`,
+    { credentials: "include" },
+  );
+  return jsonOrError(res, "자기소개서 조회 실패");
+}
+
+export async function uploadAdminPersonalStatement(
+  userId: string,
+  year: string,
+  file: File,
+): Promise<void> {
+  const body = new FormData();
+  body.append("hwp", file);
+  const res = await fetch(
+    `${API_BASE}/api/admin/users/${userId}/personal-statement?year=${encodeURIComponent(year)}`,
+    { method: "PATCH", credentials: "include", body },
+  );
+  await jsonOrError(res, "자기소개서 저장 실패");
+}
