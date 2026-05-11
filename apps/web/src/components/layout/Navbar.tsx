@@ -12,10 +12,11 @@ const API_BASE = '';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
+  mobileOpen?: boolean;
   initialUser?: AuthUser | null;
 }
 
-export default function Navbar({ onMenuToggle, initialUser }: NavbarProps) {
+export default function Navbar({ onMenuToggle, mobileOpen, initialUser }: NavbarProps) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
 
@@ -52,28 +53,34 @@ export default function Navbar({ onMenuToggle, initialUser }: NavbarProps) {
   }
 
   return (
-    <header className="h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
+    <header className="h-16 bg-white border-b border-border flex items-center px-4 sm:px-6 justify-between shrink-0">
       <div className="flex items-center gap-3">
-        {onMenuToggle && (
-          <button
-            onClick={onMenuToggle}
-            aria-label="메뉴"
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-        )}
         <Link href="/">
           <Image src="/logo/puzzleserif_logo.png" alt="pLAWcess" width={120} height={39} priority />
         </Link>
       </div>
       <div className="flex items-center gap-2">
         <NotificationBell />
-        {user ? <UserMenu user={user} onLogout={handleLogout} /> : null}
+        {user && !onMenuToggle ? <UserMenu user={user} onLogout={handleLogout} /> : null}
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            aria-label="메뉴"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+          >
+            {mobileOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            )}
+          </button>
+        )}
       </div>
     </header>
   );
