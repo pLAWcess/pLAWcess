@@ -291,22 +291,27 @@ export default function PersonalStatementClient({
               <div className="flex flex-col gap-5">
                 {(activeGroup.questions ?? []).map((q, idx) => {
                   const text = textDrafts[group][q.id] ?? '';
+                  const pct = q.charLimit ? Math.min(text.length / q.charLimit, 1) : 0;
+                  const nearLimit = q.charLimit != null && text.length >= q.charLimit * 0.9;
                   const overLimit = q.charLimit != null && text.length > q.charLimit;
                   return (
                     <div
                       key={q.id}
                       className="bg-white rounded-xl border border-border shadow-sm px-8 py-6"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <p className="text-sm font-semibold text-text-primary">
-                          {idx + 1}. {q.prompt}
-                        </p>
+                      {/* 문항 헤더 */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-xs font-bold shrink-0">
+                          {idx + 1}
+                        </span>
+                        <p className="text-sm font-semibold text-text-primary flex-1">{q.prompt}</p>
                         {q.charLimit && (
-                          <span className="text-xs text-text-secondary ml-4 shrink-0">
-                            최대 {q.charLimit.toLocaleString()}자
+                          <span className="shrink-0 px-2.5 py-1 rounded-full bg-gray-100 text-xs font-medium text-text-secondary">
+                            {q.charLimit.toLocaleString()}자 이내
                           </span>
                         )}
                       </div>
+
                       <textarea
                         value={text}
                         onChange={(e) => handleTextChange(group, q.id, e.target.value)}
@@ -314,17 +319,33 @@ export default function PersonalStatementClient({
                         className="w-full px-3 py-2 text-sm border border-border rounded-lg resize-y focus:outline-none focus:border-brand placeholder:text-text-placeholder"
                         placeholder="내용을 입력하세요"
                       />
-                      <div className="flex justify-end mt-1.5">
-                        <span
-                          className={`text-xs ${
-                            overLimit
-                              ? 'text-red-500 font-medium'
-                              : 'text-text-placeholder'
-                          }`}
-                        >
-                          {text.length.toLocaleString()}
-                          {q.charLimit ? ` / ${q.charLimit.toLocaleString()}자` : '자'}
-                        </span>
+
+                      {/* 글자수 진행바 + 카운터 */}
+                      <div className="mt-2 flex flex-col gap-1">
+                        {q.charLimit && (
+                          <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                overLimit ? 'bg-red-500' : nearLimit ? 'bg-orange-400' : 'bg-brand'
+                              }`}
+                              style={{ width: `${pct * 100}%` }}
+                            />
+                          </div>
+                        )}
+                        <div className="flex justify-end">
+                          <span
+                            className={`text-xs font-medium ${
+                              overLimit
+                                ? 'text-red-500'
+                                : nearLimit
+                                  ? 'text-orange-500'
+                                  : 'text-text-placeholder'
+                            }`}
+                          >
+                            {text.length.toLocaleString()}
+                            {q.charLimit ? ` / ${q.charLimit.toLocaleString()}자` : '자'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
