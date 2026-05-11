@@ -776,10 +776,16 @@ export async function getAnnouncement(id: string): Promise<AnnouncementRow> {
 }
 
 // ----------------------------------------------------------------
-// Personal Statement
+// Personal Statement (멘티)
 // ----------------------------------------------------------------
 
-export async function getPersonalStatement(year: string): Promise<{ hwp: string | null }> {
+export type PersonalStatementGroupInfo = { school: string | null; hwp: string | null };
+export type PersonalStatementData = {
+  ga: PersonalStatementGroupInfo;
+  na: PersonalStatementGroupInfo;
+};
+
+export async function getPersonalStatement(year: string): Promise<PersonalStatementData> {
   const res = await fetch(
     `${API_BASE}/api/mentee/personal-statement?year=${encodeURIComponent(year)}`,
     { credentials: "include" },
@@ -787,37 +793,50 @@ export async function getPersonalStatement(year: string): Promise<{ hwp: string 
   return jsonOrError(res, "자기소개서 조회 실패");
 }
 
-export async function uploadPersonalStatement(year: string, file: File): Promise<void> {
-  const body = new FormData();
-  body.append("hwp", file);
-  const res = await fetch(
-    `${API_BASE}/api/mentee/personal-statement?year=${encodeURIComponent(year)}`,
-    { method: "PATCH", credentials: "include", body },
-  );
-  await jsonOrError(res, "자기소개서 저장 실패");
-}
-
-export async function getAdminPersonalStatement(
-  userId: string,
+export async function uploadPersonalStatement(
   year: string,
-): Promise<{ hwp: string | null }> {
-  const res = await fetch(
-    `${API_BASE}/api/admin/users/${userId}/personal-statement?year=${encodeURIComponent(year)}`,
-    { credentials: "include" },
-  );
-  return jsonOrError(res, "자기소개서 조회 실패");
-}
-
-export async function uploadAdminPersonalStatement(
-  userId: string,
-  year: string,
+  group: "ga" | "na",
   file: File,
 ): Promise<void> {
   const body = new FormData();
   body.append("hwp", file);
   const res = await fetch(
-    `${API_BASE}/api/admin/users/${userId}/personal-statement?year=${encodeURIComponent(year)}`,
+    `${API_BASE}/api/mentee/personal-statement?year=${encodeURIComponent(year)}&group=${group}`,
     { method: "PATCH", credentials: "include", body },
   );
   await jsonOrError(res, "자기소개서 저장 실패");
+}
+
+// ----------------------------------------------------------------
+// Personal Statement 양식 관리 (어드민)
+// ----------------------------------------------------------------
+
+export type SchoolTemplate = {
+  school_name: string;
+  uploaded_at: string;
+  updated_at: string;
+};
+
+export async function getSchoolTemplates(
+  year: string,
+): Promise<{ templates: SchoolTemplate[] }> {
+  const res = await fetch(
+    `${API_BASE}/api/admin/personal-statements?year=${encodeURIComponent(year)}`,
+    { credentials: "include" },
+  );
+  return jsonOrError(res, "자기소개서 양식 목록 조회 실패");
+}
+
+export async function uploadSchoolTemplate(
+  year: string,
+  school: string,
+  file: File,
+): Promise<void> {
+  const body = new FormData();
+  body.append("hwp", file);
+  const res = await fetch(
+    `${API_BASE}/api/admin/personal-statements?year=${encodeURIComponent(year)}&school=${encodeURIComponent(school)}`,
+    { method: "PATCH", credentials: "include", body },
+  );
+  await jsonOrError(res, "자기소개서 양식 저장 실패");
 }

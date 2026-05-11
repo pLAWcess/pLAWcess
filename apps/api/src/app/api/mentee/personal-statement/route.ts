@@ -13,6 +13,20 @@ function getProcessYear(req: NextRequest): number {
   return match ? parseInt(match[0]) : new Date().getFullYear();
 }
 
+async function resolveHwp(
+  personalCopy: Uint8Array | null | undefined,
+  schoolName: string | null | undefined,
+  year: number,
+): Promise<string | null> {
+  if (personalCopy) return Buffer.from(personalCopy).toString("base64");
+  if (!schoolName) return null;
+  const template = await prisma.schoolPersonalStatement.findUnique({
+    where: { school_name_process_year: { school_name: schoolName, process_year: year } },
+    select: { hwp_data: true },
+  });
+  return template?.hwp_data ? Buffer.from(template.hwp_data).toString("base64") : null;
+}
+
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,12 +34,22 @@ export async function GET(req: NextRequest) {
   const year = getProcessYear(req);
   const record = await prisma.menteeRecord.findUnique({
     where: { user_id_process_year: { user_id: userId, process_year: year } },
-    select: { personal_statement_hwp: true },
+    select: {
+      target_school_ga: true,
+      target_school_na: true,
+      personal_statement_hwp_ga: true,
+      personal_statement_hwp_na: true,
+    },
   });
 
-  const hwp = record?.personal_statement_hwp;
+  const [gaHwp, naHwp] = await Promise.all([
+    resolveHwp(record?.personal_statement_hwp_ga, record?.target_school_ga, year),
+    resolveHwp(record?.personal_statement_hwp_na, record?.target_school_na, year),
+  ]);
+
   return NextResponse.json({
-    hwp: hwp ? Buffer.from(hwp).toString("base64") : null,
+    ga: { school: record?.target_school_ga ?? null, hwp: gaHwp },
+    na: { school: record?.target_school_na ?? null, hwp: naHwp },
   });
 }
 
@@ -34,6 +58,11 @@ export async function PATCH(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const year = getProcessYear(req);
+  const group = req.nextUrl.searchParams.get("group");
+  if (group !== "ga" && group !== "na") {
+    return NextResponse.json({ error: "group 파라미터가 필요합니다 (ga 또는 na)" }, { status: 400 });
+  }
+
   const formData = await req.formData();
   const file = formData.get("hwp");
   if (!file || !(file instanceof Blob)) {
@@ -43,8 +72,12 @@ export async function PATCH(req: NextRequest) {
   const bytes = Buffer.from(await file.arrayBuffer());
   await prisma.menteeRecord.upsert({
     where: { user_id_process_year: { user_id: userId, process_year: year } },
-    create: { user_id: userId, process_year: year, personal_statement_hwp: bytes },
-    update: { personal_statement_hwp: bytes },
+    create: {
+      user_id: userId,
+      process_year: year,
+      ...(group === "ga" ? { personal_statement_hwp_ga: bytes } : { personal_statement_hwp_na: bytes }),
+    },
+    update: group === "ga" ? { personal_statement_hwp_ga: bytes } : { personal_statement_hwp_na: bytes },
   });
 
   return NextResponse.json({ ok: true });

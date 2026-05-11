@@ -40,6 +40,7 @@ const adminNavSections: NavSection[] = [
       { label: '신청 관리', href: '/admin/applications' },
       { label: '매칭 관리', href: '/admin/matchings', match: '/admin/matchings' },
       { label: '멘토 계정 생성', href: '/admin/mentors/create', match: '/admin/mentors' },
+      { label: '자소서 양식 관리', href: '/admin/personal-statements' },
     ],
   },
   {

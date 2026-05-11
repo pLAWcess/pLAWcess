@@ -1,33 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import SelectField from '@/components/ui/SelectField';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
   patchAdminUser,
-  getAdminPersonalStatement,
-  uploadAdminPersonalStatement,
   type AdminUserDetail,
   type AdminUserGender,
   type AdminUserAcademicStatus,
   type AdminUserCurrentRole,
   type PatchAdminUserBody,
 } from '@/lib/api';
-import type { RhwpEditor } from '@rhwp/editor';
-
-const HwpEditor = dynamic(
-  () => import('@/app/mentee/dashboard/personal-statement/HwpEditor'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="w-6 h-6 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-      </div>
-    ),
-  },
-);
 
 const GENDER_LABELS: Record<AdminUserGender, string> = { male: '남성', female: '여성', other: '기타' };
 const ACADEMIC_LABELS: Record<AdminUserAcademicStatus, string> = {
@@ -109,7 +93,6 @@ function UserDetailView({
 
       <ProfileCard user={initial} onSave={persist} />
       {initial.currentRole === 'mentor' && <MentorCard user={initial} />}
-      {initial.currentRole === 'mentee' && <PersonalStatementCard userId={initial.userId} />}
       <AccountCard user={initial} onSave={persist} />
       <ParticipationCard participation={initial.participation} />
     </div>
@@ -389,137 +372,6 @@ function ParticipationCard({ participation }: { participation: AdminUserDetail['
       )}
     </div>
   );
-}
-
-/* ─────────────── 자기소개서 카드 (멘티 전용) ─────────────── */
-
-const CURRENT_YEAR = new Date().getFullYear().toString();
-
-function PersonalStatementCard({ userId }: { userId: string }) {
-  const [hwpBase64, setHwpBase64] = useState<string | null | undefined>(undefined);
-  const [saving, setSaving] = useState(false);
-  const [showEditor, setShowEditor] = useState(false);
-  const editorRef = useRef<RhwpEditor | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    getAdminPersonalStatement(userId, CURRENT_YEAR)
-      .then((d) => setHwpBase64(d.hwp))
-      .catch(() => setHwpBase64(null));
-  }, [userId]);
-
-  async function handleFile(file: File) {
-    if (!file.name.match(/\.(hwp|hwpx)$/i)) {
-      alert('.hwp 또는 .hwpx 파일만 업로드할 수 있습니다.');
-      return;
-    }
-    setSaving(true);
-    try {
-      await uploadAdminPersonalStatement(userId, CURRENT_YEAR, file);
-      const base64 = await fileToBase64Admin(file);
-      setHwpBase64(base64);
-      setShowEditor(true);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '업로드 실패');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleSave() {
-    if (!editorRef.current) return;
-    setSaving(true);
-    try {
-      const bytes = await editorRef.current.exportHwp();
-      const file = new File([bytes.buffer as ArrayBuffer], 'personal-statement.hwp', { type: 'application/x-hwp' });
-      await uploadAdminPersonalStatement(userId, CURRENT_YEAR, file);
-      setHwpBase64(uint8ToBase64Admin(bytes));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '저장 실패');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-text-primary">자기소개서</h2>
-        <div className="flex items-center gap-2">
-          {hwpBase64 && (
-            <button
-              onClick={() => setShowEditor((v) => !v)}
-              className="px-3 py-1.5 text-sm text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
-            >
-              {showEditor ? '에디터 닫기' : '에디터로 열기'}
-            </button>
-          )}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={saving}
-            className="px-3 py-1.5 text-sm text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-          >
-            {hwpBase64 ? '파일 교체' : '.hwp 업로드'}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".hwp,.hwpx"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
-              if (fileInputRef.current) fileInputRef.current.value = '';
-            }}
-          />
-          {showEditor && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-3 py-1.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50"
-            >
-              {saving ? '저장 중...' : '저장'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {hwpBase64 === undefined ? (
-        <p className="text-sm text-text-placeholder py-2">불러오는 중...</p>
-      ) : !hwpBase64 ? (
-        <p className="text-sm text-text-secondary py-2">업로드된 자기소개서가 없습니다.</p>
-      ) : !showEditor ? (
-        <p className="text-sm text-text-secondary py-2">자기소개서가 저장되어 있습니다.</p>
-      ) : (
-        <div className="rounded-lg overflow-hidden border border-border" style={{ height: '70vh' }}>
-          <HwpEditor
-            initialHwpBase64={hwpBase64}
-            onEditorReady={(editor) => { editorRef.current = editor; }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function fileToBase64Admin(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function uint8ToBase64Admin(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
 }
 
 /* ─────────────── 공용 입력 ─────────────── */

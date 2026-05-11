@@ -194,8 +194,9 @@ model MenteeRecord {
   ai_summary_hash   String?   @db.VarChar(64) // 통합 분석(키워드+자소서) 캐시 hash
   star_input_hashes Json? // 활동별 단일 STAR 분석 캐시: { "0": hash, "1": hash, ... }
 
-  // 자기소개서 (.hwp 바이너리)
-  personal_statement_hwp Bytes?
+  // 자기소개서 (.hwp 바이너리) — 가군/나군별 멘티 개인 편집본
+  personal_statement_hwp_ga Bytes?
+  personal_statement_hwp_na Bytes?
 
   // 4단계: 기타 고민
   strengths_weaknesses String? @db.Text
@@ -484,6 +485,24 @@ model Announcement {
   @@index([is_pinned])
   @@index([deleted_at])
   @@map("announcements")
+}
+
+// ----------------------------------------------------------------
+// 11. school_personal_statements (#170)
+//    - 어드민이 학교별로 업로드하는 자기소개서 양식 (.hwp)
+//    - 멘티가 지망 학교를 설정하면 해당 학교 양식을 자동으로 제공
+//    - 멘티가 편집·저장하면 MenteeRecord의 personal_statement_hwp_ga/na에 보관
+// ----------------------------------------------------------------
+model SchoolPersonalStatement {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_name  String   @db.VarChar(100)
+  process_year Int
+  hwp_data     Bytes
+  uploaded_at  DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@unique([school_name, process_year])
+  @@map("school_personal_statements")
 }
 
 // ================================================================
