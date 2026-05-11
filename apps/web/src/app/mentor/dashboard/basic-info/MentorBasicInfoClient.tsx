@@ -93,7 +93,7 @@ export default function MentorBasicInfoClient({ initialData }: Props) {
       </div>
 
       <div className="bg-white rounded-xl border border-border shadow-sm">
-        <div className="flex items-center justify-between px-4 sm:px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
+        <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-brand-muted flex items-center justify-center text-brand">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -109,14 +109,14 @@ export default function MentorBasicInfoClient({ initialData }: Props) {
           }
         </div>
 
-        <div className="px-4 sm:px-8 py-2">
+        <div className="px-8 py-2">
           {fieldRows.map((row, rowIdx) => (
             <div
               key={rowIdx}
-              className={`grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border py-5 ${rowIdx < fieldRows.length - 1 ? 'border-b border-border' : ''}`}
+              className={`grid grid-cols-2 divide-x divide-border py-5 ${rowIdx < fieldRows.length - 1 ? 'border-b border-border' : ''}`}
             >
               {row.map(({ label, key, type, options }, colIdx) => (
-                <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' sm:pl-8 pt-4 sm:pt-0' : ''}`}>
+                <div key={key} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-text-secondary shrink-0">{label}</span>
                     {key === 'birthDate' && birthDateError && (

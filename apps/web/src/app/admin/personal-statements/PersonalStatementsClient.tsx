@@ -119,7 +119,7 @@ export default function PersonalStatementsClient({
       />
 
       {/* 패널 */}
-      <div className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
+      <div className="bg-white border border-border rounded-xl px-8 py-6">
         {/* 검색 */}
         <div className="flex items-center gap-2 text-text-placeholder mb-4">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -130,18 +130,17 @@ export default function PersonalStatementsClient({
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="학교명 검색..."
-            className="w-44 sm:w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
+            className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
           />
         </div>
 
         {/* 목록 */}
-        <div className="overflow-x-auto">
-        <table className="w-full table-auto min-w-[400px]">
+        <table className="w-full table-auto">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">학교명</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">상태</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">최근 업데이트</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">학교명</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">상태</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">최근 업데이트</th>
               <th className="py-3" />
             </tr>
           </thead>
@@ -194,7 +193,6 @@ export default function PersonalStatementsClient({
             )}
           </tbody>
         </table>
-        </div>
 
         {/* 페이지네이션 */}
         <div className="flex items-center justify-between mt-5">

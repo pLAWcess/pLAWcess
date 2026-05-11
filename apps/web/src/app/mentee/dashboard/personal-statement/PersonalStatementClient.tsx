@@ -273,20 +273,15 @@ export default function PersonalStatementClient({
           <div key={group}>
             {mode === 'hwp' ? (
               activeGroup.hwp ? (
-                <>
-                  <div className="sm:hidden bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-800">
-                    HWP 에디터는 PC 환경에서 이용해 주세요.
-                  </div>
-                  <div
-                    className="hidden sm:block bg-white rounded-xl border border-border shadow-sm overflow-hidden"
-                    style={{ height: '80vh' }}
-                  >
-                    <HwpEditor
-                      initialHwpBase64={activeGroup.hwp}
-                      onEditorReady={(editor) => onEditorReady(group, editor)}
-                    />
-                  </div>
-                </>
+                <div
+                  className="bg-white rounded-xl border border-border shadow-sm overflow-hidden"
+                  style={{ height: '80vh' }}
+                >
+                  <HwpEditor
+                    initialHwpBase64={activeGroup.hwp}
+                    onEditorReady={(editor) => onEditorReady(group, editor)}
+                  />
+                </div>
               ) : (
                 <EmptyState
                   message={`${activeGroup.school} 자기소개서 양식이 아직 준비되지 않았습니다.`}
@@ -300,7 +295,7 @@ export default function PersonalStatementClient({
                   return (
                     <div
                       key={q.id}
-                      className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6"
+                      className="bg-white rounded-xl border border-border shadow-sm px-8 py-6"
                     >
                       {/* 문항 헤더 */}
                       <div className="flex items-center gap-3 mb-4">

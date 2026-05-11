@@ -128,13 +128,8 @@ export default function PersonalStatementEditClient({
         </div>
       </div>
 
-      {/* 모바일 안내 */}
-      <div className="sm:hidden bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-800">
-        이 페이지는 PC 환경에서 이용해 주세요.
-      </div>
-
       {/* 2열 레이아웃 */}
-      <div className="hidden sm:grid grid-cols-2 gap-6" style={{ height: '80vh' }}>
+      <div className="grid grid-cols-2 gap-6" style={{ height: '80vh' }}>
         {/* 왼쪽: 문항 편집 */}
         <div className="bg-white border border-border rounded-xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">

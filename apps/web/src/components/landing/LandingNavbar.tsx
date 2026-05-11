@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getUser, saveUser, type AuthUser } from '@/lib/api';
 import UserMenu from '@/components/layout/UserMenu';
 import NotificationBell from '@/components/layout/NotificationBell';
@@ -22,8 +22,6 @@ export default function LandingNavbar({ initialUser }: Props) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
   const [authChecked, setAuthChecked] = useState(initialUser !== undefined);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   async function fetchUser(): Promise<void> {
     try {
@@ -65,112 +63,81 @@ export default function LandingNavbar({ initialUser }: Props) {
     router.push('/');
   }
 
-  const allNavItems = [
-    ...NAV_ITEMS,
-    { href: '/mentee/dashboard', label: '멘티' },
-    { href: '/mentor/dashboard', label: '멘토' },
-    { href: '/admin/users', label: '어드민' },
-  ];
-
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-border shrink-0" ref={menuRef}>
-      <div className="h-16 flex items-center px-4 sm:px-6 justify-between">
-        {/* Left: Logo */}
-        <div className="flex-1">
-          <Link href="/">
-            <Image src="/logo/puzzleserif_logo.png" alt="pLAWcess" width={120} height={39} priority />
-          </Link>
-        </div>
-
-        {/* Center: Nav items (desktop) */}
-        <nav className="hidden md:flex items-center gap-6" aria-label="주요 메뉴">
-          {NAV_ITEMS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`text-sm font-medium transition-colors ${
-                pathname === href
-                  ? 'text-text-primary'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-          <>
-            <Link href="/mentee/dashboard" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">멘티</Link>
-            <Link href="/mentor/dashboard" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">멘토</Link>
-            <Link href="/admin/users" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">어드민</Link>
-          </>
-        </nav>
-
-        {/* Right: Action buttons + mobile hamburger */}
-        <div className="flex-1 flex items-center justify-end gap-2">
-          {!authChecked ? (
-            <div className="h-9" />
-          ) : user ? (
-            <>
-              <NotificationBell />
-              <UserMenu user={user} onLogout={handleLogout} />
-            </>
-          ) : (
-            <div className="hidden sm:flex items-center gap-3">
-              <Link href="/login" className="px-4 py-2 text-sm font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors">
-                로그인
-              </Link>
-              <Link href="/signup" className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
-                회원가입
-              </Link>
-            </div>
-          )}
-          {/* 모바일 햄버거 */}
-          <button
-            onClick={() => setMobileOpen((o) => !o)}
-            aria-label="메뉴"
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          >
-            {mobileOpen ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
-          </button>
-        </div>
+    <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
+      {/* Left: Logo */}
+      <div className="flex-1">
+        <Link href="/">
+          <Image src="/logo/puzzleserif_logo.png" alt="pLAWcess" width={120} height={39} priority />
+        </Link>
       </div>
 
-      {/* 모바일 드로어 */}
-      {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-white px-4 py-3 flex flex-col gap-1">
-          {allNavItems.map(({ href, label }) => (
+      {/* Center: Nav items */}
+      <nav className="flex items-center gap-6" aria-label="주요 메뉴">
+        {NAV_ITEMS.map(({ href, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`text-sm font-medium transition-colors ${
+              pathname === href
+                ? 'text-text-primary'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
+        {/* {process.env.NODE_ENV === 'development' && ( */}
+
+          <>
             <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileOpen(false)}
-              className={`px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
-                pathname === href
-                  ? 'bg-brand-light text-brand'
-                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
-              }`}
+              href="/mentee/dashboard"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
             >
-              {label}
+              멘티
             </Link>
-          ))}
-          {!user && (
-            <div className="flex flex-col gap-2 pt-3 border-t border-border mt-1">
-              <Link href="/login" onClick={() => setMobileOpen(false)} className="w-full py-2.5 text-sm font-medium text-center text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors">
-                로그인
-              </Link>
-              <Link href="/signup" onClick={() => setMobileOpen(false)} className="w-full py-2.5 text-sm font-medium text-center text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
-                회원가입
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
+            <Link
+              href="/mentor/dashboard"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              멘토
+            </Link>
+            <Link
+              href="/admin/users"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              어드민
+            </Link>
+          </>
+        {/* )} */}
+      </nav>
+
+      {/* Right: Action buttons */}
+      <div className="flex-1 flex items-center justify-end gap-2">
+        {!authChecked ? (
+          <div className="h-9" />
+        ) : user ? (
+          <>
+            <NotificationBell />
+            <UserMenu user={user} onLogout={handleLogout} />
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2 text-sm font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
+            >
+              로그인
+            </Link>
+            <Link
+              href="/signup"
+              className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
+            >
+              회원가입
+            </Link>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
