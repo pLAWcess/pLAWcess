@@ -52,7 +52,7 @@ export default function Navbar({ onMenuToggle, initialUser }: NavbarProps) {
   }
 
   return (
-    <header className="h-16 bg-white border-b border-border flex items-center px-6 justify-between shrink-0">
+    <header className="h-16 bg-white border-b border-border flex items-center px-4 sm:px-6 justify-between shrink-0">
       <div className="flex items-center gap-3">
         <Link href="/">
           <Image src="/logo/puzzleserif_logo.png" alt="pLAWcess" width={120} height={39} priority />
