@@ -367,7 +367,7 @@ export async function getQualitative(year: string): Promise<QualitativeData> {
 
 export async function patchQualitative(
   year: string,
-  body: { careerGoal?: string; activities?: QualitativeActivity[] }
+  body: { careerGoal?: string; activities?: QualitativeActivity[]; reorderMapping?: number[] }
 ): Promise<QualitativeData> {
   const res = await fetch(
     `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
