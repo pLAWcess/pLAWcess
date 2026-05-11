@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
 import { hashAnalysisInput, buildSingleAnalysisHash } from "@/lib/hash";
-import { collectFilesByActivity, processActivityAttachments, MAX_FILES_PER_ACTIVITY, MAX_TOTAL_BYTES_PER_REQUEST, type StoredAttachment } from "@/lib/attachments";
+import {
+  collectFilesByActivity,
+  emptyGeminiPayload,
+  processActivityAttachments,
+  MAX_FILES_PER_ACTIVITY,
+  MAX_TOTAL_BYTES_PER_REQUEST,
+  type GeminiPayload,
+  type StoredAttachment,
+} from "@/lib/attachments";
+import { removeMany } from "@/lib/storage";
 import { runSingleAnalysisInPlace } from "@/lib/qualitativeAnalysis";
 import type { StarItem } from "@/lib/gemini";
 
@@ -282,37 +291,60 @@ async function handleMultipartPatch(req: NextRequest, userId: string, processYea
     }
   }
 
+  // "저장 및 분석" 커밋 시점의 Storage 정리를 위해 기존 DB state를 먼저 읽어둔다.
+  const existingRecord = await prisma.menteeRecord.findUnique({
+    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+    select: { qualitative_activities: true },
+  });
+  const oldActivities = (existingRecord?.qualitative_activities ?? []) as ActivityForm[];
+  // contentHash → storagePath 매핑 (정리 대상 결정에 사용)
+  const oldPathByHash = new Map<string, string>();
+  for (const a of oldActivities) {
+    for (const att of a.attachments ?? []) {
+      if (att.storagePath) oldPathByHash.set(att.contentHash, att.storagePath);
+    }
+  }
+
   const allErrors: string[] = [];
   const mergedActivities: ActivityForm[] = [];
-  // analyze_index 활동의 새 이미지(메모리만 거치는 base64)를 따로 모은다
-  let imagesForAnalyze: { filename: string; mimeType: string; base64: string }[] = [];
+  // analyze_index 활동의 메모리 페이로드 (PATCH 흐름은 Storage download 0회로 끝낸다)
+  let geminiForAnalyze: GeminiPayload = emptyGeminiPayload();
 
   for (let i = 0; i < baseActivities.length; i++) {
     const a = baseActivities[i];
     const newFiles = filesByIdx.get(i) ?? [];
+    // 클라이언트가 보낸 기존 attachments 목록은 "유지하라"는 의도 — 그대로 둔다.
+    const kept = (a.attachments ?? []).slice();
+
     if (newFiles.length === 0) {
-      mergedActivities.push(a);
+      mergedActivities.push({ ...a, attachments: kept });
       continue;
     }
 
-    const existing = (a.attachments ?? []).slice();
-    const totalAfter = existing.length + newFiles.length;
+    const totalAfter = kept.length + newFiles.length;
     if (totalAfter > MAX_FILES_PER_ACTIVITY) {
       allErrors.push(
-        `활동 ${i + 1}: 첨부는 활동당 최대 ${MAX_FILES_PER_ACTIVITY}개입니다 (기존 ${existing.length}, 신규 ${newFiles.length}).`
+        `활동 ${i + 1}: 첨부는 활동당 최대 ${MAX_FILES_PER_ACTIVITY}개입니다 (기존 ${kept.length}, 신규 ${newFiles.length}).`
       );
     }
 
-    const { result, errors } = await processActivityAttachments(newFiles);
+    const { result, errors } = await processActivityAttachments(newFiles, {
+      userId,
+      processYear,
+    });
     for (const e of errors) allErrors.push(`활동 ${i + 1}: ${e}`);
 
-    const merged: StoredAttachment[] = [...existing, ...result.stored].slice(0, MAX_FILES_PER_ACTIVITY);
+    const merged: StoredAttachment[] = [...kept, ...result.stored].slice(0, MAX_FILES_PER_ACTIVITY);
     mergedActivities.push({ ...a, attachments: merged });
 
     if (payload.analyze_index === i) {
-      imagesForAnalyze = result.images;
+      geminiForAnalyze = result.gemini;
     }
   }
+
+  // 클라이언트가 유지로 보낸 attachments에 대한 메모리 페이로드는 없으므로,
+  // 같은 활동에 "유지된" 첨부가 있고 그 활동을 분석한다면 Storage download가 한 번 발생한다.
+  // 다만 캐시 hit이면 download 자체가 일어나지 않는다 (runSingleAnalysisInPlace의 hit 분기).
 
   const updateData: Record<string, unknown> = {
     qualitative_activities: mergedActivities,
@@ -327,6 +359,18 @@ async function handleMultipartPatch(req: NextRequest, userId: string, processYea
     update: updateData,
   });
 
+  // DB 저장 성공 후 Storage diff 정리:
+  // 신규(=클라가 보낸 활동들의) contentHash 집합에 없는 기존 객체는 삭제.
+  const newHashes = new Set<string>();
+  for (const a of mergedActivities) {
+    for (const att of a.attachments ?? []) newHashes.add(att.contentHash);
+  }
+  const toDelete: string[] = [];
+  for (const [hash, path] of oldPathByHash.entries()) {
+    if (!newHashes.has(hash)) toDelete.push(path);
+  }
+  if (toDelete.length > 0) await removeMany(toDelete);
+
   // 인라인 분석
   let inlineStar: StarItem | undefined;
   let inlineSkipped: boolean | undefined;
@@ -340,7 +384,7 @@ async function handleMultipartPatch(req: NextRequest, userId: string, processYea
         userId,
         processYear,
         index: payload.analyze_index,
-        images: imagesForAnalyze,
+        inMemoryGemini: geminiForAnalyze,
       });
       if (r.kind === "hit") {
         inlineStar = r.star;
@@ -417,6 +461,16 @@ export async function DELETE(req: NextRequest) {
 
   const newActivities = activities.filter((_, i) => i !== index);
 
+  // 삭제된 활동의 첨부 중, 남은 활동에서 같은 contentHash로 참조되지 않는 storagePath는 Storage에서도 제거
+  const removedAttachments = activities[index].attachments ?? [];
+  const remainingHashes = new Set<string>();
+  for (const a of newActivities) {
+    for (const att of a.attachments ?? []) remainingHashes.add(att.contentHash);
+  }
+  const storagePathsToDelete = removedAttachments
+    .filter((att) => att.storagePath && !remainingHashes.has(att.contentHash))
+    .map((att) => att.storagePath);
+
   // STAR 분석에서도 해당 활동 제거하고 인덱스 시프트
   const oldStar = record.star_analysis as StarAnalysisJson | null;
   let newStar: StarAnalysisJson | null = null;
@@ -450,6 +504,9 @@ export async function DELETE(req: NextRequest) {
     },
     select: SELECT_FIELDS,
   });
+
+  // DB 업데이트 성공 후 Storage 객체 정리
+  if (storagePathsToDelete.length > 0) await removeMany(storagePathsToDelete);
 
   return NextResponse.json(buildResponse(updated));
 }
