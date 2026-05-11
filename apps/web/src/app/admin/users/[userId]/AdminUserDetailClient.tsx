@@ -164,7 +164,7 @@ function ProfileCard({
 
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm">
-      <div className="flex items-center justify-between px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
+      <div className="flex items-center justify-between px-4 sm:px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-brand-muted flex items-center justify-center text-brand">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -189,7 +189,7 @@ function ProfileCard({
         <div className="px-8 pt-3 text-sm text-red-500">{saveError}</div>
       )}
 
-      <div className="px-8 py-2">
+      <div className="px-4 sm:px-8 py-2">
         {[
           [
             { label: '이름', view: user.name, edit: <UnderlineInput value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} /> },
@@ -214,10 +214,10 @@ function ProfileCard({
         ].map((row, rowIdx, all) => (
           <div
             key={rowIdx}
-            className={`grid grid-cols-2 divide-x divide-border py-5 ${rowIdx < all.length - 1 ? 'border-b border-border' : ''}`}
+            className={`grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border py-5 ${rowIdx < all.length - 1 ? 'border-b border-border' : ''}`}
           >
             {row.map((cell, colIdx) => (
-              <div key={colIdx} className={`flex flex-col gap-2${colIdx === 1 ? ' pl-8' : ''}`}>
+              <div key={colIdx} className={`flex flex-col gap-2${colIdx === 1 ? ' sm:pl-8 pt-4 sm:pt-0' : ''}`}>
                 <span className="text-sm text-text-secondary">
                   {cell.label}
                   {cell.hint && <span className="ml-2 text-xs text-text-placeholder">({cell.hint})</span>}
@@ -238,20 +238,20 @@ function ProfileCard({
 
 function MentorCard({ user }: { user: AdminUserDetail }) {
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">멘토 정보</h2>
         <span className="text-xs text-text-placeholder">신청서에서 변경</span>
       </div>
 
-      <div className="grid grid-cols-2 divide-x divide-border">
-        <div className="pr-8 flex flex-col gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4 sm:gap-0">
+        <div className="sm:pr-8 flex flex-col gap-2">
           <span className="text-sm text-text-secondary">소속 로스쿨</span>
           <div className="h-6">
             <span className="text-base text-text-primary">{user.currentLawschool || '-'}</span>
           </div>
         </div>
-        <div className="pl-8 flex flex-col gap-2">
+        <div className="sm:pl-8 flex flex-col gap-2">
           <span className="text-sm text-text-secondary">기수</span>
           <div className="h-6">
             <span className="text-base text-text-primary">{user.cohort != null ? `${user.cohort}기` : '-'}</span>
@@ -300,7 +300,7 @@ function AccountCard({
   const isActive = data.accountStatus === 'active';
 
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">계정 상태</h2>
         {isEditing
@@ -311,8 +311,8 @@ function AccountCard({
 
       {saveError && <p className="mb-3 text-sm text-red-500">{saveError}</p>}
 
-      <div className="grid grid-cols-2 divide-x divide-border">
-        <div className="pr-8 flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4 sm:gap-0">
+        <div className="sm:pr-8 flex items-center justify-between">
           <div>
             <p className="text-sm text-text-secondary">활성화 여부</p>
             <div className="h-6 flex items-center mt-2">
@@ -327,7 +327,7 @@ function AccountCard({
             onChange={(on) => setDraft({ ...draft, accountStatus: on ? 'active' : 'inactive' })}
           />
         </div>
-        <div className="pl-8 flex flex-col gap-2">
+        <div className="sm:pl-8 flex flex-col gap-2">
           <span className="text-sm text-text-secondary">현재 역할</span>
           <div className="h-6">
             {isEditing
@@ -345,16 +345,17 @@ function AccountCard({
 
 function ParticipationCard({ participation }: { participation: AdminUserDetail['participation'] }) {
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-base font-semibold text-text-primary mb-6">참여 이력</h2>
       {participation.length === 0 ? (
         <p className="py-2 text-sm text-text-secondary">참여 이력이 없습니다.</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full table-auto">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">프로세스 참여 연도</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4">당시 역할</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">프로세스 참여 연도</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">당시 역할</th>
             </tr>
           </thead>
           <tbody>
@@ -370,6 +371,7 @@ function ParticipationCard({ participation }: { participation: AdminUserDetail['
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );
