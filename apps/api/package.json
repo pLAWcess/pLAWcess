@@ -13,17 +13,16 @@
     "@plawcess/database": "workspace:*",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
+    "@supabase/supabase-js": "^2.45.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.12.0",
     "next": "16.2.2",
-    "officeparser": "^6.1.1",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "resend": "^6.12.3",
-    "unpdf": "^1.6.2"
+    "resend": "^6.12.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",

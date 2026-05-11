@@ -58,11 +58,10 @@ const IMAGE_MIMES = new Set(['image/jpeg', 'image/png']);
 const ACCEPTED_MIME = new Set([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'image/jpeg',
   'image/png',
 ]);
-const ACCEPTED_EXT = ['.pdf', '.docx', '.pptx', '.jpg', '.jpeg', '.png'];
+const ACCEPTED_EXT = ['.pdf', '.docx', '.jpg', '.jpeg', '.png'];
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
@@ -102,10 +101,16 @@ function validateFileForUpload(file: File): string | null {
     return `${file.name}: 파일 크기가 너무 큽니다 (${formatFileSize(file.size)}, 최대 ${MAX_FILE_BYTES / 1024 / 1024}MB).`;
   }
   if (!ACCEPTED_MIME.has(file.type)) {
-    if (/\.(doc|ppt)$/i.test(file.name)) {
-      return `${file.name}: 레거시 형식은 지원하지 않습니다. .docx/.pptx로 변환해 업로드해주세요.`;
+    if (/\.pptx?$/i.test(file.name)) {
+      return `${file.name}: PPTX는 지원하지 않습니다. PDF로 변환 후 업로드해주세요.`;
     }
-    return `${file.name}: 지원하지 않는 형식입니다. PDF, DOCX, PPTX, JPG, PNG만 가능해요.`;
+    if (/\.hwpx?$/i.test(file.name)) {
+      return `${file.name}: HWP/HWPX는 지원하지 않습니다. PDF로 변환 후 업로드해주세요.`;
+    }
+    if (/\.(doc|ppt)$/i.test(file.name)) {
+      return `${file.name}: 레거시 형식은 지원하지 않습니다. .docx 또는 PDF로 변환해 업로드해주세요.`;
+    }
+    return `${file.name}: 지원하지 않는 형식입니다. PDF, DOCX, JPG, PNG만 가능해요.`;
   }
   return null;
 }
@@ -358,7 +363,7 @@ function AttachmentSection({
               : '클릭하거나 파일을 드래그하여 업로드'}
         </span>
         <span className="text-xs text-text-placeholder mt-1">
-          PDF, DOCX, PPTX, JPG, PNG (각 {MAX_FILE_BYTES / 1024 / 1024}MB, 활동당 최대 {MAX_FILES_PER_ACTIVITY}개 · 이미지 합계 {MAX_TOTAL_BYTES_PER_REQUEST / 1024 / 1024}MB 이하)
+          PDF, DOCX, JPG, PNG (각 {MAX_FILE_BYTES / 1024 / 1024}MB, 활동당 최대 {MAX_FILES_PER_ACTIVITY}개 · 이미지 합계 {MAX_TOTAL_BYTES_PER_REQUEST / 1024 / 1024}MB 이하)
         </span>
       </div>
 
@@ -372,12 +377,6 @@ function AttachmentSection({
                 </span>
                 <span className="text-sm text-text-primary truncate">{a.filename}</span>
                 <span className="shrink-0 text-xs text-text-placeholder">{formatFileSize(a.size)}</span>
-                {a.type === 'document' && a.extractedText === '' && (
-                  <span className="shrink-0 text-xs text-amber-700" title="텍스트가 추출되지 않아 분석에 포함되지 않습니다">⚠ 추출 실패</span>
-                )}
-                {a.type === 'document' && a.truncated && a.extractedText !== '' && (
-                  <span className="shrink-0 text-xs text-amber-700" title="길이 한도를 넘어 일부만 분석에 사용됩니다">일부 생략</span>
-                )}
               </div>
               <button
                 type="button"
@@ -411,11 +410,9 @@ function AttachmentSection({
         </ul>
       )}
 
-      {existing.some((a) => a.type === 'image') && (
-        <p className="text-xs text-text-placeholder mt-1">
-          ※ 이미지는 분석 시점에만 사용되고 보관되지 않습니다. 재분석 시 같은 이미지를 다시 업로드해주세요.
-        </p>
-      )}
+      <p className="text-xs text-text-placeholder mt-1">
+        ※ 첨부는 &ldquo;저장 및 분석&rdquo;을 눌러야 최종 반영됩니다. 목록에서 제거해도 저장 전까지는 서버에 그대로 보관돼요.
+      </p>
     </div>
   );
 }
@@ -696,18 +693,12 @@ function ActivityCard({
                 key={i}
                 title={
                   a.type === 'document'
-                    ? a.extractedText === ''
-                      ? '텍스트 추출 실패 — 분석에 포함되지 않습니다'
-                      : a.truncated
-                        ? '길이 한도를 넘어 일부만 분석에 사용됨'
-                        : '추출된 텍스트가 분석에 사용되었습니다'
-                    : '이미지는 분석 시점에만 사용됩니다 (원본 미보관)'
+                    ? a.kind === 'pdf'
+                      ? 'PDF 원본이 AI 분석에 직접 사용되었습니다'
+                      : 'DOCX에서 추출된 텍스트가 분석에 사용되었습니다'
+                    : '이미지 원본이 AI 분석에 직접 사용되었습니다'
                 }
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md ${
-                  a.type === 'document' && a.extractedText === ''
-                    ? 'bg-amber-50 text-amber-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-600"
               >
                 <span className="font-semibold">{getAttachmentLabel(a)}</span>
                 <span className="truncate max-w-[160px]">{a.filename}</span>

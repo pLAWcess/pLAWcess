@@ -27,15 +27,19 @@ export type ActivityForHash = {
   content: string;
 };
 
-// 첨부 정규형 — filename + contentHash 기준 정렬해서 순서 변경엔 안정.
+// 첨부 정규형 — contentHash + filename 정렬, 순서 변경엔 안정.
+// 원본 파일이 동일(같은 contentHash)이고 라벨도 같으면 캐시 hit.
+// truncated는 더 이상 DB에 저장하지 않으므로 hash 입력에서도 제거.
 export function attachmentsForHash(att: StoredAttachment[] | undefined | null) {
   return (att ?? [])
-    .map((a) =>
-      a.type === "document"
-        ? { t: "d" as const, k: a.kind, n: a.filename, h: a.contentHash, tr: a.truncated }
-        : { t: "i" as const, k: a.kind, n: a.filename, h: a.contentHash }
-    )
-    .sort((x, y) => (x.n + x.h).localeCompare(y.n + y.h));
+    .map((a) => ({
+      t: a.type === "document" ? ("d" as const) : ("i" as const),
+      k: a.kind,
+      n: a.filename,
+      h: a.contentHash,
+      m: a.mimeType,
+    }))
+    .sort((x, y) => (x.h + x.n).localeCompare(y.h + y.n));
 }
 
 // 활동을 hash 입력용 정규형으로 좁힘 — attachments나 다른 필드가 끼어들어도 hash 변동 없게.

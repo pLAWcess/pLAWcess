@@ -1,16 +1,15 @@
 import { createHash } from "crypto";
-// 타입만 import — 런타임에 모듈을 load하지 않는다.
-import type { OfficeContentNode, SlideMetadata } from "officeparser";
 
-// 무거운 추출 라이브러리(pdf-parse / mammoth / officeparser)는 dynamic import로 lazy load.
-// GET·JSON PATCH 같은 경로에선 이 모듈을 import만 하고 추출 함수를 호출하지 않으므로,
-// 라이브러리 초기화(특히 officeparser → tesseract.js의 worker/WASM)가 일어나지 않는다.
-// Vercel cold start에서 모듈 로드 실패로 500이 나는 문제를 방지.
+// PDF / 이미지(JPG / PNG)는 Gemini에 raw로 그대로 전송하므로 추출하지 않는다.
+// DOCX만 mammoth로 텍스트를 뽑아 Gemini prompt에 인라인으로 포함시킨다.
+// 추출된 텍스트는 DB에 저장되지 않고 메모리에서만 사용된다.
+// 무거운 추출 라이브러리(mammoth)는 dynamic import로 lazy load — Vercel cold start 안정성.
 
-export type DocumentKind = "pdf" | "docx" | "pptx";
+export type DocumentKind = "pdf" | "docx";
 export type ImageKind = "jpg" | "png";
 export type AttachmentKind = DocumentKind | ImageKind;
 
+// DOCX 추출 텍스트에만 적용되는 한도.
 export const MAX_TEXT_PER_FILE = 15_000;
 export const MAX_TEXT_PER_ACTIVITY = 30_000;
 export const MIN_USEFUL_TEXT = 20;
@@ -18,7 +17,6 @@ export const MIN_USEFUL_TEXT = 20;
 export const MIME_TO_KIND: Record<string, AttachmentKind> = {
   "application/pdf": "pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
   "image/png": "png",
@@ -29,72 +27,33 @@ export function sha256Hex(buffer: Uint8Array): string {
 }
 
 // ----------------------------------------------------------------
-// 추출기들 — 각 포맷에서 raw text를 뽑는다. 정규화는 normalizeExtracted에서.
+// 추출기 — DOCX만. PDF / 이미지는 raw로 그대로 사용.
 // ----------------------------------------------------------------
-
-async function extractPdf(buffer: Uint8Array): Promise<string> {
-  // unpdf — serverless(Vercel/Cloudflare) 친화적인 pdfjs 래퍼.
-  // pdf-parse@2는 pdfjs-dist의 브라우저 전역(DOMMatrix 등) 의존성 때문에
-  // Node 런타임에서 ReferenceError로 깨지는 이슈가 있어 교체.
-  const { extractText } = await import("unpdf");
-  const { text } = await extractText(buffer, { mergePages: false });
-  // text: string[] (페이지별) → 페이지 경계를 LF 두 줄로 보존
-  return text.join("\n\n");
-}
 
 async function extractDocx(buffer: Uint8Array): Promise<string> {
   const { default: mammoth } = await import("mammoth");
-  // mammoth는 Buffer를 기대 — Uint8Array를 Buffer로 감싸 전달
   const buf = Buffer.from(buffer);
   const result = await mammoth.extractRawText({ buffer: buf });
   return result.value ?? "";
 }
 
-async function extractPptx(buffer: Uint8Array): Promise<string> {
-  const { parseOffice } = await import("officeparser");
-  const buf = Buffer.from(buffer);
-  const ast = await parseOffice(buf);
-  // Top-level content node 중 SlideMetadata 보유 노드를 슬라이드 단위로 헤더 부여
-  const parts: string[] = [];
-  let fallback = false;
-  for (const node of ast.content as OfficeContentNode[]) {
-    const meta = node.metadata as Partial<SlideMetadata> | undefined;
-    if (meta && typeof meta.slideNumber === "number") {
-      const text = node.text?.trim() ?? "";
-      if (text) parts.push(`## 슬라이드 ${meta.slideNumber}\n${text}`);
-    } else {
-      fallback = true;
-    }
-  }
-  if (parts.length > 0) return parts.join("\n\n");
-  // 슬라이드 메타가 안 잡히면 전체 toText로 fallback
-  if (fallback || ast.content.length === 0) return ast.toText();
-  return "";
-}
-
 // ----------------------------------------------------------------
-// 정규화 — plan의 텍스트 추출 전처리 7단계
+// 정규화 — DOCX 추출 텍스트 전용
 // ----------------------------------------------------------------
 
 function stripControlChars(s: string): string {
-  // 0x00–0x08, 0x0B, 0x0C, 0x0E–0x1F 제거. 0x09(TAB)/0x0A(LF) 유지
   return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
 }
 
 function normalizeWhitespace(s: string): string {
   return s
-    // BOM, zero-width
     .replace(/[﻿​‌‍⁠]/g, "")
-    // NBSP → 일반 공백
     .replace(/ /g, " ")
-    // CRLF/CR → LF
     .replace(/\r\n?/g, "\n");
 }
 
 function compactSpacing(s: string): string {
-  // 라인 단위 처리: trim + 다중 공백/탭 → 단일 공백
   const lines = s.split("\n").map((l) => l.replace(/[ \t]+/g, " ").replace(/[ \t]+$/g, ""));
-  // 3개 이상 연속 공행 → 2개
   const compacted: string[] = [];
   let blank = 0;
   for (const l of lines) {
@@ -109,89 +68,62 @@ function compactSpacing(s: string): string {
   return compacted.join("\n").trim();
 }
 
-function removeTrivialPageNoise(s: string, source: "pdf" | "docx" | "pptx"): string {
-  if (source !== "pdf" && source !== "pptx") return s;
-  const lines = s.split("\n");
-
-  // 1) 단독 라인 페이지 번호 / "Page N of M" 제거
-  const cleaned = lines.filter((l) => {
-    const t = l.trim();
-    if (/^\d{1,4}$/.test(t)) return false;
-    if (/^page\s+\d+(\s*of\s*\d+)?$/i.test(t)) return false;
-    if (/^-\s*\d{1,4}\s*-$/.test(t)) return false; // "- 12 -"
-    return true;
-  });
-
-  // 2) 짧은(≤80자) 라인이 전체에서 50% 이상 등장하면 머리말/꼬리말로 보고 제거 (PDF에 한해 적용)
-  if (source === "pdf" && cleaned.length >= 6) {
-    const counts = new Map<string, number>();
-    for (const l of cleaned) {
-      const t = l.trim();
-      if (t.length === 0 || t.length > 80) continue;
-      counts.set(t, (counts.get(t) ?? 0) + 1);
-    }
-    // 비공백 라인 총수 대비 비율
-    const total = cleaned.filter((l) => l.trim().length > 0).length;
-    const noise = new Set<string>();
-    for (const [text, n] of counts.entries()) {
-      if (n >= 3 && n / total >= 0.5) noise.add(text);
-    }
-    if (noise.size > 0) {
-      return cleaned.filter((l) => !noise.has(l.trim())).join("\n");
-    }
-  }
-
-  return cleaned.join("\n");
-}
-
 export type NormalizeResult = { text: string; truncated: boolean; charCount: number };
 
-export function normalizeExtracted(
-  raw: string,
-  source: "pdf" | "docx" | "pptx"
-): NormalizeResult {
+export function normalizeExtracted(raw: string): NormalizeResult {
   const step1 = stripControlChars(normalizeWhitespace(raw ?? ""));
   const step2 = compactSpacing(step1);
-  const step3 = removeTrivialPageNoise(step2, source);
-  const step4 = compactSpacing(step3); // 노이즈 제거로 생긴 빈 줄 다시 정리
 
-  if (step4.length <= MAX_TEXT_PER_FILE) {
-    return { text: step4, truncated: false, charCount: step4.length };
+  if (step2.length <= MAX_TEXT_PER_FILE) {
+    return { text: step2, truncated: false, charCount: step2.length };
   }
-  const trimmed = step4.slice(0, MAX_TEXT_PER_FILE);
-  const marker = `\n… (이하 생략 — 원문 ${step4.length.toLocaleString("ko-KR")}자 중 ${MAX_TEXT_PER_FILE.toLocaleString("ko-KR")}자만 분석에 사용)`;
-  return { text: trimmed + marker, truncated: true, charCount: step4.length };
+  const trimmed = step2.slice(0, MAX_TEXT_PER_FILE);
+  const marker = `\n… (이하 생략 — 원문 ${step2.length.toLocaleString("ko-KR")}자 중 ${MAX_TEXT_PER_FILE.toLocaleString("ko-KR")}자만 분석에 사용)`;
+  return { text: trimmed + marker, truncated: true, charCount: step2.length };
 }
 
 // ----------------------------------------------------------------
-// 통합 dispatch — File을 받아 kind 분기 + 추출 + 정규화 + hash까지
+// 통합 dispatch — File → kind 분기 + 메모리 raw 보존 + (DOCX만) 추출 텍스트
+// raw bytes는 Storage 업로드와 Gemini 전송 양쪽으로 흐른다.
 // ----------------------------------------------------------------
 
-export type DocumentExtractResult = {
+export type RawPdf = {
   type: "document";
-  kind: DocumentKind;
+  kind: "pdf";
   filename: string;
   size: number;
+  mimeType: "application/pdf";
   contentHash: string;
-  extractedText: string;
-  textCharCount: number;
-  truncated: boolean;
-  empty: boolean; // 정규화 후 의미있는 텍스트가 없으면 true
+  raw: Uint8Array;
 };
 
-export type ImageExtractResult = {
+export type RawDocx = {
+  type: "document";
+  kind: "docx";
+  filename: string;
+  size: number;
+  mimeType: string;
+  contentHash: string;
+  raw: Uint8Array;
+  extractedText: string; // 정규화된 텍스트 (메모리만, DB 저장 X)
+  textCharCount: number;
+  truncated: boolean;
+  empty: boolean;
+};
+
+export type RawImage = {
   type: "image";
   kind: ImageKind;
   filename: string;
   size: number;
   mimeType: string;
   contentHash: string;
-  base64: string; // 메모리에서만 사용. DB에는 저장하지 않음.
+  raw: Uint8Array;
 };
 
-export type ExtractResult = DocumentExtractResult | ImageExtractResult;
+export type DispatchResult = RawPdf | RawDocx | RawImage;
 
-export async function dispatchByMime(file: File): Promise<ExtractResult> {
+export async function dispatchByMime(file: File): Promise<DispatchResult> {
   const mime = file.type;
   const kind = MIME_TO_KIND[mime];
   if (!kind) {
@@ -210,30 +142,42 @@ export async function dispatchByMime(file: File): Promise<ExtractResult> {
       size: file.size,
       mimeType: kind === "jpg" ? "image/jpeg" : "image/png",
       contentHash,
-      base64: Buffer.from(bytes).toString("base64"),
+      raw: bytes,
     };
   }
 
-  // 문서: 추출 + 정규화
+  if (kind === "pdf") {
+    return {
+      type: "document",
+      kind: "pdf",
+      filename: file.name,
+      size: file.size,
+      mimeType: "application/pdf",
+      contentHash,
+      raw: bytes,
+    };
+  }
+
+  // DOCX — 텍스트 추출 + 정규화 (메모리만, DB에는 저장 안 됨)
   let raw: string;
   try {
-    if (kind === "pdf") raw = await extractPdf(bytes);
-    else if (kind === "docx") raw = await extractDocx(bytes);
-    else raw = await extractPptx(bytes);
+    raw = await extractDocx(bytes);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`첨부 파일에서 텍스트를 추출하지 못했습니다: ${file.name} — ${msg}`);
   }
 
-  const normalized = normalizeExtracted(raw, kind);
+  const normalized = normalizeExtracted(raw);
   const empty = normalized.text.trim().length < MIN_USEFUL_TEXT;
 
   return {
     type: "document",
-    kind,
+    kind: "docx",
     filename: file.name,
     size: file.size,
+    mimeType: mime,
     contentHash,
+    raw: bytes,
     extractedText: empty ? "" : normalized.text,
     textCharCount: normalized.charCount,
     truncated: normalized.truncated,

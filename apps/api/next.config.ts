@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@plawcess/database"],
-  // 첨부 텍스트 추출 라이브러리들은 worker / 동적 require 등 webpack 번들과
-  // 충돌하는 패턴을 쓰므로 external로 두어 node_modules에서 직접 resolve.
-  serverExternalPackages: ["unpdf", "officeparser", "mammoth"],
+  // mammoth는 동적 require로 인코딩 테이블을 읽어 webpack 번들과 충돌 →
+  // node_modules에서 직접 resolve하도록 external 처리.
+  serverExternalPackages: ["mammoth"],
 };
 
 export default nextConfig;
