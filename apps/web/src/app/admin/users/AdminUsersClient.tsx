@@ -76,12 +76,18 @@ function UsersPageContent({ initialMenteeData }: { initialMenteeData: Paged<Admi
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">회원관리</h1>
           <p className="mt-1 text-sm text-text-secondary">회원 정보를 조회하고 관리합니다</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0">
+          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" />
+            </svg>
+            회원 추가
+          </button>
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
             {STATUS_FILTER_OPTIONS.map(({ value, label }) => (
               <button
@@ -97,12 +103,6 @@ function UsersPageContent({ initialMenteeData }: { initialMenteeData: Paged<Admi
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" />
-            </svg>
-            회원 추가
-          </button>
         </div>
       </div>
 

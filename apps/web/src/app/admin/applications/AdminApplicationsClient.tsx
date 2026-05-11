@@ -64,11 +64,21 @@ export default function AdminApplicationsClient(props: Props) {
   );
 }
 
+const STATUS_FILTER_OPTIONS: { value: 'all' | ApplicationStatusLabel; label: string }[] = [
+  { value: 'all', label: '전체' },
+  { value: 'approved', label: '승인' },
+  { value: 'pending', label: '대기' },
+  { value: 'revision', label: '보완요청' },
+  { value: 'rejected', label: '거절' },
+];
+
 function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentorData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const tab: Tab = params.get('tab') === 'mentor' ? 'mentor' : 'mentee';
+
+  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatusLabel>('all');
 
   const setTab = (t: Tab) => {
     const next = new URLSearchParams(Array.from(params.entries()));
@@ -78,9 +88,26 @@ function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentor
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
-        <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
+          <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
+        </div>
+        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border shrink-0">
+          {STATUS_FILTER_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setStatusFilter(value)}
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                statusFilter === value
+                  ? 'bg-white text-text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 탭 */}
@@ -97,6 +124,7 @@ function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentor
           kindLabel="멘티"
           initialData={initialMenteeData}
           initialYear={initialYear}
+          statusFilter={statusFilter}
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
             { label: '전공', value: a.major },
@@ -117,6 +145,7 @@ function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentor
           kindLabel="멘토"
           initialData={initialMentorData}
           initialYear={initialYear}
+          statusFilter={statusFilter}
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
             { label: '소속 학교', value: a.school ?? '-' },
@@ -168,6 +197,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   kindLabel,
   initialData,
   initialYear,
+  statusFilter,
 }: {
   role: 'mentee' | 'mentor';
   year: number | null;
@@ -177,6 +207,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   kindLabel: string;
   initialData?: Paged<T> | null;
   initialYear?: number | null;
+  statusFilter: 'all' | ApplicationStatusLabel;
 }) {
   const [data, setData] = useState<T[]>((initialData?.data ?? []) as T[]);
   const [totalCount, setTotalCount] = useState(initialData?.totalCount ?? 0);
@@ -185,7 +216,6 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   const [error, setError] = useState<string | null>(null);
 
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatusLabel>('all');
   const [sort, setSort] = useState<SortState<T>>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -256,31 +286,14 @@ function ApplicationPanel<T extends AdminApplicationRow>({
 
   return (
     <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
-      <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
-        <div className="flex items-center gap-2 text-text-placeholder">
-          <SearchIcon />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="검색..."
-            className="w-44 sm:w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
-          />
-        </div>
-        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border overflow-x-auto">
-          {(['all', 'approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                statusFilter === s
-                  ? 'bg-white text-text-primary shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {s === 'all' ? '전체' : STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-2 text-text-placeholder mb-4">
+        <SearchIcon />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="검색..."
+          className="w-44 sm:w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
+        />
       </div>
 
       <div className="overflow-x-auto">
