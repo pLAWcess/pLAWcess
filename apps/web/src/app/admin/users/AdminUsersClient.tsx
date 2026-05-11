@@ -251,7 +251,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
   };
 
   return (
-    <section className="bg-white border border-border rounded-xl px-8 py-6">
+    <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
       <div className="flex items-center mb-4 gap-4">
         <div className="flex items-center gap-2 text-text-placeholder">
           <SearchIcon />
@@ -259,7 +259,8 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
         </div>
       </div>
 
-      <table className="w-full table-auto">
+      <div className="overflow-x-auto">
+      <table className="w-full table-auto min-w-[500px]">
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
@@ -294,6 +295,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
           )}
         </tbody>
       </table>
+      </div>
 
       <div className="flex items-center justify-between mt-5">
         <span className="text-xs text-text-secondary">총 {totalCount}명 · {safePage} / {totalPages} 페이지</span>

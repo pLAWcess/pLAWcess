@@ -94,7 +94,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
 
       {/* 사업 일정 카드 */}
       {activeSchedule && (
-        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+        <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
           <h2 className="text-base font-semibold text-text-primary mb-4">
             {activeSchedule.process_year}학년도 pLAWcess 일정
           </h2>
@@ -118,7 +118,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
       )}
 
       {/* 프로세스 안내 카드 */}
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <h2 className="text-base font-semibold text-text-primary mb-5">프로세스 안내</h2>
         <div className="text-sm text-text-body leading-relaxed space-y-3 mb-6 pb-6 border-b border-border">
           <p>고려대학교 자유전공학부에서는 2023년 제15대 집행위원회 교육국에서부터 &apos;pLAWcess&apos;라는 사업을 진행하고 있습니다. &apos;로스쿨을 향하는 과정&apos;이라는 뜻을 담은 해당 사업은 다음 두 가지 주요 활동으로 이루어져 있습니다.</p>
@@ -177,7 +177,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
       />
 
       {/* 개인정보 동의 카드 */}
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <h2 className="text-base font-semibold text-text-primary mb-5">개인정보 수집 및 이용 동의</h2>
         <div className="text-sm text-text-body leading-relaxed space-y-4 mb-6">
           <div>
@@ -222,7 +222,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
       </div>
 
       {/* 신청서 카드 */}
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <div className="mb-6">
           <h2 className="text-base font-semibold text-text-primary">pLAWcess 신청서</h2>
         </div>
@@ -232,7 +232,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
           <div>
             <p className="text-sm font-medium text-text-primary mb-3">희망 로스쿨</p>
             {admission ? (
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {(['가', '나'] as const).map((group) => {
                   const slot = admission[group];
                   const preferred = admission.preferredGroup;

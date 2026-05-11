@@ -289,7 +289,7 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
       </div>
 
       {/* 사업 스케줄 */}
-      <section className="bg-white border border-border rounded-xl px-8 py-6">
+      <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-semibold text-text-primary">pLAWcess 사업 스케줄</h2>
           {current && (
@@ -535,23 +535,23 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   };
 
   return (
-    <section className="bg-white border border-border rounded-xl px-8 py-6">
-      <div className="flex items-center justify-between mb-4 gap-4">
+    <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
         <div className="flex items-center gap-2 text-text-placeholder">
           <SearchIcon />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="검색..."
-            className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
+            className="w-44 sm:w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
           />
         </div>
-        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
+        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border overflow-x-auto">
           {(['all', 'approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 statusFilter === s
                   ? 'bg-white text-text-primary shadow-sm'
                   : 'text-text-secondary hover:text-text-primary'
@@ -563,7 +563,8 @@ function ApplicationPanel<T extends AdminApplicationRow>({
         </div>
       </div>
 
-      <table className="w-full table-auto">
+      <div className="overflow-x-auto">
+      <table className="w-full table-auto min-w-[560px]">
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
@@ -613,6 +614,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
           )}
         </tbody>
       </table>
+      </div>
 
       <div className="flex items-center justify-between mt-5">
         <span className="text-xs text-text-secondary">
