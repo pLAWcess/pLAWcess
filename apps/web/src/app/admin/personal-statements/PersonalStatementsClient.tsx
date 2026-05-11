@@ -5,6 +5,7 @@ import { uploadSchoolTemplate, type SchoolTemplate } from '@/lib/api';
 import { LAW_SCHOOLS } from '@/constants/basic-info';
 
 const SCHOOLS = LAW_SCHOOLS.map((s) => s.name);
+const PAGE_SIZE = 5;
 const YEAR = new Date().getFullYear().toString();
 
 export default function PersonalStatementsClient({
@@ -16,8 +17,13 @@ export default function PersonalStatementsClient({
     () => Object.fromEntries(initialTemplates.map((t) => [t.school_name, t])),
   );
   const [uploading, setUploading] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const pendingSchoolRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const totalPages = Math.max(1, Math.ceil(SCHOOLS.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageSchools = SCHOOLS.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   function triggerUpload(school: string) {
     pendingSchoolRef.current = school;
@@ -66,14 +72,16 @@ export default function PersonalStatementsClient({
         onChange={handleFileChange}
       />
 
-      <div className="flex flex-col gap-3">
-        {SCHOOLS.map((school) => {
+      <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+        {pageSchools.map((school, idx) => {
           const template = templates[school];
           const isUploading = uploading === school;
           return (
             <div
               key={school}
-              className="bg-white rounded-xl border border-border shadow-sm px-8 py-5 flex items-center justify-between"
+              className={`px-8 py-5 flex items-center justify-between ${
+                idx < pageSchools.length - 1 ? 'border-b border-border' : ''
+              }`}
             >
               <div>
                 <p className="text-base font-medium text-text-primary">{school}</p>
@@ -93,7 +101,79 @@ export default function PersonalStatementsClient({
             </div>
           );
         })}
+
+        <div className="px-8 py-4 border-t border-border flex items-center justify-between bg-gray-50/50">
+          <span className="text-xs text-text-secondary">
+            총 {SCHOOLS.length}개 · {safePage} / {totalPages} 페이지
+          </span>
+          {totalPages > 1 && (
+            <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  onPage,
+}: {
+  page: number;
+  totalPages: number;
+  onPage: (p: number) => void;
+}) {
+  const pages = pageNumbers(page, totalPages);
+  return (
+    <div className="flex items-center gap-1">
+      <PageButton onClick={() => onPage(page - 1)} disabled={page === 1}>‹</PageButton>
+      {pages.map((p, i) =>
+        p === '…' ? (
+          <span key={`e${i}`} className="px-2 text-xs text-text-placeholder">…</span>
+        ) : (
+          <PageButton key={p} onClick={() => onPage(p)} active={p === page}>{p}</PageButton>
+        ),
+      )}
+      <PageButton onClick={() => onPage(page + 1)} disabled={page === totalPages}>›</PageButton>
+    </div>
+  );
+}
+
+function PageButton({
+  onClick,
+  disabled,
+  active,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`min-w-7 h-7 px-2 text-xs rounded-md transition-colors ${
+        active
+          ? 'bg-brand text-white font-semibold'
+          : 'text-text-secondary hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function pageNumbers(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | '…')[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push('…');
+  for (let p = start; p <= end; p++) pages.push(p);
+  if (end < total - 1) pages.push('…');
+  pages.push(total);
+  return pages;
 }
