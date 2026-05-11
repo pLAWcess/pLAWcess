@@ -45,18 +45,3 @@ body {
   color: var(--foreground);
   font-family: var(--font-pretendard), 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
 }
-
-/* Tailwind @layer utilities의 반응형 변수가 환경에 따라 누락되는 문제 보완 */
-@media (min-width: 640px) {
-  .sm\:hidden { display: none !important; }
-  .sm\:flex { display: flex !important; }
-  .sm\:block { display: block !important; }
-  .sm\:inline-block { display: inline-block !important; }
-}
-
-@media (min-width: 768px) {
-  .md\:hidden { display: none !important; }
-  .md\:flex { display: flex !important; }
-  .md\:block { display: block !important; }
-  .md\:inline-block { display: inline-block !important; }
-}
