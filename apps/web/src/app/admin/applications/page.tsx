@@ -6,8 +6,8 @@ import type { CycleSchedule, Paged, AdminMenteeApplicationRow, AdminMentorApplic
 export default async function AdminApplicationsPage() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
   const schedules = await serverFetch<CycleSchedule[]>('/api/admin/cycle-schedules', token) ?? [];
-
-  const initialYear = schedules.length > 0 ? schedules[0].process_year : null;
+  const active = schedules.find((s) => s.is_active);
+  const initialYear = active?.process_year ?? (schedules.length > 0 ? schedules[0].process_year : null);
 
   const [initialMenteeData, initialMentorData] = await Promise.all([
     initialYear
@@ -20,7 +20,6 @@ export default async function AdminApplicationsPage() {
 
   return (
     <AdminApplicationsClient
-      initialSchedules={schedules}
       initialYear={initialYear}
       initialMenteeData={initialMenteeData ?? null}
       initialMentorData={initialMentorData ?? null}

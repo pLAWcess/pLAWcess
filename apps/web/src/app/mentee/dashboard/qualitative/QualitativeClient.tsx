@@ -44,7 +44,6 @@ const EMPTY_FORM: Omit<ActivityForm, 'category'> = {
   content: '',
 };
 
-const YEAR = new Date().getFullYear().toString();
 
 // ----------------------------------------------------------------
 // 첨부 파일 정책 (서버 attachments.ts와 일치)
@@ -1041,7 +1040,7 @@ function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
 // ================================================================
 // 페이지
 // ================================================================
-export default function QualitativeClient({ initialData }: { initialData?: QualitativeData }) {
+export default function QualitativeClient({ initialData, year }: { initialData?: QualitativeData; year: string }) {
   const didInitRef = useRef(false);
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
   const [careerGoal, setCareerGoal] = useState<CareerGoal>(initialData?.careerGoal || '');
@@ -1094,7 +1093,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
   useEffect(() => {
     if (initialData && !didInitRef.current) { didInitRef.current = true; return; }
     didInitRef.current = true;
-    getQualitative(YEAR)
+    getQualitative(year)
       .then(applyData)
       .catch(() => {})
       .finally(() => setPageLoading(false));
@@ -1106,7 +1105,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
   }, [activeTab]);
 
   async function handleCareerGoalSave(next: CareerGoal) {
-    const data = await patchQualitative(YEAR, { careerGoal: next });
+    const data = await patchQualitative(year, { careerGoal: next });
     applyData(data);
   }
 
@@ -1125,7 +1124,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
   async function triggerSingleAnalysis(idx: number) {
     setAnalyzingIdx(idx);
     try {
-      const res = await analyzeQualitativeActivity(YEAR, idx);
+      const res = await analyzeQualitativeActivity(year, idx);
       applyData(res.data);
       setExpandedSet((p) => new Set([...p, idx]));
     } catch (err) {
@@ -1140,7 +1139,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
     if (summarizing) return;
     setSummarizing(true);
     try {
-      const data = await summarizeQualitative(YEAR);
+      const data = await summarizeQualitative(year);
       applyData(data);
     } catch (err) {
       console.error(err);
@@ -1162,7 +1161,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
   ): Promise<{ ok: boolean; attachmentErrors?: string[] }> {
     if (newFiles.length === 0) {
       // 첨부 변경 없음 — 기존 JSON PATCH + analyze
-      const saved = await patchQualitative(YEAR, { activities: nextActivities });
+      const saved = await patchQualitative(year, { activities: nextActivities });
       applyData(saved);
       await triggerSingleAnalysis(analyzeIdx);
       return { ok: true };
@@ -1175,7 +1174,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
       const filesByIdx = new Map<number, File[]>();
       filesByIdx.set(analyzeIdx, newFiles);
       const saved = await patchQualitativeMultipart(
-        YEAR,
+        year,
         { activities: nextActivities, analyzeIndex: analyzeIdx },
         filesByIdx
       );
@@ -1205,7 +1204,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
       const filesByIdx = new Map<number, File[]>();
       filesByIdx.set(analyzeIdx, batch);
       const saved = await patchQualitativeMultipart(
-        YEAR,
+        year,
         { activities: activitiesState }, // analyzeIndex 없음
         filesByIdx
       );
@@ -1218,7 +1217,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
     const finalFilesByIdx = new Map<number, File[]>();
     if (images.length > 0) finalFilesByIdx.set(analyzeIdx, images);
     const finalSaved = await patchQualitativeMultipart(
-      YEAR,
+      year,
       { activities: activitiesState, analyzeIndex: analyzeIdx },
       finalFilesByIdx
     );
@@ -1295,7 +1294,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
     if (!confirm(`"${target?.name || '이 활동'}"을(를) 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.`)) return;
     setDeletingIdx(idx);
     try {
-      const data = await deleteQualitativeActivity(YEAR, idx);
+      const data = await deleteQualitativeActivity(year, idx);
       applyData(data);
       // 펼쳐진 카드 인덱스도 정리: 삭제 인덱스 제거 + 그보다 큰 인덱스는 -1 시프트
       setExpandedSet((prev) => {
@@ -1348,7 +1347,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
     setServerActivities(newActivities);
 
     try {
-      const data = await patchQualitative(YEAR, {
+      const data = await patchQualitative(year, {
         activities: newActivities,
         reorderMapping,
       });

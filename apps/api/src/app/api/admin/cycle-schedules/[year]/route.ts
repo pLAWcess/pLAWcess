@@ -72,6 +72,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ year: str
   if (setActive) data.is_active = true;
   else if (setInactive) data.is_active = false;
 
+  if (body.is_schedule_visible === true) data.is_schedule_visible = true;
+  else if (body.is_schedule_visible === false) data.is_schedule_visible = false;
+
   const existing = await prisma.cycleSchedule.findUnique({ where: { process_year: year } });
   if (!existing) {
     return NextResponse.json({ error: "해당 연도의 스케줄이 없습니다." }, { status: 404 });

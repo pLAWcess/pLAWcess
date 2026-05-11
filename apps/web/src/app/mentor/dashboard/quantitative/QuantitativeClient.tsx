@@ -7,25 +7,23 @@ import GpaCard from '@/components/quantitative/GpaCard';
 import { patchQuantitative } from '@/lib/api';
 import type { QuantitativeData, LeetSection, GpaSection, LanguageSection } from '@/lib/api';
 
-const YEAR = '2026학년도';
+type Props = { initialData: QuantitativeData; year: string };
 
-type Props = { initialData: QuantitativeData };
-
-export default function QuantitativeClient({ initialData }: Props) {
+export default function QuantitativeClient({ initialData, year }: Props) {
   const [data, setData] = useState<QuantitativeData>(initialData);
 
   async function handleSaveLeet(leet: LeetSection) {
-    const updated = await patchQuantitative(YEAR, { leet });
+    const updated = await patchQuantitative(year, { leet });
     setData(updated);
   }
 
   async function handleSaveGpa(gpa: GpaSection) {
-    const updated = await patchQuantitative(YEAR, { gpa });
+    const updated = await patchQuantitative(year, { gpa });
     setData(updated);
   }
 
   async function handleSaveLanguage(language: LanguageSection) {
-    const updated = await patchQuantitative(YEAR, { language });
+    const updated = await patchQuantitative(year, { language });
     setData(updated);
   }
 

@@ -37,6 +37,7 @@ const adminNavSections: NavSection[] = [
   {
     section: '프로세스 사업',
     items: [
+      { label: '스케줄 관리', href: '/admin/schedule' },
       { label: '회원 관리', href: '/admin/users' },
       { label: '신청 관리', href: '/admin/applications' },
       { label: '매칭 관리', href: '/admin/matchings', match: '/admin/matchings' },
@@ -51,9 +52,10 @@ const adminNavSections: NavSection[] = [
     ],
   },
   {
-    section: '계정',
+    section: '설정',
     items: [
-      { label: '설정', href: '/settings', exact: true },
+      { label: '연도 설정', href: '/admin/settings/year' },
+      { label: '계정', href: '/settings', exact: true },
     ],
   },
 ];

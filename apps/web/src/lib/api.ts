@@ -168,6 +168,7 @@ export async function patchMentorBasicInfo(
 export type CycleSchedule = {
   process_year: number;
   is_active: boolean;
+  is_schedule_visible: boolean;
   mentor_recruit_start: string | null;
   mentor_recruit_end: string | null;
   mentee_apply_start: string | null;

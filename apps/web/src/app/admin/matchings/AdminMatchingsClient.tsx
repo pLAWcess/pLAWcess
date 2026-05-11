@@ -99,7 +99,7 @@ export default function AdminMatchingsClient({ initialPool }: { initialPool: Eli
       <div>
         <h1 className="text-2xl font-bold text-text-primary">매칭관리</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          멘토-멘티 매칭 프로세스를 관리합니다{pool.year != null ? ` · ${pool.year}년 풀` : ''}
+          멘토-멘티 매칭 프로세스를 관리합니다
         </p>
       </div>
 

@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
-  patchCycleSchedule, deleteCycleSchedule, createCycleSchedule, type CycleSchedule,
   getAdminApplications,
   patchAdminApplication,
   type AdminMenteeApplicationRow,
@@ -51,35 +50,7 @@ function SearchIcon() {
 
 type Tab = 'mentee' | 'mentor';
 
-type ScheduleDraft = Pick<CycleSchedule,
-  'mentor_recruit_start' | 'mentor_recruit_end' |
-  'mentee_apply_start' | 'mentee_apply_end' |
-  'matching_start' | 'matching_end' |
-  'match_announce_date' |
-  'admission_result_start' | 'admission_result_end'
->;
-
-const SCHEDULE_ROWS: { label: string; start: keyof ScheduleDraft; end?: keyof ScheduleDraft }[] = [
-  { label: '멘토 모집', start: 'mentor_recruit_start', end: 'mentor_recruit_end' },
-  { label: '멘티 신청', start: 'mentee_apply_start', end: 'mentee_apply_end' },
-  { label: '멘티-멘토 매칭', start: 'matching_start', end: 'matching_end' },
-  { label: '매칭 공지', start: 'match_announce_date' },
-  { label: '입시 결과 수집', start: 'admission_result_start', end: 'admission_result_end' },
-];
-
-function toDateInput(iso: string | null): string {
-  if (!iso) return '';
-  return iso.slice(0, 10);
-}
-
-function formatDateKo(iso: string | null): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
-}
-
 type Props = {
-  initialSchedules: CycleSchedule[];
   initialYear: number | null;
   initialMenteeData: Paged<AdminMenteeApplicationRow> | null;
   initialMentorData: Paged<AdminMentorApplicationRow> | null;
@@ -93,11 +64,21 @@ export default function AdminApplicationsClient(props: Props) {
   );
 }
 
-function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeData, initialMentorData }: Props) {
+const STATUS_FILTER_OPTIONS: { value: 'all' | ApplicationStatusLabel; label: string }[] = [
+  { value: 'all', label: '전체' },
+  { value: 'approved', label: '승인' },
+  { value: 'pending', label: '대기' },
+  { value: 'revision', label: '보완요청' },
+  { value: 'rejected', label: '거절' },
+];
+
+function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentorData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const tab: Tab = params.get('tab') === 'mentor' ? 'mentor' : 'mentee';
+
+  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatusLabel>('all');
 
   const setTab = (t: Tab) => {
     const next = new URLSearchParams(Array.from(params.entries()));
@@ -105,263 +86,29 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
     router.replace(`${pathname}?${next.toString()}`);
   };
 
-  const [schedules, setSchedules] = useState<CycleSchedule[]>(initialSchedules);
-  const [selectedYear, setSelectedYear] = useState<number | null>(
-    initialSchedules.length > 0 ? initialSchedules[0].process_year : null
-  );
-  const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
-  const yearDropdownRef = useRef<HTMLDivElement>(null);
-  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
-  const [draft, setDraft] = useState<ScheduleDraft | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [addingYear, setAddingYear] = useState(false);
-
-  const current = schedules.find((s) => s.process_year === selectedYear) ?? null;
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
-        setYearDropdownOpen(false);
-      }
-    }
-    if (yearDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [yearDropdownOpen]);
-
-  const dateErrors = useMemo(() => {
-    if (!draft) return {};
-    const errors: Partial<Record<string, string>> = {};
-    for (const { label, start, end } of SCHEDULE_ROWS) {
-      if (!end) continue;
-      const s = draft[start], e = draft[end];
-      if (s && e && e < s) errors[label] = '종료일이 시작일보다 빠릅니다';
-    }
-    return errors;
-  }, [draft]);
-
-  const hasDateError = Object.keys(dateErrors).length > 0;
-
-  function startEdit() {
-    if (!current) return;
-    setDraft({
-      mentor_recruit_start: current.mentor_recruit_start,
-      mentor_recruit_end: current.mentor_recruit_end,
-      mentee_apply_start: current.mentee_apply_start,
-      mentee_apply_end: current.mentee_apply_end,
-      matching_start: current.matching_start,
-      matching_end: current.matching_end,
-      match_announce_date: current.match_announce_date,
-      admission_result_start: current.admission_result_start,
-      admission_result_end: current.admission_result_end,
-    });
-    setIsEditingSchedule(true);
-  }
-
-  async function saveEdit() {
-    if (!draft || !selectedYear) return;
-    setSaving(true);
-    try {
-      const updated = await patchCycleSchedule(selectedYear, draft);
-      setSchedules((prev) => prev.map((s) => s.process_year === selectedYear ? updated : s));
-      setIsEditingSchedule(false);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function toggleActive() {
-    if (!selectedYear || !current) return;
-    const newActive = !current.is_active;
-    const updated = await patchCycleSchedule(selectedYear, { is_active: newActive });
-    setSchedules((prev) => prev.map((s) =>
-      s.process_year === selectedYear ? updated : newActive ? { ...s, is_active: false } : s
-    ));
-  }
-
-  async function handleDelete() {
-    if (!selectedYear || !current) return;
-    if (!confirm(`${selectedYear}년 스케줄을 정말 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
-    try {
-      await deleteCycleSchedule(selectedYear);
-      const next = schedules.filter((s) => s.process_year !== selectedYear);
-      setSchedules(next);
-      setSelectedYear(next.length > 0 ? next[0].process_year : null);
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '삭제 실패');
-    }
-  }
-
-  async function handleAddYear() {
-    const nextYear = schedules.length > 0
-      ? Math.max(...schedules.map((s) => s.process_year)) + 1
-      : new Date().getFullYear();
-    setAddingYear(true);
-    try {
-      const created = await createCycleSchedule(nextYear);
-      setSchedules((prev) => [created, ...prev]);
-      setSelectedYear(created.process_year);
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '연도 생성 실패');
-    } finally {
-      setAddingYear(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-8">
-      {/* 페이지 헤더 */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
           <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* 연도 선택 커스텀 드롭다운 */}
-          <div className="relative" ref={yearDropdownRef}>
+        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border shrink-0">
+          {STATUS_FILTER_OPTIONS.map(({ value, label }) => (
             <button
-              onClick={() => setYearDropdownOpen((o) => !o)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-            >
-              <span className="text-sm font-semibold text-text-primary">
-                {selectedYear != null ? `${selectedYear}년` : '연도'}
-              </span>
-              {current?.is_active && (
-                <span className="flex items-center gap-1 text-xs font-medium text-green-600">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />활성
-                </span>
-              )}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-text-placeholder transition-transform ${yearDropdownOpen ? 'rotate-180' : ''}`}>
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-            {yearDropdownOpen && schedules.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-border rounded-lg shadow-md overflow-hidden min-w-25">
-                {schedules.map((s) => (
-                  <button
-                    key={s.process_year}
-                    onClick={() => { setSelectedYear(s.process_year); setYearDropdownOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-                      s.process_year === selectedYear
-                        ? 'bg-brand-light text-brand font-semibold'
-                        : 'text-text-primary hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>{s.process_year}년</span>
-                    {s.is_active && <span className="w-1.5 h-1.5 bg-green-500 rounded-full ml-2" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 구분선 */}
-          <div className="w-px h-5 bg-border" />
-
-          {/* 액션 버튼 그룹 */}
-          {current && (
-            <button
-              onClick={toggleActive}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap ${
-                current.is_active
-                  ? 'text-text-secondary border-border hover:bg-gray-50'
-                  : 'text-brand border-brand/40 bg-brand/5 hover:bg-brand/10'
+              key={value}
+              onClick={() => setStatusFilter(value)}
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                statusFilter === value
+                  ? 'bg-white text-text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
-              {current.is_active ? '노출 끄기' : '노출 켜기'}
+              {label}
             </button>
-          )}
-          <button
-            onClick={handleAddYear}
-            disabled={addingYear}
-            className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 whitespace-nowrap"
-          >
-            + 새 연도
-          </button>
-          {current && (
-            <button
-              onClick={handleDelete}
-              className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors whitespace-nowrap"
-            >
-              연도 삭제
-            </button>
-          )}
+          ))}
         </div>
       </div>
-
-      {/* 사업 스케줄 */}
-      <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-base font-semibold text-text-primary">pLAWcess 사업 스케줄</h2>
-          {current && (
-            isEditingSchedule ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsEditingSchedule(false)}
-                  className="px-3 py-1.5 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
-                >취소</button>
-                <button
-                  onClick={saveEdit}
-                  disabled={saving || hasDateError}
-                  className="px-3 py-1.5 text-sm text-white bg-brand rounded-md hover:bg-brand-dark disabled:opacity-50 transition-colors"
-                >{saving ? '저장 중...' : '완료'}</button>
-              </div>
-            ) : (
-              <button
-                onClick={startEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-                수정
-              </button>
-            )
-          )}
-        </div>
-        {!current ? (
-          <p className="text-sm text-text-secondary py-4">등록된 스케줄이 없습니다.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {SCHEDULE_ROWS.map(({ label, start, end }) => (
-              <li key={label} className="grid grid-cols-[180px_1fr] items-center py-4 gap-4">
-                <span className="text-sm font-medium text-text-primary">{label}</span>
-                {isEditingSchedule && draft ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <input
-                      type="date"
-                      value={toDateInput(draft[start])}
-                      onChange={(e) => setDraft((d) => d ? { ...d, [start]: e.target.value || null } : d)}
-                      className="px-3 py-1.5 text-sm border border-border-input rounded-md bg-white focus:outline-none focus:border-brand"
-                    />
-                    {end && (
-                      <>
-                        <span className="text-sm text-text-secondary">~</span>
-                        <input
-                          type="date"
-                          value={toDateInput(draft[end])}
-                          onChange={(e) => setDraft((d) => d ? { ...d, [end]: e.target.value || null } : d)}
-                          className={`px-3 py-1.5 text-sm border rounded-md bg-white focus:outline-none ${dateErrors[label] ? 'border-red-400 focus:border-red-500' : 'border-border-input focus:border-brand'}`}
-                        />
-                      </>
-                    )}
-                    {dateErrors[label] && (
-                      <span className="text-xs text-red-500">{dateErrors[label]}</span>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-sm text-text-secondary">
-                    {end
-                      ? `${formatDateKo(current[start])} ~ ${formatDateKo(current[end])}`
-                      : formatDateKo(current[start])
-                    }
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       {/* 탭 */}
       <div className="flex gap-1 border-b border-border">
@@ -372,11 +119,12 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
       {tab === 'mentee' ? (
         <ApplicationPanel<AdminMenteeApplicationRow>
           role="mentee"
-          year={selectedYear}
+          year={initialYear}
           searchKeys={['name', 'studentId', 'major']}
           kindLabel="멘티"
           initialData={initialMenteeData}
           initialYear={initialYear}
+          statusFilter={statusFilter}
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
             { label: '전공', value: a.major },
@@ -392,11 +140,12 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
       ) : (
         <ApplicationPanel<AdminMentorApplicationRow>
           role="mentor"
-          year={selectedYear}
+          year={initialYear}
           searchKeys={['name', 'studentId', 'school']}
           kindLabel="멘토"
           initialData={initialMentorData}
           initialYear={initialYear}
+          statusFilter={statusFilter}
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
             { label: '소속 학교', value: a.school ?? '-' },
@@ -448,6 +197,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   kindLabel,
   initialData,
   initialYear,
+  statusFilter,
 }: {
   role: 'mentee' | 'mentor';
   year: number | null;
@@ -457,6 +207,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   kindLabel: string;
   initialData?: Paged<T> | null;
   initialYear?: number | null;
+  statusFilter: 'all' | ApplicationStatusLabel;
 }) {
   const [data, setData] = useState<T[]>((initialData?.data ?? []) as T[]);
   const [totalCount, setTotalCount] = useState(initialData?.totalCount ?? 0);
@@ -465,7 +216,6 @@ function ApplicationPanel<T extends AdminApplicationRow>({
   const [error, setError] = useState<string | null>(null);
 
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatusLabel>('all');
   const [sort, setSort] = useState<SortState<T>>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -536,31 +286,14 @@ function ApplicationPanel<T extends AdminApplicationRow>({
 
   return (
     <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
-      <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
-        <div className="flex items-center gap-2 text-text-placeholder">
-          <SearchIcon />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="검색..."
-            className="w-44 sm:w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
-          />
-        </div>
-        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border overflow-x-auto">
-          {(['all', 'approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                statusFilter === s
-                  ? 'bg-white text-text-primary shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {s === 'all' ? '전체' : STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-2 text-text-placeholder mb-4">
+        <SearchIcon />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="검색..."
+          className="w-44 sm:w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder"
+        />
       </div>
 
       <div className="overflow-x-auto">

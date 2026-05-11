@@ -14,7 +14,6 @@ import {
 } from '@/constants/basic-info';
 import { patchBasicInfo, type AdmissionSlot } from '@/lib/api';
 
-const YEAR = '2026학년도';
 const YEAR_FIELDS: (keyof PersonalInfo)[] = ['admissionYear', 'graduationYear'];
 
 function validateYear(val: string): string {
@@ -26,9 +25,10 @@ type Props = {
   initialPersonal: PersonalInfo;
   initialAdmission: AdmissionInfo;
   initialPreferredGroup: '가' | '나' | null;
+  year: string;
 };
 
-export default function BasicInfoClient({ initialPersonal, initialAdmission, initialPreferredGroup }: Props) {
+export default function BasicInfoClient({ initialPersonal, initialAdmission, initialPreferredGroup, year }: Props) {
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>(initialPersonal);
   const [draft, setDraft] = useState<PersonalInfo>(initialPersonal);
   const [isEditing, setIsEditing] = useState(false);
@@ -60,7 +60,7 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
     if (Object.keys(newYearErrors).length > 0) return;
     setPersonalSaving(true);
     try {
-      await patchBasicInfo(YEAR, {
+      await patchBasicInfo(year, {
         personal: {
           birthDate: draft.birthDate,
           gender: draft.gender,
@@ -100,7 +100,7 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
         school: e.school,
         isSpecial: e.type === '특별전형',
       });
-      await patchBasicInfo(YEAR, {
+      await patchBasicInfo(year, {
         admission: {
           가: toApi(admissionDraft.가),
           나: toApi(admissionDraft.나),
