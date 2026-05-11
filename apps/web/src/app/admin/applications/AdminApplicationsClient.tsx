@@ -706,7 +706,7 @@ function ApplicationEditModal<T extends AdminApplicationRow>({
         <div className="px-6 py-5 flex flex-col gap-6 overflow-y-auto">
           <div>
             <p className="text-xs font-medium text-text-secondary mb-2">신청자 정보</p>
-            <div className="bg-page-bg border border-border rounded-md px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+            <div className="bg-page-bg border border-border rounded-md px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
               <div>
                 <span className="block text-xs text-text-secondary">이름</span>
                 <p className="text-sm font-medium text-text-primary">{target.name}</p>
@@ -722,7 +722,7 @@ function ApplicationEditModal<T extends AdminApplicationRow>({
 
           <div>
             <p className="text-sm font-medium text-text-primary mb-3">신청 상태</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {(['approved', 'pending', 'revision', 'rejected'] as const).map((s) => (
                 <button
                   key={s}

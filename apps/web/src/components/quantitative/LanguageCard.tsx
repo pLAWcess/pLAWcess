@@ -39,7 +39,7 @@ export default function LanguageCard({ initialData, onSave }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">어학 성적</h2>
         {isEditing
@@ -47,7 +47,7 @@ export default function LanguageCard({ initialData, onSave }: Props) {
           : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
         }
       </div>
-      <div className="grid grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-8">
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-text-secondary">{label}</span>
