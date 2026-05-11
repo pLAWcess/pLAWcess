@@ -391,8 +391,9 @@ model AdminMemo {
 //    - 모든 날짜 필드 nullable: admin이 항목별로 부분 입력 가능
 // ----------------------------------------------------------------
 model CycleSchedule {
-  process_year Int     @id
-  is_active    Boolean @default(false)
+  process_year         Int     @id
+  is_active            Boolean @default(false)
+  is_schedule_visible  Boolean @default(false)
 
   mentor_recruit_start   DateTime? @db.Date
   mentor_recruit_end     DateTime? @db.Date
