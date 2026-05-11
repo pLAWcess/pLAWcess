@@ -1,9 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
-  type CycleSchedule,
   getAdminApplications,
   patchAdminApplication,
   type AdminMenteeApplicationRow,
@@ -52,7 +51,6 @@ function SearchIcon() {
 type Tab = 'mentee' | 'mentor';
 
 type Props = {
-  initialSchedules: CycleSchedule[];
   initialYear: number | null;
   initialMenteeData: Paged<AdminMenteeApplicationRow> | null;
   initialMentorData: Paged<AdminMentorApplicationRow> | null;
@@ -66,7 +64,7 @@ export default function AdminApplicationsClient(props: Props) {
   );
 }
 
-function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeData, initialMentorData }: Props) {
+function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentorData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -78,73 +76,11 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
     router.replace(`${pathname}?${next.toString()}`);
   };
 
-  const [schedules] = useState<CycleSchedule[]>(initialSchedules);
-  const [selectedYear, setSelectedYear] = useState<number | null>(
-    initialSchedules.length > 0 ? initialSchedules[0].process_year : null
-  );
-  const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
-  const yearDropdownRef = useRef<HTMLDivElement>(null);
-
-  const current = schedules.find((s) => s.process_year === selectedYear) ?? null;
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
-        setYearDropdownOpen(false);
-      }
-    }
-    if (yearDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [yearDropdownOpen]);
-
   return (
     <div className="flex flex-col gap-8">
-      {/* 페이지 헤더 */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
-          <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* 연도 선택 커스텀 드롭다운 */}
-          <div className="relative" ref={yearDropdownRef}>
-            <button
-              onClick={() => setYearDropdownOpen((o) => !o)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-            >
-              <span className="text-sm font-semibold text-text-primary">
-                {selectedYear != null ? `${selectedYear}년` : '연도'}
-              </span>
-              {current?.is_active && (
-                <span className="flex items-center gap-1 text-xs font-medium text-green-600">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />활성
-                </span>
-              )}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-text-placeholder transition-transform ${yearDropdownOpen ? 'rotate-180' : ''}`}>
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-            {yearDropdownOpen && schedules.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-border rounded-lg shadow-md overflow-hidden min-w-25">
-                {schedules.map((s) => (
-                  <button
-                    key={s.process_year}
-                    onClick={() => { setSelectedYear(s.process_year); setYearDropdownOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-                      s.process_year === selectedYear
-                        ? 'bg-brand-light text-brand font-semibold'
-                        : 'text-text-primary hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>{s.process_year}년</span>
-                    {s.is_active && <span className="w-1.5 h-1.5 bg-green-500 rounded-full ml-2" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">신청관리</h1>
+        <p className="mt-1 text-sm text-text-secondary">회원의 신청 내역을 관리합니다</p>
       </div>
 
       {/* 탭 */}
@@ -156,7 +92,7 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
       {tab === 'mentee' ? (
         <ApplicationPanel<AdminMenteeApplicationRow>
           role="mentee"
-          year={selectedYear}
+          year={initialYear}
           searchKeys={['name', 'studentId', 'major']}
           kindLabel="멘티"
           initialData={initialMenteeData}
@@ -176,7 +112,7 @@ function ApplicationsPageContent({ initialSchedules, initialYear, initialMenteeD
       ) : (
         <ApplicationPanel<AdminMentorApplicationRow>
           role="mentor"
-          year={selectedYear}
+          year={initialYear}
           searchKeys={['name', 'studentId', 'school']}
           kindLabel="멘토"
           initialData={initialMentorData}
