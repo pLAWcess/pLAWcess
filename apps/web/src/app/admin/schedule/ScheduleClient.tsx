@@ -140,18 +140,25 @@ export default function ScheduleClient({ initialSchedules }: Props) {
               <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-base font-semibold text-text-primary">사업 일정</h2>
-                  <button
-                    onClick={toggleVisible}
-                    disabled={togglingVisible || isEditing}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border transition-colors disabled:opacity-50 ${
-                      selected.is_schedule_visible
-                        ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                        : 'bg-gray-100 text-text-secondary border-border hover:bg-gray-200'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${selected.is_schedule_visible ? 'bg-green-500' : 'bg-gray-400'}`} />
-                    {selected.is_schedule_visible ? '멘티·멘토에게 공개' : '비공개'}
-                  </button>
+                  {selected.is_active ? (
+                    <button
+                      onClick={toggleVisible}
+                      disabled={togglingVisible || isEditing}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border transition-colors disabled:opacity-50 ${
+                        selected.is_schedule_visible
+                          ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                          : 'bg-gray-100 text-text-secondary border-border hover:bg-gray-200'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${selected.is_schedule_visible ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      {selected.is_schedule_visible ? '멘티·멘토에게 공개' : '비공개'}
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border bg-gray-50 text-text-placeholder border-border cursor-not-allowed">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      비활성 연도
+                    </span>
+                  )}
                 </div>
                 {isEditing ? (
                   <div className="flex gap-2">
@@ -179,9 +186,11 @@ export default function ScheduleClient({ initialSchedules }: Props) {
                 )}
               </div>
               <p className="text-xs text-text-secondary mb-4">
-                {selected.is_schedule_visible
-                  ? '현재 멘티·멘토 화면에 스케줄이 표시됩니다.'
-                  : '현재 스케줄이 숨김 상태입니다. 날짜를 입력한 뒤 공개로 전환하세요.'}
+                {!selected.is_active
+                  ? '비활성 연도입니다. 연도 설정에서 활성화한 후에만 공개할 수 있습니다.'
+                  : selected.is_schedule_visible
+                    ? '현재 멘티·멘토 화면에 스케줄이 표시됩니다.'
+                    : '현재 스케줄이 숨김 상태입니다. 날짜를 입력한 뒤 공개로 전환하세요.'}
               </p>
 
               <ul className="divide-y divide-border">
