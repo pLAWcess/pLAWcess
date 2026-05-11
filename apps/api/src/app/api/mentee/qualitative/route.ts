@@ -179,7 +179,7 @@ export async function PATCH(req: NextRequest) {
 // JSON PATCH — 기존 동작 (텍스트만 저장)
 // ----------------------------------------------------------------
 async function handleJsonPatch(req: NextRequest, userId: string, processYear: number) {
-  let body: { careerGoal?: string; activities?: ActivityForm[] };
+  let body: { careerGoal?: string; activities?: ActivityForm[]; reorderMapping?: number[] };
   try {
     body = await req.json();
   } catch {
@@ -192,6 +192,42 @@ async function handleJsonPatch(req: NextRequest, userId: string, processYear: nu
   }
   if (body.activities !== undefined) {
     updateData.qualitative_activities = body.activities;
+  }
+
+  // reorderMapping이 있으면 star_analysis와 star_input_hashes 재매핑
+  if (body.reorderMapping && body.reorderMapping.length > 0) {
+    const mapping = body.reorderMapping; // mapping[newIdx] = oldIdx
+    // oldIdx -> newIdx 역방향 맵
+    const reverseMap = new Map<number, number>();
+    mapping.forEach((oldIdx, newIdx) => reverseMap.set(oldIdx, newIdx));
+
+    const existingRecord = await prisma.menteeRecord.findUnique({
+      where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+      select: { star_analysis: true, star_input_hashes: true },
+    });
+
+    if (existingRecord) {
+      const oldStar = existingRecord.star_analysis as StarAnalysisJson | null;
+      if (oldStar?.activities && Array.isArray(oldStar.activities)) {
+        const remapped = oldStar.activities.map((s) => ({
+          ...s,
+          activity_index: reverseMap.has(s.activity_index)
+            ? reverseMap.get(s.activity_index)!
+            : s.activity_index,
+        }));
+        updateData.star_analysis = { ...oldStar, activities: remapped };
+      }
+
+      const oldHashes = (existingRecord.star_input_hashes ?? {}) as Record<string, string>;
+      const newHashes: Record<string, string> = {};
+      for (const [k, v] of Object.entries(oldHashes)) {
+        const oldIdx = parseInt(k, 10);
+        if (Number.isNaN(oldIdx)) continue;
+        const newIdx = reverseMap.get(oldIdx);
+        if (newIdx !== undefined) newHashes[String(newIdx)] = v;
+      }
+      updateData.star_input_hashes = newHashes;
+    }
   }
 
   const record = await prisma.menteeRecord.upsert({
