@@ -7,6 +7,22 @@ import {
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
   type StoryOutline, type Attachment,
 } from '@/lib/api';
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const TABS = ['대시보드', '교내', '대외', '사회경험', '자격·시험'] as const;
 type Tab = typeof TABS[number];
@@ -148,6 +164,15 @@ function IconSparkles({ className = 'w-5 h-5' }: { className?: string }) {
       <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
       <path d="M19 15l.6 1.4L21 17l-1.4.6L19 19l-.6-1.4L17 17l1.4-.6L19 15z" />
       <path d="M5 16l.6 1.4L7 18l-1.4.6L5 20l-.6-1.4L3 18l1.4-.6L5 16z" />
+    </svg>
+  );
+}
+function IconDragHandle({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="8" y1="7" x2="16" y2="7" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+      <line x1="8" y1="17" x2="16" y2="17" />
     </svg>
   );
 }
@@ -425,11 +450,11 @@ function ActivityFormCard({
 
   return (
     <div className="relative">
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-base font-semibold text-text-primary mb-6">활동 정보 입력</h2>
       <hr className="border-border mb-6" />
 
-      <div className="grid grid-cols-2 gap-8 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-6">
         <div className="flex flex-col gap-2">
           <label className="text-sm text-text-secondary">활동명 <span className="text-red-500">*</span></label>
           <input type="text" value={form.name} onChange={(e) => onChange({ ...form, name: e.target.value })}
@@ -444,7 +469,7 @@ function ActivityFormCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-6">
         <div className="flex flex-col gap-2">
           <label className="text-sm text-text-secondary">시작일</label>
           <DateInput
@@ -538,7 +563,7 @@ function CareerGoalCard({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-text-primary">희망 진로</h2>
         {isEditing
@@ -636,7 +661,7 @@ function ActivityCard({
 
   return (
     <div className="flex flex-col gap-3 relative">
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+      <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
           <button
@@ -708,6 +733,41 @@ function ActivityCard({
   );
 }
 
+function SortableActivityCard({
+  id,
+  sortDisabled,
+  ...props
+}: React.ComponentProps<typeof ActivityCard> & { id: string; sortDisabled?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: sortDisabled,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {!sortDisabled && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute -left-7 top-6 cursor-grab active:cursor-grabbing text-text-placeholder hover:text-text-secondary touch-none select-none"
+          aria-label="드래그하여 순서 변경"
+        >
+          <IconDragHandle />
+        </div>
+      )}
+      <ActivityCard {...props} />
+    </div>
+  );
+}
+
 // ----------------------------------------------------------------
 // 대시보드: 활동 목록 표
 // 사이드바에서 통합 키워드를 선택하면, 해당 통합으로 묶이는 raw 키워드만 하이라이트.
@@ -725,7 +785,7 @@ function ActivityListTable({
   selectedUnified: string | null;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-lg font-semibold text-text-primary mb-1">활동 목록</h2>
       <p className="text-xs text-text-secondary mb-3">
         오른쪽 키워드를 누르면 의미가 같은 활동별 키워드가 강조돼요.
@@ -919,7 +979,7 @@ function StoryOutlineCard({ outline }: { outline: StoryOutline }) {
     { label: '결론', text: outline.conclusion },
   ];
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-lg font-semibold text-text-primary mb-1">AI 추천 자소서 흐름</h2>
       <p className="text-sm text-text-secondary mb-5">분석 결과를 바탕으로 자소서의 흐름을 제안해 드려요.</p>
       <div className="flex flex-col gap-3">
@@ -982,6 +1042,11 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
   const [draftFiles, setDraftFiles] = useState<Record<string, File[]>>({});
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
   const [selectedUnified, setSelectedUnified] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  );
 
   function getDraftFiles(category: CategoryTab, index: number): File[] {
     return draftFiles[`${category}:${index}`] ?? [];
@@ -1231,6 +1296,49 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
     }
   }
 
+  async function handleReorder(category: CategoryTab, event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const categoryItems = serverActivities
+      .map((a, idx) => ({ activity: a, idx }))
+      .filter((x) => x.activity.category === category);
+
+    const oldCategoryPos = categoryItems.findIndex((x) => String(x.idx) === active.id);
+    const newCategoryPos = categoryItems.findIndex((x) => String(x.idx) === over.id);
+    if (oldCategoryPos === -1 || newCategoryPos === -1) return;
+
+    const reorderedCategory = arrayMove(categoryItems, oldCategoryPos, newCategoryPos);
+    const oldCategoryGlobalIdxes = categoryItems.map((x) => x.idx);
+    const newCategoryGlobalIdxes = reorderedCategory.map((x) => x.idx);
+
+    const newActivities = [...serverActivities];
+    oldCategoryGlobalIdxes.forEach((oldPos, i) => {
+      newActivities[oldPos] = reorderedCategory[i].activity;
+    });
+
+    const reorderMapping = serverActivities.map((_, oldIdx) => {
+      const catPos = oldCategoryGlobalIdxes.indexOf(oldIdx);
+      if (catPos === -1) return oldIdx;
+      return newCategoryGlobalIdxes[catPos];
+    });
+
+    const prevActivities = serverActivities;
+    setServerActivities(newActivities);
+
+    try {
+      const data = await patchQualitative(YEAR, {
+        activities: newActivities,
+        reorderMapping,
+      });
+      applyData(data);
+    } catch (err) {
+      console.error(err);
+      setServerActivities(prevActivities);
+      alert('순서 저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+    }
+  }
+
   function toggleExpand(idx: number) {
     setExpandedSet((prev) => {
       const next = new Set(prev);
@@ -1315,40 +1423,56 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
   function renderCategoryTab(category: CategoryTab) {
     const inTab = activityWithIndex.filter((x) => x.activity.category === category);
     const draftList = drafts[category];
+    const sortDisabled = submitting || editingIdx !== null || inTab.length <= 1;
 
     return (
       <div className="flex flex-col gap-6">
-        {inTab.map((x) => {
-          if (editingIdx === x.idx && editDraft) {
-            return (
-              <ActivityFormCard
-                key={`edit-${x.idx}`}
-                form={editDraft}
-                onChange={(updated) => setEditDraft(updated)}
-                newFiles={editFiles}
-                onAddFiles={(files) => setEditFiles((prev) => [...prev, ...files])}
-                onRemoveNewFile={(idx) => setEditFiles((prev) => prev.filter((_, i) => i !== idx))}
-                onCancel={cancelEdit}
-                onSubmit={saveEdit}
-                submitting={submitting}
-                submitLabel="수정 및 재분석"
-              />
-            );
-          }
-          return (
-            <ActivityCard
-              key={`saved-${x.idx}`}
-              activity={x.activity}
-              star={findStar(x.idx)}
-              expanded={expandedSet.has(x.idx)}
-              onToggle={() => toggleExpand(x.idx)}
-              onEdit={() => startEdit(x.idx)}
-              onDelete={() => deleteActivity(x.idx)}
-              deleting={deletingIdx === x.idx}
-              isAnalyzing={analyzingIdx === x.idx}
-            />
-          );
-        })}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => handleReorder(category, event)}
+        >
+          <SortableContext
+            items={inTab.map((x) => String(x.idx))}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className={`flex flex-col gap-6 ${!sortDisabled ? 'pl-7' : ''}`}>
+              {inTab.map((x) => {
+                if (editingIdx === x.idx && editDraft) {
+                  return (
+                    <ActivityFormCard
+                      key={`edit-${x.idx}`}
+                      form={editDraft}
+                      onChange={(updated) => setEditDraft(updated)}
+                      newFiles={editFiles}
+                      onAddFiles={(files) => setEditFiles((prev) => [...prev, ...files])}
+                      onRemoveNewFile={(idx) => setEditFiles((prev) => prev.filter((_, i) => i !== idx))}
+                      onCancel={cancelEdit}
+                      onSubmit={saveEdit}
+                      submitting={submitting}
+                      submitLabel="수정 및 재분석"
+                    />
+                  );
+                }
+                return (
+                  <SortableActivityCard
+                    key={`saved-${x.idx}`}
+                    id={String(x.idx)}
+                    sortDisabled={sortDisabled}
+                    activity={x.activity}
+                    star={findStar(x.idx)}
+                    expanded={expandedSet.has(x.idx)}
+                    onToggle={() => toggleExpand(x.idx)}
+                    onEdit={() => startEdit(x.idx)}
+                    onDelete={() => deleteActivity(x.idx)}
+                    deleting={deletingIdx === x.idx}
+                    isAnalyzing={analyzingIdx === x.idx}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
         {draftList.map((form, i) => (
           <ActivityFormCard
             key={`draft-${i}`}
@@ -1413,14 +1537,14 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
 
       {pageLoading ? (
         <div className="flex flex-col gap-6 animate-pulse">
-          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+          <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
             <div className="h-6 w-40 bg-gray-200 rounded mb-4" />
             <div className="space-y-3">
               <div className="h-5 w-full bg-gray-100 rounded" />
               <div className="h-5 w-3/4 bg-gray-100 rounded" />
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+          <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
             <div className="h-6 w-32 bg-gray-200 rounded mb-6" />
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
@@ -1432,7 +1556,7 @@ export default function QualitativeClient({ initialData }: { initialData?: Quali
               ))}
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-6">
+          <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
             <div className="h-6 w-24 bg-gray-200 rounded mb-4" />
             <div className="h-5 w-1/2 bg-gray-100 rounded" />
           </div>
