@@ -117,19 +117,20 @@ export default function Sidebar({ mobileOpen, onClose, initialRole }: SidebarPro
 
   return (
     <>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={onClose} />
-      )}
-      <aside
-        className={`
-          fixed top-16 left-0 h-[calc(100vh-4rem)] z-50 w-44 bg-white border-r border-border flex flex-col py-6 shrink-0
-          transition-transform duration-200
-          md:static md:top-auto md:h-auto md:translate-x-0 md:z-auto
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-      >
+      {/* 데스크탑 사이드바 */}
+      <aside className="hidden md:flex w-44 bg-white border-r border-border flex-col py-6 shrink-0">
         {navContent}
       </aside>
+
+      {/* 모바일 드롭다운 */}
+      {mobileOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={onClose} />
+          <div className="md:hidden fixed top-16 left-0 right-0 z-50 bg-white border-b border-border shadow-md px-4 py-3">
+            {navContent}
+          </div>
+        </>
+      )}
     </>
   );
 }
