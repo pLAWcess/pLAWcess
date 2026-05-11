@@ -6,6 +6,7 @@ const COOKIE_NAME = "plawcess_token";
 const EXPIRES_IN = "7d";
 const ISSUER = "pLAWcess";
 const SESSION_AUDIENCE = "session";
+const SECURE_FLAG = process.env.NODE_ENV === "production" ? "; Secure" : "";
 
 export type TokenPayload = {
   user_id: string;
@@ -40,9 +41,9 @@ export function getTokenFromCookie(req: NextRequest): TokenPayload | null {
 
 export function makeAuthCookie(token: string): string {
   const maxAge = 60 * 60 * 24 * 7; // 7일
-  return `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+  return `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax${SECURE_FLAG}`;
 }
 
 export function makeClearCookie(): string {
-  return `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`;
+  return `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${SECURE_FLAG}`;
 }
