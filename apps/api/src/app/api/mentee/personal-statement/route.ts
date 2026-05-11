@@ -13,18 +13,42 @@ function getProcessYear(req: NextRequest): number {
   return match ? parseInt(match[0]) : new Date().getFullYear();
 }
 
-async function resolveHwp(
+async function resolveGroup(
   personalCopy: Uint8Array | null | undefined,
+  textAnswers: unknown,
   schoolName: string | null | undefined,
   year: number,
-): Promise<string | null> {
-  if (personalCopy) return Buffer.from(personalCopy).toString("base64");
-  if (!schoolName) return null;
-  const template = await prisma.schoolPersonalStatement.findUnique({
-    where: { school_name_process_year: { school_name: schoolName, process_year: year } },
-    select: { hwp_data: true },
-  });
-  return template?.hwp_data ? Buffer.from(template.hwp_data).toString("base64") : null;
+) {
+  const school = schoolName ?? null;
+
+  // 멘티 개인 편집본 우선, 없으면 학교 양식 폴백
+  let hwp: string | null = null;
+  let questions = null;
+  let templateExists = false;
+
+  if (schoolName) {
+    const template = await prisma.schoolPersonalStatement.findUnique({
+      where: { school_name_process_year: { school_name: schoolName, process_year: year } },
+      select: { hwp_data: true, questions: true },
+    });
+    if (template) {
+      templateExists = true;
+      questions = template.questions ?? null;
+      if (!personalCopy && template.hwp_data) {
+        hwp = Buffer.from(template.hwp_data).toString("base64");
+      }
+    }
+  }
+
+  if (personalCopy) hwp = Buffer.from(personalCopy).toString("base64");
+
+  return {
+    school,
+    hwp,
+    questions,
+    textAnswers: textAnswers ?? null,
+    templateExists,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -39,20 +63,30 @@ export async function GET(req: NextRequest) {
       target_school_na: true,
       personal_statement_hwp_ga: true,
       personal_statement_hwp_na: true,
+      personal_statement_text_ga: true,
+      personal_statement_text_na: true,
     },
   });
 
-  const [gaHwp, naHwp] = await Promise.all([
-    resolveHwp(record?.personal_statement_hwp_ga, record?.target_school_ga, year),
-    resolveHwp(record?.personal_statement_hwp_na, record?.target_school_na, year),
+  const [ga, na] = await Promise.all([
+    resolveGroup(
+      record?.personal_statement_hwp_ga,
+      record?.personal_statement_text_ga,
+      record?.target_school_ga,
+      year,
+    ),
+    resolveGroup(
+      record?.personal_statement_hwp_na,
+      record?.personal_statement_text_na,
+      record?.target_school_na,
+      year,
+    ),
   ]);
 
-  return NextResponse.json({
-    ga: { school: record?.target_school_ga ?? null, hwp: gaHwp },
-    na: { school: record?.target_school_na ?? null, hwp: naHwp },
-  });
+  return NextResponse.json({ ga, na });
 }
 
+// HWP 저장
 export async function PATCH(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

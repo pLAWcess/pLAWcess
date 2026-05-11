@@ -11,9 +11,10 @@ export default async function PersonalStatementPage() {
     `/api/mentee/personal-statement?year=${encodeURIComponent(YEAR)}`,
     token,
   );
+  const empty = { school: null, hwp: null, questions: null, textAnswers: null, templateExists: false };
   return (
     <PersonalStatementClient
-      initialData={data ?? { ga: { school: null, hwp: null }, na: { school: null, hwp: null } }}
+      initialData={data ?? { ga: empty, na: empty }}
     />
   );
 }

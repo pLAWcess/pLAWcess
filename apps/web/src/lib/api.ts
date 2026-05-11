@@ -779,7 +779,25 @@ export async function getAnnouncement(id: string): Promise<AnnouncementRow> {
 // Personal Statement (멘티)
 // ----------------------------------------------------------------
 
-export type PersonalStatementGroupInfo = { school: string | null; hwp: string | null };
+export type Question = {
+  id: string;
+  order: number;
+  prompt: string;
+  charLimit: number | null;
+};
+
+export type TextAnswer = {
+  questionId: string;
+  text: string;
+};
+
+export type PersonalStatementGroupInfo = {
+  school: string | null;
+  hwp: string | null;
+  questions: Question[] | null;
+  textAnswers: TextAnswer[] | null;
+  templateExists: boolean;
+};
 export type PersonalStatementData = {
   ga: PersonalStatementGroupInfo;
   na: PersonalStatementGroupInfo;
@@ -807,6 +825,23 @@ export async function uploadPersonalStatement(
   await jsonOrError(res, "자기소개서 저장 실패");
 }
 
+export async function saveTextAnswers(
+  year: string,
+  group: "ga" | "na",
+  answers: TextAnswer[],
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/personal-statement/text?year=${encodeURIComponent(year)}&group=${group}`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers }),
+    },
+  );
+  await jsonOrError(res, "자기소개서 텍스트 저장 실패");
+}
+
 // ----------------------------------------------------------------
 // Personal Statement 양식 관리 (어드민)
 // ----------------------------------------------------------------
@@ -814,6 +849,14 @@ export async function uploadPersonalStatement(
 export type SchoolTemplate = {
   school_name: string;
   uploaded_at: string;
+  updated_at: string;
+  questions?: Question[] | null;
+};
+
+export type SchoolTemplateDetail = {
+  school_name: string;
+  hwp: string | null;
+  questions: Question[] | null;
   updated_at: string;
 };
 
@@ -825,6 +868,17 @@ export async function getSchoolTemplates(
     { credentials: "include" },
   );
   return jsonOrError(res, "자기소개서 양식 목록 조회 실패");
+}
+
+export async function getSchoolTemplateDetail(
+  year: string,
+  school: string,
+): Promise<SchoolTemplateDetail> {
+  const res = await fetch(
+    `${API_BASE}/api/admin/personal-statements?year=${encodeURIComponent(year)}&school=${encodeURIComponent(school)}`,
+    { credentials: "include" },
+  );
+  return jsonOrError(res, "자기소개서 양식 조회 실패");
 }
 
 export async function uploadSchoolTemplate(
@@ -839,4 +893,21 @@ export async function uploadSchoolTemplate(
     { method: "PATCH", credentials: "include", body },
   );
   await jsonOrError(res, "자기소개서 양식 저장 실패");
+}
+
+export async function updateSchoolQuestions(
+  year: string,
+  school: string,
+  questions: Question[],
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/admin/personal-statements?year=${encodeURIComponent(year)}&school=${encodeURIComponent(school)}`,
+    {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questions }),
+    },
+  );
+  await jsonOrError(res, "문항 저장 실패");
 }

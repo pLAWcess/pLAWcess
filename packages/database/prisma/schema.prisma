@@ -194,9 +194,11 @@ model MenteeRecord {
   ai_summary_hash   String?   @db.VarChar(64) // 통합 분석(키워드+자소서) 캐시 hash
   star_input_hashes Json? // 활동별 단일 STAR 분석 캐시: { "0": hash, "1": hash, ... }
 
-  // 자기소개서 (.hwp 바이너리) — 가군/나군별 멘티 개인 편집본
-  personal_statement_hwp_ga Bytes?
-  personal_statement_hwp_na Bytes?
+  // 자기소개서 — 가군/나군별 멘티 개인 편집본 (.hwp) + 문항별 텍스트 답변
+  personal_statement_hwp_ga  Bytes?
+  personal_statement_hwp_na  Bytes?
+  personal_statement_text_ga Json? // [{ questionId, text }]
+  personal_statement_text_na Json? // [{ questionId, text }]
 
   // 4단계: 기타 고민
   strengths_weaknesses String? @db.Text
@@ -497,7 +499,8 @@ model SchoolPersonalStatement {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   school_name  String   @db.VarChar(100)
   process_year Int
-  hwp_data     Bytes
+  hwp_data     Bytes?   // nullable — 문항만 먼저 등록하는 경우 허용
+  questions    Json?    // [{ id, order, prompt, charLimit? }]
   uploaded_at  DateTime @default(now())
   updated_at   DateTime @updatedAt
 

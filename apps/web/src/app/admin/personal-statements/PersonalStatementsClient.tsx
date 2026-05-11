@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { uploadSchoolTemplate, type SchoolTemplate } from '@/lib/api';
 import { LAW_SCHOOLS } from '@/constants/basic-info';
 
@@ -170,13 +171,21 @@ export default function PersonalStatementsClient({
                       {template ? new Date(template.updated_at).toLocaleDateString('ko-KR') : '—'}
                     </td>
                     <td className="py-4 text-right align-middle">
-                      <button
-                        onClick={() => triggerUpload(school)}
-                        disabled={isUploading}
-                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-                      >
-                        {isUploading ? '업로드 중...' : template ? '파일 교체' : '업로드'}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/admin/personal-statements/${encodeURIComponent(school)}`}
+                          className="px-3 py-1.5 text-xs font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
+                        >
+                          편집
+                        </Link>
+                        <button
+                          onClick={() => triggerUpload(school)}
+                          disabled={isUploading}
+                          className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                        >
+                          {isUploading ? '업로드 중...' : template ? '파일 교체' : '업로드'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
