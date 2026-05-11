@@ -26,16 +26,6 @@ function getProcessYear(req: NextRequest): number {
   return match ? parseInt(match[0]) : new Date().getFullYear();
 }
 
-const CAREER_LABEL: Record<string, string> = {
-  lawyer: "변호사",
-  prosecutor: "검사",
-  judge: "판사",
-};
-const CAREER_ENUM: Record<string, "lawyer" | "prosecutor" | "judge"> = {
-  변호사: "lawyer",
-  검사: "prosecutor",
-  판사: "judge",
-};
 
 type ActivityForm = {
   name: string;
@@ -110,7 +100,7 @@ function buildResponse(record: FullRecord, extras?: { inlineStar?: StarItem; inl
   const starAnalysis = (record?.star_analysis ?? null) as StarAnalysisJson | null;
 
   return {
-    careerGoal: record?.career_goal ? CAREER_LABEL[record.career_goal] ?? "" : "",
+    careerGoal: record?.career_goal ?? "",
     activities,
     analysis: {
       isAnalyzed: record?.is_ai_analyzed ?? false,
@@ -197,7 +187,7 @@ async function handleJsonPatch(req: NextRequest, userId: string, processYear: nu
 
   const updateData: Record<string, unknown> = {};
   if (body.careerGoal !== undefined) {
-    updateData.career_goal = body.careerGoal ? CAREER_ENUM[body.careerGoal] ?? null : null;
+    updateData.career_goal = body.careerGoal || null;
   }
   if (body.activities !== undefined) {
     updateData.qualitative_activities = body.activities;
@@ -373,7 +363,7 @@ async function handleMultipartPatch(req: NextRequest, userId: string, processYea
     qualitative_activities: mergedActivities,
   };
   if (payload.careerGoal !== undefined) {
-    updateData.career_goal = payload.careerGoal ? CAREER_ENUM[payload.careerGoal] ?? null : null;
+    updateData.career_goal = payload.careerGoal || null;
   }
 
   await prisma.menteeRecord.upsert({
