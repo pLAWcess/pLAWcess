@@ -74,7 +74,7 @@ export default function UserMenu({ user, onLogout }: Props) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-64 bg-white border border-border rounded-md shadow-lg py-1 z-50"
+          className="absolute right-0 top-full mt-2 w-56 sm:w-64 max-w-[calc(100vw-2rem)] bg-white border border-border rounded-md shadow-lg py-1 z-50"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">

@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@rhwp/editor": "^0.7.11",
     "@types/jsonwebtoken": "^9.0.10",
     "jose": "^6.2.2",
