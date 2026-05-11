@@ -292,8 +292,6 @@ export default function PersonalStatementClient({
                 {(activeGroup.questions ?? []).map((q, idx) => {
                   const text = textDrafts[group][q.id] ?? '';
                   const pct = q.charLimit ? Math.min(text.length / q.charLimit, 1) : 0;
-                  const nearLimit = q.charLimit != null && text.length >= q.charLimit * 0.9;
-                  const overLimit = q.charLimit != null && text.length > q.charLimit;
                   return (
                     <div
                       key={q.id}
@@ -325,23 +323,13 @@ export default function PersonalStatementClient({
                         {q.charLimit && (
                           <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full transition-all ${
-                                overLimit ? 'bg-red-500' : nearLimit ? 'bg-orange-400' : 'bg-brand'
-                              }`}
+                              className="h-full rounded-full bg-brand transition-all"
                               style={{ width: `${pct * 100}%` }}
                             />
                           </div>
                         )}
                         <div className="flex justify-end">
-                          <span
-                            className={`text-xs font-medium ${
-                              overLimit
-                                ? 'text-red-500'
-                                : nearLimit
-                                  ? 'text-orange-500'
-                                  : 'text-text-placeholder'
-                            }`}
-                          >
+                          <span className="text-xs text-text-placeholder">
                             {text.length.toLocaleString()}
                             {q.charLimit ? ` / ${q.charLimit.toLocaleString()}자` : '자'}
                           </span>
