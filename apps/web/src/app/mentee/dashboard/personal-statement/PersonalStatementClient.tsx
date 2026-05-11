@@ -302,7 +302,7 @@ export default function PersonalStatementClient({
                         <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-xs font-bold shrink-0">
                           {idx + 1}
                         </span>
-                        <p className="text-sm font-semibold text-text-primary flex-1">{q.prompt}</p>
+                        <p className="text-sm font-semibold text-text-primary flex-1 whitespace-pre-wrap">{q.prompt}</p>
                         {q.charLimit && (
                           <span className="shrink-0 px-2.5 py-1 rounded-full bg-gray-100 text-xs font-medium text-text-secondary">
                             {q.charLimit.toLocaleString()}자 이내
