@@ -37,6 +37,7 @@ const adminNavSections: NavSection[] = [
   {
     section: '프로세스 사업',
     items: [
+      { label: '스케줄 관리', href: '/admin/schedule' },
       { label: '회원 관리', href: '/admin/users' },
       { label: '신청 관리', href: '/admin/applications' },
       { label: '매칭 관리', href: '/admin/matchings', match: '/admin/matchings' },
