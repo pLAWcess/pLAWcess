@@ -12,6 +12,7 @@ import {
   type AdminUserCurrentRole,
   type PatchAdminUserBody,
 } from '@/lib/api';
+import { LAW_SCHOOLS } from '@/constants/basic-info';
 
 const GENDER_LABELS: Record<AdminUserGender, string> = { male: '남성', female: '여성', other: '기타' };
 const ACADEMIC_LABELS: Record<AdminUserAcademicStatus, string> = {
@@ -24,7 +25,7 @@ const ROLE_LABELS: Record<AdminUserCurrentRole, string> = {
 const GENDER_OPTIONS = Object.values(GENDER_LABELS);
 const ROLE_OPTIONS = Object.values(ROLE_LABELS);
 
-const SCHOOLS = ['서울대학교', '고려대학교', '연세대학교', '성균관대학교', '한양대학교', '이화여자대학교', '경희대학교'];
+const SCHOOLS = LAW_SCHOOLS.map((s) => s.name);
 
 function genderLabel(v: AdminUserGender | null) { return v ? GENDER_LABELS[v] : '-'; }
 function academicLabel(v: AdminUserAcademicStatus | null) { return v ? ACADEMIC_LABELS[v] : '-'; }

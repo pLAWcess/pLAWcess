@@ -2,11 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { uploadSchoolTemplate, type SchoolTemplate } from '@/lib/api';
+import { LAW_SCHOOLS } from '@/constants/basic-info';
 
-const SCHOOLS = [
-  '서울대학교', '고려대학교', '연세대학교', '성균관대학교',
-  '한양대학교', '이화여자대학교', '경희대학교',
-];
+const SCHOOLS = LAW_SCHOOLS.map((s) => s.name);
 const YEAR = new Date().getFullYear().toString();
 
 export default function PersonalStatementsClient({
