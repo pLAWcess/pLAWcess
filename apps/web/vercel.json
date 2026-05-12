@@ -1,5 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["hnd1"],
-  "ignoreCommand": "[ \"$VERCEL_ENV\" = \"preview\" ]"
+  "regions": ["hnd1"]
 }
