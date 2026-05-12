@@ -136,20 +136,31 @@ export async function scrapeGrades(id: string, pw: string): Promise<ScrapeResult
     const page = await context.newPage();
 
     // 1. 포털 로그인
-    await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await page.goto(PORTAL_URL, { waitUntil: 'networkidle', timeout: 30000 });
     diag.push(`[1] portal: ${page.url()}`);
+    // 로그인 폼이 로드될 때까지 대기 (포털 메인이 리다이렉트될 수 있음)
+    await page.waitForSelector('#oneid', { timeout: 15000 });
+    await page.waitForSelector('#_pw', { timeout: 15000 });
+    await page.waitForSelector('#loginsubmit', { timeout: 15000 });
+    await page.waitForTimeout(1000); // 로그인 관련 JS 안정화
     await page.fill('#oneid', id);
     await page.fill('#_pw', pw);
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {}),
+      page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => {}),
       page.click('#loginsubmit'),
     ]);
     await page.waitForTimeout(2000);
     diag.push(`[2] after login: ${page.url()}`);
-    diag.push(`[2-text] ${await bodySnippet(page, 500)}`);
-    if (page.url().includes('LoginDeny')) {
-      console.log('[scrapeGrades]', diag.join('\n'));
-      return null;
+    const afterLoginText = await bodySnippet(page, 600);
+    diag.push(`[2-text] ${afterLoginText}`);
+    // 로그인 성공 판정: 로그인 안 된 페이지면 (회원가입 링크 등) 실패로 간주
+    const loggedIn = !/LoginDeny|회원가입|아이디\s*\/\s*비밀번호\s*찾기/.test(afterLoginText)
+      && !page.url().includes('/common/Login.kpd');
+    if (!loggedIn) {
+      diag.push('[2] LOGIN FAILED — 로그인 후에도 비로그인 페이지');
+      const debugText = diag.join('\n');
+      console.log('[scrapeGrades]', debugText);
+      return { rows: [], summary: {}, debugText };
     }
 
     // 2. moveComponent로 infodepot SSO 세션 수립
