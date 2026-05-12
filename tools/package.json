@@ -1,0 +1,20 @@
+{
+  "name": "@plawcess/tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed:mentees": "tsx seed-dummy-mentees.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "@plawcess/database": "workspace:*",
+    "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}
