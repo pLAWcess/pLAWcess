@@ -46,9 +46,10 @@ export function clearUser() {
   try { localStorage.removeItem(USER_KEY); } catch {}
 }
 
-export async function getQuantitative(year: string): Promise<QuantitativeData> {
+// 정량 데이터 엔드포인트도 멘티/멘토 동일 형태 — role 로 베이스 경로만 다름.
+export async function getQuantitative(role: 'mentee' | 'mentor', year: string): Promise<QuantitativeData> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/quantitative?year=${encodeURIComponent(year)}`,
+    `${API_BASE}/api/${role}/quantitative?year=${encodeURIComponent(year)}`,
     { headers: headers(), credentials: "include" }
   );
   if (!res.ok) throw new Error("정량 데이터 조회 실패");
@@ -56,11 +57,12 @@ export async function getQuantitative(year: string): Promise<QuantitativeData> {
 }
 
 export async function patchQuantitative(
+  role: 'mentee' | 'mentor',
   year: string,
   body: Partial<QuantitativeData>
 ): Promise<QuantitativeData> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/quantitative?year=${encodeURIComponent(year)}`,
+    `${API_BASE}/api/${role}/quantitative?year=${encodeURIComponent(year)}`,
     { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
   );
   if (!res.ok) throw new Error("정량 데이터 저장 실패");

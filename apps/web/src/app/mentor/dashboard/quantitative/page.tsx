@@ -15,15 +15,13 @@ const EMPTY: QuantitativeData = {
 export default async function MentorQuantitativePage() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
   const year = await getActiveProcessYear(token);
-  const data = await serverFetch<QuantitativeData>(`/api/mentee/quantitative?year=${encodeURIComponent(year)}`, token) ?? EMPTY;
+  const data = await serverFetch<QuantitativeData>(`/api/mentor/quantitative?year=${encodeURIComponent(year)}`, token) ?? EMPTY;
 
   return (
     <div className="flex flex-col gap-6 page-container w-full">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">정량 데이터</h1>
-        <p className="text-sm text-text-secondary mt-1">
-          멘티 시절 작성한 정량 데이터가 자동으로 표시됩니다. 멘토로 직접 가입한 경우 비어있을 수 있습니다.
-        </p>
+        <p className="text-sm text-text-secondary mt-1">시험 성적과 학업 정보를 입력해주세요</p>
       </div>
       <QuantitativeClient initialData={data} year={year} />
     </div>
