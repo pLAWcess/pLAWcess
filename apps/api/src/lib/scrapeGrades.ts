@@ -24,7 +24,6 @@ async function getBrowser() {
     const chromium = (await import('@sparticuz/chromium')).default;
     return playwrightChromium.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: true,
     });

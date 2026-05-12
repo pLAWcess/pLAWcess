@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
-import { scrapeGrades } from "@/lib/scrapeGrades";
+import { scrapeGrades, type GradeRow } from "@/lib/scrapeGrades";
 
 export const maxDuration = 300; // Vercel Pro: 최대 300초
 
@@ -9,6 +10,12 @@ const PW_MAX_LEN = 128;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
 const lastCallByUser = new Map<string, number>();
+
+function getProcessYear(req: NextRequest): number {
+  const raw = req.nextUrl.searchParams.get("year");
+  const match = raw?.match(/\d{4}/);
+  return match ? parseInt(match[0]) : new Date().getFullYear();
+}
 
 function validateCredentials(id: unknown, pw: unknown): { ok: true } | { ok: false; error: string } {
   if (typeof id !== "string" || typeof pw !== "string") {
@@ -26,6 +33,42 @@ function validateCredentials(id: unknown, pw: unknown): { ok: true } | { ok: fal
   return { ok: true };
 }
 
+// ----------------------------------------------------------------
+// GET — 저장된 수강 과목 조회
+// ----------------------------------------------------------------
+export async function GET(req: NextRequest) {
+  const token = getTokenFromCookie(req);
+  if (!token) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+  const processYear = getProcessYear(req);
+  const record = await prisma.menteeRecord.findUnique({
+    where: { user_id_process_year: { user_id: token.user_id, process_year: processYear } },
+    select: { kupid_grades: true },
+  });
+  const rows = (record?.kupid_grades as GradeRow[] | null) ?? [];
+  return NextResponse.json({ rows });
+}
+
+// ----------------------------------------------------------------
+// DELETE — 저장된 수강 과목 삭제
+// ----------------------------------------------------------------
+export async function DELETE(req: NextRequest) {
+  const token = getTokenFromCookie(req);
+  if (!token) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+  const processYear = getProcessYear(req);
+  await prisma.menteeRecord.updateMany({
+    where: { user_id: token.user_id, process_year: processYear },
+    data: { kupid_grades: Prisma.JsonNull },
+  });
+  return NextResponse.json({ ok: true });
+}
+
+// ----------------------------------------------------------------
+// POST — KUPID 스크래핑 후 저장
+// ----------------------------------------------------------------
 export async function POST(req: NextRequest) {
   const token = getTokenFromCookie(req);
   if (!token) {
@@ -69,6 +112,15 @@ export async function POST(req: NextRequest) {
         { status: 422 },
       );
     }
+
+    // DB에 저장 (현재 cycle의 멘티 레코드 upsert)
+    const processYear = getProcessYear(req);
+    await prisma.menteeRecord.upsert({
+      where: { user_id_process_year: { user_id: token.user_id, process_year: processYear } },
+      create: { user_id: token.user_id, process_year: processYear, kupid_grades: result.rows },
+      update: { kupid_grades: result.rows },
+    });
+
     return NextResponse.json({ rows: result.rows, summary: result.summary, debug: result.debugText });
   } catch (e) {
     console.error("scrapeGrades error:", e);

@@ -2,25 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
-import { getUser, type GpaSection } from '@/lib/api';
+import type { GpaSection } from '@/lib/api';
+import KupidLoginModal, { type GradesResult } from './KupidLoginModal';
 
 export type GpaData = GpaSection;
 type GradeRow = Record<string, string>;
-
-const GRADES_STORAGE_PREFIX = 'plawcess:kupid-grades:';
-function gradesStorageKey(): string {
-  return GRADES_STORAGE_PREFIX + (getUser()?.user_id ?? 'anon');
-}
-function loadStoredGrades(): GradeRow[] | null {
-  try {
-    const raw = localStorage.getItem(gradesStorageKey());
-    const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
-  } catch { return null; }
-}
-function storeGrades(rows: GradeRow[]) {
-  try { localStorage.setItem(gradesStorageKey(), JSON.stringify(rows)); } catch { /* 용량 초과 등 무시 */ }
-}
 
 type Props = {
   initialData: GpaData;
@@ -93,63 +79,56 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [showKupid, setShowKupid] = useState(false);
-  const [kupidId, setKupidId] = useState('');
-  const [kupidPw, setKupidPw] = useState('');
-  const [kupidLoading, setKupidLoading] = useState(false);
-  const [kupidError, setKupidError] = useState<string | null>(null);
+  const [showKupidModal, setShowKupidModal] = useState(false);
   const [gradeRows, setGradeRows] = useState<GradeRow[] | null>(null);
   const [gradeListOpen, setGradeListOpen] = useState(false);
+  const [deletingGrades, setDeletingGrades] = useState(false);
   const [gpaInputError, setGpaInputError] = useState<string | null>(null);
 
-  // 마운트 시 저장된 수강 과목 복원
+  // 마운트 시 DB에 저장된 수강 과목 복원
   useEffect(() => {
     if (readOnly) return;
-    const stored = loadStoredGrades();
-    if (stored) setGradeRows(stored);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/mentee/grades', { credentials: 'include' });
+        if (!res.ok) return;
+        const json = await res.json();
+        const rows: GradeRow[] = json.rows ?? [];
+        if (!cancelled && rows.length > 0) setGradeRows(rows);
+      } catch { /* 무시 */ }
+    })();
+    return () => { cancelled = true; };
   }, [readOnly]);
 
-  async function handleKupidLogin() {
-    setKupidLoading(true);
-    setKupidError(null);
+  async function handleGradesLoaded(result: GradesResult) {
+    const rows = result.rows;
+    const summary = result.summary;
+    console.log('[KUPID] summary:', summary);
+    console.log('[KUPID] rows sample:', rows.slice(0, 3));
+
+    // 전체 평점 평균 = KUPID 증명용 평점평균 (없으면 가중 계산으로 폴백)
+    const overall = pickCertifiedGpa(summary) ?? calcWeightedGpa(rows);
+    // 법학 과목 평점 평균 = 학수번호가 JURA로 시작하는 과목들의 가중 평균
+    const major = calcWeightedGpa(rows.filter(r => (r['학수번호'] ?? '').startsWith('JURA')));
+
+    const newData: GpaData = { ...data, overall, major, converted: calcConverted(overall) };
+    setData(newData);
+    setDraft(newData);
+    setDraftStr({ overall: toStr(overall), major: toStr(major) });
+    setGradeRows(rows);          // 저장은 API(POST)에서 이미 처리됨
+    setGradeListOpen(true);
+    if (onSave) await onSave(newData);
+  }
+
+  async function handleDeleteGrades() {
+    if (!window.confirm('불러온 수강 과목을 삭제할까요? GPA 값은 그대로 유지됩니다.')) return;
+    setDeletingGrades(true);
     try {
-      const res = await fetch('/api/mentee/grades', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ id: kupidId, pw: kupidPw }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setKupidError(json.error ?? '오류가 발생했습니다.');
-        return;
-      }
-      const rows: GradeRow[] = json.rows ?? [];
-      const summary: Record<string, string> = json.summary ?? {};
-      console.log('[KUPID] summary:', summary);
-      console.log('[KUPID] rows sample:', rows.slice(0, 3));
-
-      // 전체 평점 평균 = KUPID 증명용 평점평균 (없으면 가중 계산으로 폴백)
-      const overall = pickCertifiedGpa(summary) ?? calcWeightedGpa(rows);
-      // 전공 평점 평균 = 학수번호가 JURA로 시작하는 과목들의 가중 평균
-      const major = calcWeightedGpa(rows.filter(r => (r['학수번호'] ?? '').startsWith('JURA')));
-
-      const newData: GpaData = { ...data, overall, major, converted: calcConverted(overall) };
-      setData(newData);
-      setDraft(newData);
-      setDraftStr({ overall: toStr(overall), major: toStr(major) });
-      setGradeRows(rows);
-      storeGrades(rows);
-      setGradeListOpen(true);
-      if (onSave) await onSave(newData);
-
-      setShowKupid(false);
-      setKupidId('');
-      setKupidPw('');
-    } catch {
-      setKupidError('네트워크 오류가 발생했습니다.');
+      const res = await fetch('/api/mentee/grades', { method: 'DELETE', credentials: 'include' });
+      if (res.ok) setGradeRows(null);
     } finally {
-      setKupidLoading(false);
+      setDeletingGrades(false);
     }
   }
 
@@ -271,11 +250,11 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
         const totalCredits = validRows.reduce((s, r) => s + (parseFloat(r['학점'] ?? '') || 0), 0);
         return (
           <div className="mt-6 border-t border-border pt-6">
-            <button
-              onClick={() => setGradeListOpen(o => !o)}
-              className="w-full flex items-center justify-between mb-3 group"
-            >
-              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <button
+                onClick={() => setGradeListOpen(o => !o)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-text-primary"
+              >
                 <svg
                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                   className={`text-text-secondary transition-transform ${gradeListOpen ? 'rotate-90' : ''}`}
@@ -283,12 +262,25 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
                 수강 과목
-              </h3>
-              <div className="flex items-center gap-4 text-xs text-text-secondary">
+              </button>
+              <div className="flex items-center gap-3 text-xs text-text-secondary">
                 <span>총 <span className="font-semibold text-text-primary">{validRows.length}</span>과목</span>
                 <span>총 <span className="font-semibold text-text-primary">{totalCredits}</span>학점</span>
+                {!readOnly && (
+                  <button
+                    onClick={handleDeleteGrades}
+                    disabled={deletingGrades}
+                    className="text-text-placeholder hover:text-red-500 transition-colors disabled:opacity-40"
+                    aria-label="수강 과목 삭제"
+                    title="수강 과목 삭제"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                )}
               </div>
-            </button>
+            </div>
             {gradeListOpen && (
               <div className="overflow-auto max-h-72">
                 <table className="w-full text-xs table-fixed">
@@ -328,11 +320,11 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
         );
       })()}
 
-      {!showKupid && !readOnly && (
+      {!readOnly && (
         <div className="flex justify-center mt-8">
           {gradeRows ? (
             <button
-              onClick={() => setShowKupid(true)}
+              onClick={() => setShowKupidModal(true)}
               className="flex items-center gap-2 text-xs text-text-secondary hover:text-brand transition-colors"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -342,7 +334,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
             </button>
           ) : (
             <button
-              onClick={() => setShowKupid(true)}
+              onClick={() => setShowKupidModal(true)}
               className="flex items-center gap-2 text-sm text-text-secondary border border-border px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -354,67 +346,11 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
         </div>
       )}
 
-      {showKupid && (
-        <div className="mt-6 border-t border-border pt-6">
-          <div className="flex flex-col gap-1.5 mb-4">
-            <div className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
-              </svg>
-              <span className="text-sm font-semibold text-text-primary">KUPID 로그인</span>
-            </div>
-            <p className="text-xs text-text-secondary">학업 성적표를 불러오기 위해 KUPID 계정으로 로그인해주세요.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm text-text-secondary">ID</label>
-              <input
-                type="text"
-                value={kupidId}
-                onChange={(e: { target: { value: string } }) => setKupidId(e.target.value)}
-                placeholder="ID를 입력하세요"
-                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm text-text-secondary">비밀번호</label>
-              <input
-                type="password"
-                value={kupidPw}
-                onChange={(e: { target: { value: string } }) => setKupidPw(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && kupidId && kupidPw && !kupidLoading) handleKupidLogin(); }}
-                placeholder="비밀번호를 입력하세요"
-                className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-          </div>
-          {kupidError && (
-            <p className="text-xs text-red-500 mb-3">{kupidError}</p>
-          )}
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => { setShowKupid(false); setKupidId(''); setKupidPw(''); setKupidError(null); }}
-              disabled={kupidLoading}
-              className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-40"
-            >
-              취소
-            </button>
-            <button
-              onClick={handleKupidLogin}
-              disabled={kupidLoading || !kupidId || !kupidPw}
-              className="px-4 py-2 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {kupidLoading && (
-                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              )}
-              {kupidLoading ? '불러오는 중...' : '로그인'}
-            </button>
-          </div>
-        </div>
-      )}
+      <KupidLoginModal
+        open={showKupidModal}
+        onClose={() => setShowKupidModal(false)}
+        onLoaded={handleGradesLoaded}
+      />
     </div>
   );
 }
