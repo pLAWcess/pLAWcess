@@ -174,9 +174,9 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
           </div>
         </div>
 
-        {/* 전공 평점 평균 */}
+        {/* 법학 과목 평점 평균 (학수번호 JURA) */}
         <div className="flex flex-col gap-2">
-          <span className="text-sm text-text-secondary">전공 평점 평균</span>
+          <span className="text-sm text-text-secondary">법학 과목 평점 평균</span>
           <div className="h-7 flex items-center">
             {isEditing && !readOnly ? (
               <input
