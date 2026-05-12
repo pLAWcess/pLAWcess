@@ -27,9 +27,11 @@ type Mode = 'hwp' | 'text';
 export default function PersonalStatementClient({
   initialData,
   year,
+  readOnly,
 }: {
   initialData: PersonalStatementData;
   year: string;
+  readOnly?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<Group>(() =>
     initialData.ga.school ? 'ga' : 'na',
@@ -67,6 +69,7 @@ export default function PersonalStatementClient({
   useEffect(() => {
     const id = setInterval(async () => {
       if (isSavingRef.current) return;
+      if (readOnly) return;
       isSavingRef.current = true;
       setAutoSaving(true);
       try {
@@ -220,8 +223,8 @@ export default function PersonalStatementClient({
           <p className="text-sm text-text-secondary mt-1">지망 로스쿨 자기소개서를 편집하고 저장하세요</p>
         </div>
         <div className="flex items-center gap-3">
-          {statusText && <span className="text-xs text-text-placeholder">{statusText}</span>}
-          {mode === 'hwp' && activeGroup.hwp && (
+          {!readOnly && statusText && <span className="text-xs text-text-placeholder">{statusText}</span>}
+          {!readOnly && mode === 'hwp' && activeGroup.hwp && (
             <button
               onClick={handleDownload}
               className="px-4 py-2 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors"
@@ -229,13 +232,15 @@ export default function PersonalStatementClient({
               다운로드
             </button>
           )}
-          <button
-            onClick={handleSave}
-            disabled={saving || autoSaving}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50"
-          >
-            {saving ? '저장 중...' : '저장'}
-          </button>
+          {!readOnly && (
+            <button
+              onClick={handleSave}
+              disabled={saving || autoSaving}
+              className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50"
+            >
+              {saving ? '저장 중...' : '저장'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -259,20 +264,22 @@ export default function PersonalStatementClient({
       )}
 
       {/* 모드 토글 */}
-      <div className="flex items-center gap-1 self-start p-1 bg-gray-100 rounded-lg border border-border">
-        <ModeButton active={mode === 'hwp'} onClick={() => setMode('hwp')}>
-          HWP 에디터
-        </ModeButton>
-        <ModeButton active={mode === 'text'} onClick={() => setMode('text')}>
-          문항별 작성
-        </ModeButton>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-1 self-start p-1 bg-gray-100 rounded-lg border border-border">
+          <ModeButton active={mode === 'hwp'} onClick={() => setMode('hwp')}>
+            HWP 에디터
+          </ModeButton>
+          <ModeButton active={mode === 'text'} onClick={() => setMode('text')}>
+            문항별 작성
+          </ModeButton>
+        </div>
+      )}
 
       {/* 콘텐츠 */}
       {tabs.map(({ group }) =>
         activeTab === group && (
           <div key={group}>
-            {mode === 'hwp' ? (
+            {!readOnly && mode === 'hwp' ? (
               activeGroup.hwp ? (
                 <>
                   <div className="sm:hidden bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-800">
@@ -316,13 +323,19 @@ export default function PersonalStatementClient({
                         )}
                       </div>
 
-                      <textarea
-                        value={text}
-                        onChange={(e) => handleTextChange(group, q.id, e.target.value)}
-                        rows={6}
-                        className="w-full px-3 py-2 text-sm border border-border rounded-lg resize-y focus:outline-none focus:border-brand placeholder:text-text-placeholder"
-                        placeholder="내용을 입력하세요"
-                      />
+                      {readOnly ? (
+                        <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed min-h-[80px] py-2">
+                          {text || <span className="text-text-placeholder">작성된 내용이 없습니다.</span>}
+                        </p>
+                      ) : (
+                        <textarea
+                          value={text}
+                          onChange={(e) => handleTextChange(group, q.id, e.target.value)}
+                          rows={6}
+                          className="w-full px-3 py-2 text-sm border border-border rounded-lg resize-y focus:outline-none focus:border-brand placeholder:text-text-placeholder"
+                          placeholder="내용을 입력하세요"
+                        />
+                      )}
 
                       {/* 글자수 진행바 + 카운터 */}
                       <div className="mt-2 flex flex-col gap-1">
