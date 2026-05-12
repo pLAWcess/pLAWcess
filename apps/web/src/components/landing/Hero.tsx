@@ -18,7 +18,7 @@ export default function Hero({ startHref }: Props) {
       <div className="mx-auto max-w-5xl px-6 text-center">
         {/* Headline */}
         <h1 className="text-5xl font-extrabold text-text-primary tracking-tight leading-[1.15] sm:text-7xl">
-          로스쿨로 가는 <br className="hidden sm:block" />
+          로스쿨로 가는 <br />
           <span className="text-brand">가장 확실한 이정표</span>
         </h1>
 
