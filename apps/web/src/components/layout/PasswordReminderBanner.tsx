@@ -12,10 +12,14 @@ export default function PasswordReminderBanner() {
 
   async function handleDismiss() {
     setDismissed(true);
-    await fetch(`${API_BASE}/api/auth/dismiss-password-reminder`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    try {
+      await fetch(`${API_BASE}/api/auth/dismiss-password-reminder`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // 실패해도 UI는 닫힌 상태 유지 (best-effort persistence)
+    }
   }
 
   return (
