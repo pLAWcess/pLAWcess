@@ -90,7 +90,7 @@ function KupidLoginModalInner({ onClose, onLoaded }: Omit<Props, 'open'>) {
 
         {/* 본문 */}
         <div className="px-6 py-5">
-          <p className="text-xs text-text-secondary mb-4">학업 성적표를 불러오기 위해 KUPID 계정으로 로그인해주세요. 입력한 정보는 저장되지 않습니다.</p>
+          <p className="text-xs text-text-secondary mb-4">학업 성적표를 불러오기 위해 KUPID 계정으로 로그인해주세요.<br />입력한 정보는 저장되지 않습니다.</p>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm text-text-secondary">ID</label>
