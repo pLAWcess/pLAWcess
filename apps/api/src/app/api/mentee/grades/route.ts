@@ -56,20 +56,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const rows = await scrapeGrades(body.id as string, body.pw as string);
-    if (rows === null) {
+    const result = await scrapeGrades(body.id as string, body.pw as string);
+    if (result === null) {
       return NextResponse.json(
         { error: "로그인에 실패했습니다. ID/PW를 확인해주세요." },
         { status: 401 },
       );
     }
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
-        { error: "성적을 불러올 수 없습니다." },
+        { error: "성적을 불러올 수 없습니다.", debug: result.debugText, summary: result.summary },
         { status: 422 },
       );
     }
-    return NextResponse.json({ rows });
+    return NextResponse.json({ rows: result.rows, summary: result.summary, debug: result.debugText });
   } catch (e) {
     console.error("scrapeGrades error:", e);
     return NextResponse.json(

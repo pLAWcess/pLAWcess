@@ -5,6 +5,7 @@ import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import type { GpaSection } from '@/lib/api';
 
 export type GpaData = GpaSection;
+type GradeRow = Record<string, string>;
 
 type Props = {
   initialData: GpaData;
@@ -28,6 +29,35 @@ function toStr(val: number | null): string {
   return val == null ? '' : String(val);
 }
 
+// 학점 가중 평점 평균. 재수강 대체 과목(삭제구분 != '')과 P/F 제외.
+function calcWeightedGpa(rows: GradeRow[]): number | null {
+  let sumCredits = 0;
+  let sumPoints = 0;
+  for (const r of rows) {
+    if ((r['삭제구분'] ?? '') !== '') continue;
+    const grade = r['등급'] ?? '';
+    if (grade === 'P' || grade === 'F') continue;
+    const credit = parseFloat(r['학점'] ?? '');
+    const point = parseFloat(r['평점'] ?? '');
+    if (isNaN(credit) || credit <= 0 || isNaN(point)) continue;
+    sumCredits += credit;
+    sumPoints += point * credit;
+  }
+  if (sumCredits === 0) return null;
+  return Math.round((sumPoints / sumCredits) * 100) / 100;
+}
+
+// KUPID 요약에서 증명용 평점평균 추출
+function pickCertifiedGpa(summary: Record<string, string>): number | null {
+  const keys = Object.keys(summary);
+  const certKey =
+    keys.find(k => k.includes('증명')) ??
+    keys.find(k => k.includes('평점평균') && !k.includes('전공') && !k.includes('백분율'));
+  if (!certKey) return null;
+  const v = parseFloat(summary[certKey]);
+  return isNaN(v) ? null : v;
+}
+
 export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const [data, setData] = useState<GpaData>(initialData);
   const [draft, setDraft] = useState<GpaData>(initialData);
@@ -43,6 +73,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const [kupidPw, setKupidPw] = useState('');
   const [kupidLoading, setKupidLoading] = useState(false);
   const [kupidError, setKupidError] = useState<string | null>(null);
+  const [gradeRows, setGradeRows] = useState<GradeRow[] | null>(null);
 
   async function handleKupidLogin() {
     setKupidLoading(true);
@@ -59,18 +90,23 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
         setKupidError(json.error ?? '오류가 발생했습니다.');
         return;
       }
-      // rows: [{ 학점, 평점, ... }] → overall GPA 자동 계산
-      const rows: Record<string, string>[] = json.rows ?? [];
-      const credits = rows.map(r => ({ credit: parseFloat(r['학점'] ?? '0'), grade: parseFloat(r['평점'] ?? '0') })).filter(r => !isNaN(r.credit) && !isNaN(r.grade) && r.credit > 0);
-      if (credits.length > 0) {
-        const totalCredits = credits.reduce((s, r) => s + r.credit, 0);
-        const overall = Math.round((credits.reduce((s, r) => s + r.credit * r.grade, 0) / totalCredits) * 100) / 100;
-        const newData: GpaData = { ...data, overall, converted: calcConverted(overall) };
-        setData(newData);
-        setDraft(newData);
-        setDraftStr({ overall: String(overall), major: toStr(newData.major) });
-        if (onSave) await onSave(newData);
-      }
+      const rows: GradeRow[] = json.rows ?? [];
+      const summary: Record<string, string> = json.summary ?? {};
+      console.log('[KUPID] summary:', summary);
+      console.log('[KUPID] rows sample:', rows.slice(0, 3));
+
+      // 전체 평점 평균 = KUPID 증명용 평점평균 (없으면 가중 계산으로 폴백)
+      const overall = pickCertifiedGpa(summary) ?? calcWeightedGpa(rows);
+      // 전공 평점 평균 = 학수번호가 JURA로 시작하는 과목들의 가중 평균
+      const major = calcWeightedGpa(rows.filter(r => (r['학수번호'] ?? '').startsWith('JURA')));
+
+      const newData: GpaData = { ...data, overall, major, converted: calcConverted(overall) };
+      setData(newData);
+      setDraft(newData);
+      setDraftStr({ overall: toStr(overall), major: toStr(major) });
+      setGradeRows(rows);
+      if (onSave) await onSave(newData);
+
       setShowKupid(false);
       setKupidId('');
       setKupidPw('');
@@ -181,7 +217,57 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
         </div>
       </div>
 
-      {!showKupid && (
+      {/* 수강 과목 목록 */}
+      {gradeRows && gradeRows.length > 0 && (() => {
+        const validRows = gradeRows.filter(r => (r['삭제구분'] ?? '') === '' && r['등급'] !== 'F');
+        const totalCredits = validRows.reduce((s, r) => s + (parseFloat(r['학점'] ?? '') || 0), 0);
+        return (
+          <div className="mt-6 border-t border-border pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-text-primary">수강 과목</h3>
+              <div className="flex items-center gap-4 text-xs text-text-secondary">
+                <span>총 <span className="font-semibold text-text-primary">{validRows.length}</span>과목</span>
+                <span>총 <span className="font-semibold text-text-primary">{totalCredits}</span>학점</span>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-72">
+              <table className="w-full text-xs table-fixed">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="pb-2 text-left text-text-secondary font-normal w-16">년도</th>
+                    <th className="pb-2 text-left text-text-secondary font-normal w-14">학기</th>
+                    <th className="pb-2 text-left text-text-secondary font-normal">과목명</th>
+                    <th className="pb-2 text-left text-text-secondary font-normal w-20">이수구분</th>
+                    <th className="pb-2 text-right text-text-secondary font-normal w-10">학점</th>
+                    <th className="pb-2 text-right text-text-secondary font-normal w-10">등급</th>
+                    <th className="pb-2 text-right text-text-secondary font-normal w-10">평점</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gradeRows.map((row, i) => {
+                    const isRetaken = (row['삭제구분'] ?? '') !== '';
+                    const cls = isRetaken ? 'line-through text-text-placeholder' : 'text-text-primary';
+                    const subCls = isRetaken ? 'text-text-placeholder' : 'text-text-secondary';
+                    return (
+                      <tr key={i} className={`border-b border-border last:border-0 ${isRetaken ? 'opacity-50' : ''}`}>
+                        <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['년도']}</td>
+                        <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['학기']}</td>
+                        <td className={`py-2 truncate pr-2 ${cls}`}>{row['과목명']}</td>
+                        <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['이수구분']}</td>
+                        <td className={`py-2 text-right whitespace-nowrap ${cls}`}>{row['학점']}</td>
+                        <td className={`py-2 text-right whitespace-nowrap ${cls}`}>{row['등급']}</td>
+                        <td className={`py-2 text-right whitespace-nowrap font-semibold ${cls}`}>{row['평점']}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {!showKupid && !gradeRows && !readOnly && (
         <div className="flex justify-center mt-8">
           <button
             onClick={() => setShowKupid(true)}
@@ -206,7 +292,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
             </div>
             <p className="text-xs text-text-secondary">학업 성적표를 불러오기 위해 KUPID 계정으로 로그인해주세요.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm text-text-secondary">ID</label>
               <input
@@ -223,6 +309,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
                 type="password"
                 value={kupidPw}
                 onChange={(e: { target: { value: string } }) => setKupidPw(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && kupidId && kupidPw && !kupidLoading) handleKupidLogin(); }}
                 placeholder="비밀번호를 입력하세요"
                 className="border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-brand"
               />
@@ -242,8 +329,14 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
             <button
               onClick={handleKupidLogin}
               disabled={kupidLoading || !kupidId || !kupidPw}
-              className="px-4 py-2 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
+              {kupidLoading && (
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              )}
               {kupidLoading ? '불러오는 중...' : '로그인'}
             </button>
           </div>
