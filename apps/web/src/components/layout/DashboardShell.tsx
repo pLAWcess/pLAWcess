@@ -3,11 +3,22 @@
 import { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
+import PasswordReminderBanner from '@/components/layout/PasswordReminderBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
 
 import type { AuthUser } from '@/lib/api';
 
-export default function DashboardShell({ children, role, initialUser }: { children: React.ReactNode; role?: string; initialUser?: AuthUser | null }) {
+export default function DashboardShell({
+  children,
+  role,
+  initialUser,
+  showPasswordReminder = false,
+}: {
+  children: React.ReactNode;
+  role?: string;
+  initialUser?: AuthUser | null;
+  showPasswordReminder?: boolean;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useIsMobile(768);
 
@@ -27,6 +38,7 @@ export default function DashboardShell({ children, role, initialUser }: { childr
           isMobile={isMobile}
         />
         <main className="flex-1 overflow-auto bg-page-bg">
+          {showPasswordReminder && <PasswordReminderBanner />}
           <div className="px-4 py-6 md:px-10 md:py-8">{children}</div>
         </main>
       </div>
