@@ -14,7 +14,7 @@ export default async function MenteeAnnouncementsLayout({ children }: { children
     serverFetch<{ showReminder: boolean }>('/api/auth/password-reminder-status', token),
   ]);
   if (!initialUser) redirect('/login');
-  if (initialUser.current_role !== 'mentee') redirect(getRoleHomePath(initialUser.current_role));
+  if (initialUser.current_role !== 'mentee' && initialUser.current_role !== 'admin') redirect(getRoleHomePath(initialUser.current_role));
 
   return (
     <DashboardShell initialUser={initialUser} showPasswordReminder={reminderStatus?.showReminder ?? false}>
