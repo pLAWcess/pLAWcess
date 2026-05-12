@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import {
-  getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
-  type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
-  type StoryOutline, type Attachment,
+  getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, deleteQualitativeActivity,
+  type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type Attachment,
 } from '@/lib/api';
 import {
   DndContext,
@@ -163,15 +162,6 @@ function IconTrash({ className = 'w-4 h-4' }: { className?: string }) {
     </svg>
   );
 }
-function IconSparkles({ className = 'w-5 h-5' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
-      <path d="M19 15l.6 1.4L21 17l-1.4.6L19 19l-.6-1.4L17 17l1.4-.6L19 15z" />
-      <path d="M5 16l.6 1.4L7 18l-1.4.6L5 20l-.6-1.4L3 18l1.4-.6L5 16z" />
-    </svg>
-  );
-}
 function IconDragHandle({ className = 'w-5 h-5' }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -180,18 +170,6 @@ function IconDragHandle({ className = 'w-5 h-5' }: { className?: string }) {
       <line x1="8" y1="17" x2="16" y2="17" />
     </svg>
   );
-}
-
-function formatRelativeTime(iso: string | null): string {
-  if (!iso) return '';
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return '방금 전';
-  const min = Math.floor(ms / 60_000);
-  if (min < 60) return `${min}분 전`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}시간 전`;
-  const day = Math.floor(hr / 24);
-  return `${day}일 전`;
 }
 
 // ----------------------------------------------------------------
@@ -795,27 +773,20 @@ function SortableActivityCard({
 }
 
 // ----------------------------------------------------------------
-// 대시보드: 활동 목록 표
-// 사이드바에서 통합 키워드를 선택하면, 해당 통합으로 묶이는 raw 키워드만 하이라이트.
-// 모든 raw 키워드는 hover 시 어떤 통합 키워드에 속하는지 툴팁으로 표시.
+// 대시보드: 활동 목록 표 (활동 + 활동별 STAR 키워드)
+// 멘토 정성은 통합 분석(키워드 집계 / 자소서 흐름)이 없으므로 하이라이트 기능 없이 단순 표시.
 // ----------------------------------------------------------------
 function ActivityListTable({
   activities,
   starByIdx,
-  rawToUnified,
-  selectedUnified,
 }: {
   activities: ActivityForm[];
   starByIdx: (idx: number) => StarItem | undefined;
-  rawToUnified: Map<string, KeywordCount>;
-  selectedUnified: string | null;
 }) {
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <h2 className="text-lg font-semibold text-text-primary mb-1">활동 목록</h2>
-      <p className="text-xs text-text-secondary mb-3">
-        오른쪽 키워드를 누르면 의미가 같은 활동별 키워드가 강조돼요.
-      </p>
+      <p className="text-xs text-text-secondary mb-3">각 활동의 단일 STAR 분석에서 추출된 핵심 키워드입니다.</p>
       <hr className="border-border mb-2" />
       <table className="w-full">
         <thead>
@@ -836,27 +807,9 @@ function ActivityListTable({
                 <td className="py-4">
                   <div className="flex flex-wrap gap-1.5">
                     {keywords.length === 0 && <span className="text-xs text-text-placeholder">분석 대기 중</span>}
-                    {keywords.map((k, i) => {
-                      const unified = rawToUnified.get(k);
-                      const highlighted = !!selectedUnified && unified?.keyword === selectedUnified;
-                      const dimmed = !!selectedUnified && !highlighted;
-                      const tooltip = unified ? `→ ${unified.keyword} · ${unified.count}회` : undefined;
-                      return (
-                        <span
-                          key={i}
-                          title={tooltip}
-                          className={`px-2.5 py-1 text-xs rounded-md transition-all ${
-                            highlighted
-                              ? 'bg-brand text-white font-medium ring-2 ring-brand/30'
-                              : dimmed
-                                ? 'bg-gray-50 text-text-placeholder'
-                                : 'bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {k}
-                        </span>
-                      );
-                    })}
+                    {keywords.map((k, i) => (
+                      <span key={i} className="px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-600">{k}</span>
+                    ))}
                   </div>
                 </td>
               </tr>
@@ -864,160 +817,6 @@ function ActivityListTable({
           })}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------
-// 대시보드: 키워드 빈도 사이드바
-// ----------------------------------------------------------------
-function KeywordFrequencyCard({
-  keywords,
-  totalActivities,
-  selectedKeyword,
-  onSelectKeyword,
-}: {
-  keywords: KeywordCount[];
-  totalActivities: number;
-  selectedKeyword: string | null;
-  onSelectKeyword: (keyword: string) => void;
-}) {
-  const max = keywords[0]?.count ?? 1;
-  return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-6 py-6">
-      <h2 className="text-base font-semibold text-blue-700 mb-1">핵심 키워드 분석</h2>
-      <p className="text-xs text-text-secondary mb-4">키워드를 누르면 활동별 원본 키워드가 강조돼요.</p>
-      <div className="flex flex-col gap-2">
-        {keywords.length === 0 && (
-          <p className="text-sm text-text-placeholder">분석 결과가 없습니다.</p>
-        )}
-        {keywords.map(({ keyword, count }, i) => {
-          const selected = selectedKeyword === keyword;
-          return (
-            <button
-              key={`${keyword}-${i}`}
-              type="button"
-              onClick={() => onSelectKeyword(keyword)}
-              className={`w-full text-left rounded-lg px-3 py-2 transition-all ${
-                selected
-                  ? 'bg-brand-light ring-2 ring-brand/40'
-                  : 'hover:bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-sm ${selected ? 'text-brand font-semibold' : 'text-text-primary'}`}>
-                  {keyword}
-                </span>
-                <span
-                  className={`px-2 py-0.5 text-xs rounded font-medium ${
-                    selected ? 'bg-white text-brand border border-brand/30' : 'bg-brand-light text-brand'
-                  }`}
-                >
-                  {count}회
-                </span>
-              </div>
-              <div className="h-2 bg-page-bg rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand rounded-full transition-all"
-                  style={{ width: `${(count / max) * 100}%` }}
-                />
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      <hr className="border-border my-5" />
-      <div className="flex flex-col items-start">
-        <span className="text-xs text-text-secondary">총 활동 수</span>
-        <span className="text-3xl font-bold text-brand mt-1">{totalActivities}</span>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------
-// 대시보드: 통합 분석 카드 (아이콘 + 설명 + 상태 + 버튼)
-// ----------------------------------------------------------------
-type SummaryState = 'pending' | 'fresh' | 'outdated' | 'incomplete';
-
-function SummaryAnalysisCard({
-  state,
-  analyzedAt,
-  onAnalyze,
-  loading,
-}: {
-  state: SummaryState;
-  analyzedAt: string | null;
-  onAnalyze: () => void;
-  loading: boolean;
-}) {
-  const buttonDisabled = loading || state === 'incomplete' || state === 'fresh';
-  const buttonLabel = loading ? '분석 중...' : state === 'pending' ? '분석' : '다시 분석';
-
-  let status: React.ReactNode;
-  if (state === 'fresh' && analyzedAt) {
-    status = <span className="text-text-secondary">분석 완료 · {formatRelativeTime(analyzedAt)}</span>;
-  } else if (state === 'outdated') {
-    status = <span className="text-amber-700 font-medium">활동이 변경되었습니다. 다시 분석해 결과를 갱신해보세요.</span>;
-  } else if (state === 'incomplete') {
-    status = <span className="text-amber-700 font-medium">분석되지 않은 활동이 있어요. 각 활동의 &lsquo;저장 및 분석&rsquo;을 먼저 완료해주세요.</span>;
-  } else {
-    status = <span className="text-text-secondary">아직 분석되지 않았어요. 분석 버튼을 눌러 시작해보세요.</span>;
-  }
-
-  const borderClass = state === 'outdated' ? 'border-amber-200' : 'border-border';
-
-  return (
-    <div className={`bg-white rounded-xl border ${borderClass} shadow-sm px-6 py-5`}>
-      <div className="flex items-start gap-5">
-        <div className="shrink-0 w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center text-brand">
-          <IconSparkles className="w-6 h-6" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-text-primary">AI 종합 분석</h3>
-          <p className="text-sm text-text-secondary mt-1 leading-relaxed">
-            모든 활동을 통합해 의미가 비슷한 핵심 키워드를 병합·집계하고, 자소서의 도입부·본론·결론 흐름을 제안해드려요.
-          </p>
-          <p className="text-xs mt-2.5">{status}</p>
-        </div>
-        <button
-          onClick={onAnalyze}
-          disabled={buttonDisabled}
-          className="shrink-0 self-center px-5 py-2.5 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {buttonLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------
-// AI 추천 자소서 흐름 카드
-// ----------------------------------------------------------------
-function StoryOutlineCard({ outline }: { outline: StoryOutline }) {
-  const sections: { label: string; text: string }[] = [
-    { label: '도입부', text: outline.intro },
-    ...outline.body.map((b, i) => ({
-      label: b.label ? `본론 ${i + 1} · ${b.label}` : `본론 ${i + 1}`,
-      text: b.text,
-    })),
-    { label: '결론', text: outline.conclusion },
-  ];
-  return (
-    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
-      <h2 className="text-lg font-semibold text-text-primary mb-1">AI 추천 자소서 흐름</h2>
-      <p className="text-sm text-text-secondary mb-5">분석 결과를 바탕으로 자소서의 흐름을 제안해 드려요.</p>
-      <div className="flex flex-col gap-3">
-        {sections.map((s, i) => (
-          <div key={i} className="flex flex-col gap-2 px-5 py-4 rounded-lg bg-blue-50/40 border border-blue-100">
-            <span className="inline-block self-start px-2.5 py-1 text-xs font-semibold text-brand bg-white rounded-md border border-blue-100">
-              {s.label}
-            </span>
-            <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{s.text}</p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -1060,14 +859,12 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   const [pageLoading, setPageLoading] = useState(!initialData);
   const [submitting, setSubmitting] = useState(false);
   const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
-  const [summarizing, setSummarizing] = useState(false);
   const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set());
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityForm | null>(null);
   const [editFiles, setEditFiles] = useState<File[]>([]);
   const [draftFiles, setDraftFiles] = useState<Record<string, File[]>>({});
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
-  const [selectedUnified, setSelectedUnified] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1099,7 +896,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   useEffect(() => {
     if (initialData && !didInitRef.current) { didInitRef.current = true; return; }
     didInitRef.current = true;
-    getQualitative('mentee', year)
+    getQualitative('mentor', year)
       .then(applyData)
       .catch(() => {})
       .finally(() => setPageLoading(false));
@@ -1111,7 +908,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   }, [activeTab]);
 
   async function handleCareerGoalSave(next: CareerGoal) {
-    const data = await patchQualitative('mentee', year, { careerGoal: next });
+    const data = await patchQualitative('mentor', year, { careerGoal: next });
     applyData(data);
   }
 
@@ -1130,7 +927,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   async function triggerSingleAnalysis(idx: number) {
     setAnalyzingIdx(idx);
     try {
-      const res = await analyzeQualitativeActivity('mentee', year, idx);
+      const res = await analyzeQualitativeActivity('mentor', year, idx);
       applyData(res.data);
       setExpandedSet((p) => new Set([...p, idx]));
     } catch (err) {
@@ -1138,20 +935,6 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       alert('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setAnalyzingIdx(null);
-    }
-  }
-
-  async function handleSummarize() {
-    if (summarizing) return;
-    setSummarizing(true);
-    try {
-      const data = await summarizeQualitative(year);
-      applyData(data);
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : '통합 분석에 실패했어요.');
-    } finally {
-      setSummarizing(false);
     }
   }
 
@@ -1167,7 +950,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   ): Promise<{ ok: boolean; attachmentErrors?: string[] }> {
     if (newFiles.length === 0) {
       // 첨부 변경 없음 — 기존 JSON PATCH + analyze
-      const saved = await patchQualitative('mentee', year, { activities: nextActivities });
+      const saved = await patchQualitative('mentor', year, { activities: nextActivities });
       applyData(saved);
       await triggerSingleAnalysis(analyzeIdx);
       return { ok: true };
@@ -1180,7 +963,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       const filesByIdx = new Map<number, File[]>();
       filesByIdx.set(analyzeIdx, newFiles);
       const saved = await patchQualitativeMultipart(
-        'mentee',
+        'mentor',
         year,
         { activities: nextActivities, analyzeIndex: analyzeIdx },
         filesByIdx
@@ -1211,7 +994,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       const filesByIdx = new Map<number, File[]>();
       filesByIdx.set(analyzeIdx, batch);
       const saved = await patchQualitativeMultipart(
-        'mentee',
+        'mentor',
         year,
         { activities: activitiesState }, // analyzeIndex 없음
         filesByIdx
@@ -1225,7 +1008,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
     const finalFilesByIdx = new Map<number, File[]>();
     if (images.length > 0) finalFilesByIdx.set(analyzeIdx, images);
     const finalSaved = await patchQualitativeMultipart(
-      'mentee',
+      'mentor',
       year,
       { activities: activitiesState, analyzeIndex: analyzeIdx },
       finalFilesByIdx
@@ -1303,7 +1086,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
     if (!confirm(`"${target?.name || '이 활동'}"을(를) 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.`)) return;
     setDeletingIdx(idx);
     try {
-      const data = await deleteQualitativeActivity('mentee', year, idx);
+      const data = await deleteQualitativeActivity('mentor', year, idx);
       applyData(data);
       // 펼쳐진 카드 인덱스도 정리: 삭제 인덱스 제거 + 그보다 큰 인덱스는 -1 시프트
       setExpandedSet((prev) => {
@@ -1356,7 +1139,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
     setServerActivities(newActivities);
 
     try {
-      const data = await patchQualitative('mentee', year, {
+      const data = await patchQualitative('mentor', year, {
         activities: newActivities,
         reorderMapping,
       });
@@ -1386,21 +1169,8 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   }
 
   // ----- 렌더 -----
+  // 멘토 대시보드: 통합 분석(키워드 집계 / 자소서 흐름)은 없음 — 진로 + 활동 목록만.
   function renderDashboard() {
-    // 사이드바: Gemini가 의미적으로 병합·집계한 최상위 키워드 (count 내림차순 가정)
-    const serverKeywords: KeywordCount[] = (analysis?.aiKeywords ?? []) as KeywordCount[];
-    const storyOutline = analysis?.storyOutline ?? null;
-
-    // raw 키워드 → 통합 키워드 역방향 맵
-    // sources가 비어있는 구버전 데이터는 keyword 자체로 fallback
-    const rawToUnified = new Map<string, KeywordCount>();
-    for (const kc of serverKeywords) {
-      const sources = kc.sources && kc.sources.length > 0 ? kc.sources : [kc.keyword];
-      for (const src of sources) {
-        rawToUnified.set(src, kc);
-      }
-    }
-
     if (serverActivities.length === 0) {
       return (
         <div className="flex flex-col gap-6 page-container">
@@ -1416,43 +1186,10 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       );
     }
 
-    let summaryState: SummaryState;
-    if (!allActivitiesAnalyzed) summaryState = 'incomplete';
-    else if (!analysis?.isAnalyzed) summaryState = 'pending';
-    else if (analysis.summaryOutdated) summaryState = 'outdated';
-    else summaryState = 'fresh';
-
     return (
       <div className="flex flex-col gap-6">
-        {!readOnly && (
-          <SummaryAnalysisCard
-            state={summaryState}
-            analyzedAt={analysis?.analyzedAt ?? null}
-            onAnalyze={handleSummarize}
-            loading={summarizing}
-          />
-        )}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative">
-          <div className="flex flex-col gap-6 min-w-0">
-            <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} readOnly={readOnly} />
-            <ActivityListTable
-              activities={serverActivities}
-              starByIdx={findStar}
-              rawToUnified={rawToUnified}
-              selectedUnified={selectedUnified}
-            />
-            {storyOutline && <StoryOutlineCard outline={storyOutline} />}
-          </div>
-          <div className="flex flex-col gap-6">
-            <KeywordFrequencyCard
-              keywords={serverKeywords}
-              totalActivities={serverActivities.length}
-              selectedKeyword={selectedUnified}
-              onSelectKeyword={(kw) => setSelectedUnified((prev) => (prev === kw ? null : kw))}
-            />
-          </div>
-          {summarizing && <LoadingOverlay message="AI가 활동 전체를 종합 분석하고 있어요..." />}
-        </div>
+        <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} readOnly={readOnly} />
+        <ActivityListTable activities={serverActivities} starByIdx={findStar} />
       </div>
     );
   }
@@ -1538,11 +1275,6 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       </div>
     );
   }
-
-  const allActivitiesAnalyzed =
-    serverActivities.length > 0 &&
-    (analysis?.activitiesAnalyzed ?? []).length === serverActivities.length &&
-    (analysis?.activitiesAnalyzed ?? []).every(Boolean);
 
   return (
     <div className="flex flex-col gap-6 page-container w-full">

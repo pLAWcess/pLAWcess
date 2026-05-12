@@ -65,7 +65,7 @@ export default function HistoryClient({ years }: { years: number[] }) {
       const [basicInfo, quantitative, qualitative, personalStatement] = await Promise.all([
         getBasicInfo(yearStr).catch(() => null),
         getQuantitative(yearStr).catch(() => null),
-        getQualitative(yearStr).catch(() => null),
+        getQualitative('mentee', yearStr).catch(() => null),
         getPersonalStatement(yearStr).catch(() => null),
       ]);
       if (cancelled) return;

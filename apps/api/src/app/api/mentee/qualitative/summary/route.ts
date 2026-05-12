@@ -18,12 +18,6 @@ function getProcessYear(req: NextRequest): number {
   return match ? parseInt(match[0]) : new Date().getFullYear();
 }
 
-const CAREER_LABEL: Record<string, string> = {
-  lawyer: "변호사",
-  prosecutor: "검사",
-  judge: "판사",
-};
-
 type StarAnalysisJson = {
   activities?: StarItem[];
   [k: string]: unknown;
@@ -88,7 +82,7 @@ function buildResponse(record: FullRecord, extras: { skipped: boolean }) {
 
   return {
     skipped: extras.skipped,
-    careerGoal: record.career_goal ? CAREER_LABEL[record.career_goal] ?? "" : "",
+    careerGoal: record.career_goal ?? "",
     activities,
     analysis: {
       isAnalyzed: record.is_ai_analyzed,

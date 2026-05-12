@@ -31,10 +31,15 @@ type StarAnalysisJson = {
   [k: string]: unknown;
 };
 
+// 멘티 신청서(mentee_records) / 멘토 신청서(mentor_records) — 동일한 정성·STAR 컬럼을 가진다.
+export type QualRecordKind = "mentee" | "mentor";
+
 export type RunAnalysisOptions = {
   userId: string;
   processYear: number;
   index: number;
+  // 분석 대상 레코드 종류. 기본은 멘티.
+  recordKind?: QualRecordKind;
   // PATCH 흐름에서만 채워지는 메모리 페이로드. /analyze/[index]에선 undefined.
   inMemoryGemini?: GeminiPayload;
 };
@@ -44,20 +49,24 @@ export type RunAnalysisResult =
   | { kind: "computed"; star: StarItem }
   | { kind: "noActivity" };
 
+const SELECT_FOR_ANALYSIS = {
+  career_goal: true,
+  qualitative_activities: true,
+  star_analysis: true,
+  star_input_hashes: true,
+} as const;
+
 export async function runSingleAnalysisInPlace(
   opts: RunAnalysisOptions
 ): Promise<RunAnalysisResult> {
   const { userId, processYear, index, inMemoryGemini } = opts;
+  const recordKind: QualRecordKind = opts.recordKind ?? "mentee";
+  const where = { user_id_process_year: { user_id: userId, process_year: processYear } };
 
-  const record = await prisma.menteeRecord.findUnique({
-    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
-    select: {
-      career_goal: true,
-      qualitative_activities: true,
-      star_analysis: true,
-      star_input_hashes: true,
-    },
-  });
+  const record =
+    recordKind === "mentor"
+      ? await prisma.mentorRecord.findUnique({ where, select: SELECT_FOR_ANALYSIS })
+      : await prisma.menteeRecord.findUnique({ where, select: SELECT_FOR_ANALYSIS });
   if (!record) return { kind: "noActivity" };
 
   const activities = (record.qualitative_activities ?? []) as ActivityWithAttachments[];
@@ -106,15 +115,17 @@ export async function runSingleAnalysisInPlace(
 
   const newHashes = { ...storedHashes, [String(index)]: inputHash };
 
-  await prisma.menteeRecord.update({
-    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
-    data: {
-      star_analysis: newStar as unknown as Prisma.InputJsonValue,
-      star_input_hashes: newHashes as unknown as Prisma.InputJsonValue,
-      // 통합 분석은 입력이 바뀌었으므로 outdated
-      ai_summary_hash: null,
-    },
-  });
+  const updateData = {
+    star_analysis: newStar as unknown as Prisma.InputJsonValue,
+    star_input_hashes: newHashes as unknown as Prisma.InputJsonValue,
+    // 통합 분석은 입력이 바뀌었으므로 outdated
+    ai_summary_hash: null,
+  };
+  if (recordKind === "mentor") {
+    await prisma.mentorRecord.update({ where, data: updateData });
+  } else {
+    await prisma.menteeRecord.update({ where, data: updateData });
+  }
 
   return { kind: "computed", star: starItem };
 }

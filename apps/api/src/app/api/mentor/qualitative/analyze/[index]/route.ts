@@ -1,3 +1,4 @@
+// 멘토 정성 — 단일 활동 STAR 분석. 멘티(/api/mentee/qualitative/analyze/[index])와 동일, 대상만 mentor_records.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
@@ -108,17 +109,11 @@ function buildResponse(record: FullRecord, extras: { skipped: boolean; star?: St
 }
 
 // ----------------------------------------------------------------
-// POST /api/mentee/qualitative/analyze/{index}?year=YYYY
-//
-// 단일 활동에 대해서만 STAR 분석을 수행한다.
-// 분석 본 로직은 lib/qualitativeAnalysis.ts (PATCH multipart 흐름과 공유).
-// 이 엔드포인트는 이미지 없이(저장된 문서 추출 텍스트만으로) 재분석하는 용도.
-// 새 이미지를 분석에 포함시키려면 PATCH multipart로 다시 보내야 한다.
+// POST /api/mentor/qualitative/analyze/{index}?year=YYYY
+// 저장된 활동 텍스트(+문서 추출 텍스트)만으로 단일 활동을 재분석.
+// 새 이미지를 포함하려면 PATCH multipart 로 다시 보내야 함.
 // ----------------------------------------------------------------
-export async function POST(
-  req: NextRequest,
-  ctx: { params: Promise<{ index: string }> }
-) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ index: string }> }) {
   const userId = getUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -132,8 +127,7 @@ export async function POST(
 
   const processYear = getProcessYear(req);
 
-  // 사전 검증 — record 자체가 없거나 index 범위 밖이면 즉시 반환
-  const pre = await prisma.menteeRecord.findUnique({
+  const pre = await prisma.mentorRecord.findUnique({
     where: { user_id_process_year: { user_id: userId, process_year: processYear } },
     select: { qualitative_activities: true },
   });
@@ -147,9 +141,9 @@ export async function POST(
 
   let result;
   try {
-    result = await runSingleAnalysisInPlace({ userId, processYear, index });
+    result = await runSingleAnalysisInPlace({ userId, processYear, index, recordKind: "mentor" });
   } catch (err) {
-    console.error("[qualitative/analyze/{index}] Gemini 호출 실패", err);
+    console.error("[mentor qualitative/analyze/{index}] Gemini 호출 실패", err);
     return NextResponse.json({ error: "AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 
@@ -157,7 +151,7 @@ export async function POST(
     return NextResponse.json({ error: "해당 인덱스의 활동이 없습니다." }, { status: 400 });
   }
 
-  const updated = await prisma.menteeRecord.findUnique({
+  const updated = await prisma.mentorRecord.findUnique({
     where: { user_id_process_year: { user_id: userId, process_year: processYear } },
     select: SELECT_FIELDS,
   });

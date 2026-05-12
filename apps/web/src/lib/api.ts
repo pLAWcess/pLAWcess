@@ -357,9 +357,13 @@ export type SingleAnalyzeResponse = {
   data: QualitativeData;
 };
 
-export async function getQualitative(year: string): Promise<QualitativeData> {
+// 정성 데이터 엔드포인트는 멘티/멘토가 동일 형태 — role 로 베이스 경로만 다름.
+export type QualRole = 'mentee' | 'mentor';
+const qualBase = (role: QualRole) => `${API_BASE}/api/${role}/qualitative`;
+
+export async function getQualitative(role: QualRole, year: string): Promise<QualitativeData> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
+    `${qualBase(role)}?year=${encodeURIComponent(year)}`,
     { headers: headers(), credentials: "include" }
   );
   if (!res.ok) throw new Error("정성 데이터 조회 실패");
@@ -367,11 +371,12 @@ export async function getQualitative(year: string): Promise<QualitativeData> {
 }
 
 export async function patchQualitative(
+  role: QualRole,
   year: string,
   body: { careerGoal?: string; activities?: QualitativeActivity[]; reorderMapping?: number[] }
 ): Promise<QualitativeData> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
+    `${qualBase(role)}?year=${encodeURIComponent(year)}`,
     { method: "PATCH", headers: headers(), credentials: "include", body: JSON.stringify(body) }
   );
   if (!res.ok) {
@@ -392,6 +397,7 @@ export type PatchQualitativeMultipartResponse = QualitativeData & {
 };
 
 export async function patchQualitativeMultipart(
+  role: QualRole,
   year: string,
   body: { careerGoal?: string; activities: QualitativeActivity[]; analyzeIndex?: number },
   filesByActivityIndex: Map<number, File[]>
@@ -412,7 +418,7 @@ export async function patchQualitativeMultipart(
   }
 
   const res = await fetch(
-    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}`,
+    `${qualBase(role)}?year=${encodeURIComponent(year)}`,
     { method: "PATCH", credentials: "include", body: form }
   );
   if (!res.ok) {
@@ -426,17 +432,19 @@ export async function patchQualitativeMultipart(
 }
 
 export async function analyzeQualitativeActivity(
+  role: QualRole,
   year: string,
   index: number
 ): Promise<SingleAnalyzeResponse> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/qualitative/analyze/${index}?year=${encodeURIComponent(year)}`,
+    `${qualBase(role)}/analyze/${index}?year=${encodeURIComponent(year)}`,
     { method: "POST", headers: headers(), credentials: "include" }
   );
   if (!res.ok) throw new Error("AI 분석 실패");
   return res.json();
 }
 
+// 통합 분석(키워드+자소서 흐름) — 멘티 전용. (멘토 정성에는 통합 분석 엔드포인트가 없음)
 export async function summarizeQualitative(
   year: string
 ): Promise<QualitativeData & { skipped: boolean }> {
@@ -451,9 +459,9 @@ export async function summarizeQualitative(
   return res.json();
 }
 
-export async function deleteQualitativeActivity(year: string, index: number): Promise<QualitativeData> {
+export async function deleteQualitativeActivity(role: QualRole, year: string, index: number): Promise<QualitativeData> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/qualitative?year=${encodeURIComponent(year)}&index=${index}`,
+    `${qualBase(role)}?year=${encodeURIComponent(year)}&index=${index}`,
     { method: "DELETE", headers: headers(), credentials: "include" }
   );
   if (!res.ok) throw new Error("활동 삭제 실패");
