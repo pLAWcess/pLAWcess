@@ -1,11 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
-import type { GpaSection } from '@/lib/api';
+import { getUser, type GpaSection } from '@/lib/api';
 
 export type GpaData = GpaSection;
 type GradeRow = Record<string, string>;
+
+const GRADES_STORAGE_PREFIX = 'plawcess:kupid-grades:';
+function gradesStorageKey(): string {
+  return GRADES_STORAGE_PREFIX + (getUser()?.user_id ?? 'anon');
+}
+function loadStoredGrades(): GradeRow[] | null {
+  try {
+    const raw = localStorage.getItem(gradesStorageKey());
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch { return null; }
+}
+function storeGrades(rows: GradeRow[]) {
+  try { localStorage.setItem(gradesStorageKey(), JSON.stringify(rows)); } catch { /* 용량 초과 등 무시 */ }
+}
 
 type Props = {
   initialData: GpaData;
@@ -27,6 +42,16 @@ function toDisplay(val: number | null): string {
 
 function toStr(val: number | null): string {
   return val == null ? '' : String(val);
+}
+
+// 저장 시점 검증. 빈 값은 허용(미입력), 그 외엔 0~4.5 + 소수점 둘째 자리까지(예: 4.5, 3.42)
+const GPA_INPUT_HINT = '학점을 알맞게 입력해주세요 (0 ~ 4.5, 예: 4.5 또는 3.42)';
+function validateGpaStr(s: string): string | null {
+  if (s.trim() === '') return null;
+  if (!/^[0-4](\.\d{1,2})?$/.test(s.trim())) return GPA_INPUT_HINT;
+  const n = parseFloat(s);
+  if (isNaN(n) || n > GPA_MAX) return GPA_INPUT_HINT;
+  return null;
 }
 
 // 학점 가중 평점 평균. 재수강 대체 과목(삭제구분 != '')과 P/F 제외.
@@ -74,7 +99,15 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const [kupidLoading, setKupidLoading] = useState(false);
   const [kupidError, setKupidError] = useState<string | null>(null);
   const [gradeRows, setGradeRows] = useState<GradeRow[] | null>(null);
-  const [gradeListOpen, setGradeListOpen] = useState(true);
+  const [gradeListOpen, setGradeListOpen] = useState(false);
+  const [gpaInputError, setGpaInputError] = useState<string | null>(null);
+
+  // 마운트 시 저장된 수강 과목 복원
+  useEffect(() => {
+    if (readOnly) return;
+    const stored = loadStoredGrades();
+    if (stored) setGradeRows(stored);
+  }, [readOnly]);
 
   async function handleKupidLogin() {
     setKupidLoading(true);
@@ -106,6 +139,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
       setDraft(newData);
       setDraftStr({ overall: toStr(overall), major: toStr(major) });
       setGradeRows(rows);
+      storeGrades(rows);
       setGradeListOpen(true);
       if (onSave) await onSave(newData);
 
@@ -122,6 +156,9 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const draftConverted = calcConverted(draft.overall);
 
   async function handleSave() {
+    const err = validateGpaStr(draftStr.overall) ?? validateGpaStr(draftStr.major);
+    if (err) { setGpaInputError(err); return; }
+    setGpaInputError(null);
     setIsSaving(true);
     try {
       const saveData: GpaData = { ...draft, converted: draftConverted };
@@ -136,6 +173,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   function handleCancel() {
     setDraft(data);
     setDraftStr({ overall: toStr(data.overall), major: toStr(data.major) });
+    setGpaInputError(null);
     setIsEditing(false);
   }
 
@@ -144,8 +182,8 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">GPA</h2>
         {!readOnly && (isEditing
-          ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={isSaving} />
-          : <EditButton onClick={() => { setDraft(data); setDraftStr({ overall: toStr(data.overall), major: toStr(data.major) }); setIsEditing(true); }} />
+          ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={isSaving || gpaInputError != null} />
+          : <EditButton onClick={() => { setDraft(data); setDraftStr({ overall: toStr(data.overall), major: toStr(data.major) }); setGpaInputError(null); setIsEditing(true); }} />
         )}
       </div>
 
@@ -157,10 +195,12 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
             {isEditing && !readOnly ? (
               <input
                 type="text"
+                inputMode="decimal"
                 value={draftStr.overall}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  if (/^\d*\.?\d*$/.test(val)) {
+                    if (gpaInputError) setGpaInputError(null);
                     setDraftStr(prev => ({ ...prev, overall: val }));
                     setDraft(prev => ({ ...prev, overall: val === '' || val === '.' ? null : Number(val) }));
                   }
@@ -183,10 +223,12 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
             {isEditing && !readOnly ? (
               <input
                 type="text"
+                inputMode="decimal"
                 value={draftStr.major}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  if (/^\d*\.?\d*$/.test(val)) {
+                    if (gpaInputError) setGpaInputError(null);
                     setDraftStr(prev => ({ ...prev, major: val }));
                     setDraft(prev => ({ ...prev, major: val === '' || val === '.' ? null : Number(val) }));
                   }
@@ -218,6 +260,10 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
           </div>
         </div>
       </div>
+
+      {isEditing && gpaInputError && (
+        <p className="text-xs text-red-500 mt-3">{gpaInputError}</p>
+      )}
 
       {/* 수강 과목 목록 */}
       {gradeRows && gradeRows.length > 0 && (() => {
@@ -282,17 +328,29 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
         );
       })()}
 
-      {!showKupid && !gradeRows && !readOnly && (
+      {!showKupid && !readOnly && (
         <div className="flex justify-center mt-8">
-          <button
-            onClick={() => setShowKupid(true)}
-            className="flex items-center gap-2 text-sm text-text-secondary border border-border px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
-            </svg>
-            학업 정보 불러오기 (선택)
-          </button>
+          {gradeRows ? (
+            <button
+              onClick={() => setShowKupid(true)}
+              className="flex items-center gap-2 text-xs text-text-secondary hover:text-brand transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" />
+              </svg>
+              KUPID에서 다시 불러오기
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowKupid(true)}
+              className="flex items-center gap-2 text-sm text-text-secondary border border-border px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+              </svg>
+              학업 정보 불러오기 (선택)
+            </button>
+          )}
         </div>
       )}
 
