@@ -6,6 +6,7 @@ import type { RhwpEditor } from '@rhwp/editor';
 import {
   uploadPersonalStatement,
   saveTextAnswers,
+  resetPersonalStatementHwp,
   type PersonalStatementData,
   type TextAnswer,
 } from '@/lib/api';
@@ -40,6 +41,8 @@ export default function PersonalStatementClient({
   const [data, setData] = useState(initialData);
   const [saving, setSaving] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [savedAt, setSavedAt] = useState<Record<Group, Date | null>>({ ga: null, na: null });
   // [group][questionId] → text
   const [textDrafts, setTextDrafts] = useState<Record<Group, Record<string, string>>>(() => {
@@ -144,6 +147,26 @@ export default function PersonalStatementClient({
     }
   }
 
+  async function handleReset() {
+    if (isSavingRef.current || resetting) return;
+    if (!confirm('편집한 내용을 모두 버리고 학교 양식으로 되돌립니다. 계속하시겠습니까?')) return;
+    setResetting(true);
+    try {
+      const resolved = await resetPersonalStatementHwp(year, activeTab);
+      setData((prev) => ({
+        ...prev,
+        [activeTab]: { ...prev[activeTab], hwp: resolved.hwp, templateExists: resolved.templateExists },
+      }));
+      dirtyRef.current[activeTab] = false;
+      setSavedAt((prev) => ({ ...prev, [activeTab]: null }));
+      setReloadKey((k) => k + 1); // HwpEditor 리마운트 → 양식 다시 로드
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '초기화 실패');
+    } finally {
+      setResetting(false);
+    }
+  }
+
   async function handleDownload() {
     const editorRef = activeTab === 'ga' ? editorRefGa : editorRefNa;
     if (!editorRef.current) return;
@@ -226,6 +249,15 @@ export default function PersonalStatementClient({
           {!readOnly && statusText && <span className="text-xs text-text-placeholder">{statusText}</span>}
           {!readOnly && mode === 'hwp' && activeGroup.hwp && (
             <button
+              onClick={handleReset}
+              disabled={resetting || saving || autoSaving}
+              className="px-4 py-2 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {resetting ? '초기화 중...' : '양식으로 초기화'}
+            </button>
+          )}
+          {!readOnly && mode === 'hwp' && activeGroup.hwp && (
+            <button
               onClick={handleDownload}
               className="px-4 py-2 text-sm font-medium text-text-secondary bg-page-bg rounded-lg hover:bg-gray-200 transition-colors"
             >
@@ -290,6 +322,7 @@ export default function PersonalStatementClient({
                     style={{ height: '80vh' }}
                   >
                     <HwpEditor
+                      key={`hwp-${group}-${reloadKey}`}
                       initialHwpBase64={activeGroup.hwp}
                       onEditorReady={(editor) => onEditorReady(group, editor)}
                     />

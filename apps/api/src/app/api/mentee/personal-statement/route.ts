@@ -115,3 +115,38 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+// HWP 초기화 — 멘티 개인 편집본 삭제 후 학교 양식으로 폴백
+export async function DELETE(req: NextRequest) {
+  const userId = getUserId(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const year = getProcessYear(req);
+  const group = req.nextUrl.searchParams.get("group");
+  if (group !== "ga" && group !== "na") {
+    return NextResponse.json({ error: "group 파라미터가 필요합니다 (ga 또는 na)" }, { status: 400 });
+  }
+
+  const record = await prisma.menteeRecord.findUnique({
+    where: { user_id_process_year: { user_id: userId, process_year: year } },
+    select: {
+      target_school_ga: true,
+      target_school_na: true,
+      personal_statement_text_ga: true,
+      personal_statement_text_na: true,
+    },
+  });
+
+  await prisma.menteeRecord.updateMany({
+    where: { user_id: userId, process_year: year },
+    data: group === "ga" ? { personal_statement_hwp_ga: null } : { personal_statement_hwp_na: null },
+  });
+
+  const resolved = await resolveGroup(
+    null,
+    group === "ga" ? record?.personal_statement_text_ga : record?.personal_statement_text_na,
+    group === "ga" ? record?.target_school_ga : record?.target_school_na,
+    year,
+  );
+  return NextResponse.json(resolved);
+}

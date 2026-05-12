@@ -836,6 +836,18 @@ export async function uploadPersonalStatement(
   await jsonOrError(res, "자기소개서 저장 실패");
 }
 
+// HWP 개인 편집본 초기화 → 학교 양식으로 되돌린 그룹 정보 반환
+export async function resetPersonalStatementHwp(
+  year: string,
+  group: "ga" | "na",
+): Promise<PersonalStatementGroupInfo> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/personal-statement?year=${encodeURIComponent(year)}&group=${group}`,
+    { method: "DELETE", credentials: "include" },
+  );
+  return jsonOrError(res, "자기소개서 초기화 실패");
+}
+
 export async function saveTextAnswers(
   year: string,
   group: "ga" | "na",
