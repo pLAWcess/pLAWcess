@@ -7,9 +7,9 @@ import GpaCard from '@/components/quantitative/GpaCard';
 import { patchQuantitative } from '@/lib/api';
 import type { QuantitativeData, LeetSection, GpaSection, LanguageSection } from '@/lib/api';
 
-type Props = { initialData: QuantitativeData; year: string };
+type Props = { initialData: QuantitativeData; year: string; readOnly?: boolean };
 
-export default function QuantitativeClient({ initialData, year }: Props) {
+export default function QuantitativeClient({ initialData, year, readOnly }: Props) {
   const [data, setData] = useState<QuantitativeData>(initialData);
 
   async function handleSaveLeet(leet: LeetSection) {
@@ -29,9 +29,9 @@ export default function QuantitativeClient({ initialData, year }: Props) {
 
   return (
     <>
-      <LeetCard initialData={data.leet} onSave={handleSaveLeet} />
-      <LanguageCard initialData={data.language} onSave={handleSaveLanguage} />
-      <GpaCard initialData={data.gpa} onSave={handleSaveGpa} />
+      <LeetCard initialData={data.leet} onSave={readOnly ? undefined : handleSaveLeet} readOnly={readOnly} />
+      <LanguageCard initialData={data.language} onSave={readOnly ? undefined : handleSaveLanguage} readOnly={readOnly} />
+      <GpaCard initialData={data.gpa} onSave={readOnly ? undefined : handleSaveGpa} readOnly={readOnly} />
     </>
   );
 }
