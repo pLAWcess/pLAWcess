@@ -14,6 +14,7 @@ export default async function MentorDashboardLayout({ children }: { children: Re
     serverFetch<{ showReminder: boolean }>('/api/auth/password-reminder-status', token),
   ]);
   if (!initialUser) redirect('/login');
+  if (initialUser.current_role !== 'mentor') redirect('/login');
 
   return (
     <DashboardShell initialUser={initialUser} showPasswordReminder={reminderStatus?.showReminder ?? false}>

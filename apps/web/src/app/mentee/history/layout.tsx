@@ -14,6 +14,7 @@ export default async function HistoryLayout({ children }: { children: React.Reac
     serverFetch<{ showReminder: boolean }>('/api/auth/password-reminder-status', token),
   ]);
   if (!initialUser) redirect('/login');
+  if (initialUser.current_role !== 'mentee') redirect('/login');
 
   return (
     <DashboardShell initialUser={initialUser} showPasswordReminder={reminderStatus?.showReminder ?? false}>

@@ -14,6 +14,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     serverFetch<{ showReminder: boolean }>('/api/auth/password-reminder-status', token),
   ]);
   if (!initialUser) redirect('/login');
+  if (initialUser.current_role !== 'mentee') redirect('/login');
 
   return (
     <DashboardShell initialUser={initialUser} showPasswordReminder={reminderStatus?.showReminder ?? false}>

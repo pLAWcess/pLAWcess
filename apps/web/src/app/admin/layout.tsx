@@ -11,6 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const initialUser = await getAuthUser(token);
   if (!initialUser) redirect('/login');
+  if (initialUser.current_role !== 'admin') redirect('/login');
 
   return (
     <DashboardShell initialUser={initialUser}>
