@@ -5,10 +5,16 @@
 ## 인증
 
 모든 보호 엔드포인트는 `plawcess_token` HttpOnly 쿠키(JWT)로 인증한다.
-- `/api/auth/*`, `/api/health`: 공개
+
+**기본 막힘(deny by default)** — `/api` 아래 모든 라우트는 인증이 필요하다. 무인증 공개 라우트는 명시적으로 허용 목록에 등록되며, 그 목록은 `apps/api/scripts/verify-route-auth.ts` 의 `PUBLIC_PATHS` 가 단일 출처다 (이 스크립트가 "비공개 라우트는 쿠키 없이 호출 시 401" 을 검증한다).
+
+- **무인증 공개**: `/api/health`, `/api/auth/login`, `/api/auth/signup`, `/api/auth/logout`, `/api/auth/find-id`, `/api/auth/reset-password`, `/api/auth/check-login-id`, `/api/auth/email/send-verification`, `/api/auth/email/verify-code`
+- **인증 필요·역할 무관** (예: `/api/auth/me`, `/api/auth/change-password`, `/api/announcements*`, `/api/cycle-schedules/active` 등): 핸들러가 `requireAuth(req)` 호출
 - `/api/mentee/*`: `mentee` 또는 `admin`
 - `/api/mentor/*`: `mentor` 또는 `admin`
-- `/api/admin/*`: `admin`
+- `/api/admin/*`: `admin` — 핸들러가 `requireAdmin(req)` 호출
+
+새 라우트를 추가할 때: 인증이 필요하면 핸들러 첫머리에서 `requireAuth`/`requireAdmin`(또는 멘티·멘토 역할 가드)를 호출하고, 무인증 공개라면 `verify-route-auth.ts` 의 `PUBLIC_PATHS` 에 경로를 추가한다.
 
 ## 라벨 변환 컨벤션
 
