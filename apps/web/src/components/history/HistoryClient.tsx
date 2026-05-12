@@ -123,24 +123,18 @@ export default function HistoryClient({ years }: { years: number[] }) {
           </div>
 
           {/* 정성 데이터 */}
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold text-text-primary">정성 데이터</h2>
-            <QualitativeClient
-              initialData={data.qualitative ?? EMPTY_QUALITATIVE}
-              year={`${selectedYear}학년도`}
-              readOnly
-            />
-          </div>
+          <QualitativeClient
+            initialData={data.qualitative ?? EMPTY_QUALITATIVE}
+            year={`${selectedYear}학년도`}
+            readOnly
+          />
 
           {/* 자기소개서 */}
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold text-text-primary">자기소개서</h2>
-            <PersonalStatementClient
-              initialData={data.personalStatement ?? EMPTY_PERSONAL}
-              year={`${selectedYear}학년도`}
-              readOnly
-            />
-          </div>
+          <PersonalStatementClient
+            initialData={data.personalStatement ?? EMPTY_PERSONAL}
+            year={`${selectedYear}학년도`}
+            readOnly
+          />
         </div>
       )}
     </div>
