@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardShell from '@/components/layout/DashboardShell';
-import { getAuthUser } from '@/lib/server-fetch';
+import { getAuthUser, serverFetch } from '@/lib/server-fetch';
 
 const COOKIE_NAME = 'plawcess_token';
 
@@ -9,8 +9,15 @@ export default async function MentorAnnouncementsLayout({ children }: { children
   const token = (await cookies()).get(COOKIE_NAME)?.value;
   if (!token) redirect('/login');
 
-  const initialUser = await getAuthUser(token);
+  const [initialUser, reminderStatus] = await Promise.all([
+    getAuthUser(token),
+    serverFetch<{ showReminder: boolean }>('/api/auth/password-reminder-status', token),
+  ]);
   if (!initialUser) redirect('/login');
 
-  return <DashboardShell initialUser={initialUser}>{children}</DashboardShell>;
+  return (
+    <DashboardShell initialUser={initialUser} showPasswordReminder={reminderStatus?.showReminder ?? false}>
+      {children}
+    </DashboardShell>
+  );
 }
