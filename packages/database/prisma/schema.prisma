@@ -232,15 +232,32 @@ model MentorRecord {
   user_id      String @db.Uuid
   process_year Int
 
-  leet_score                 Decimal? @db.Decimal(5, 2)
-  gpa                        Decimal? @db.Decimal(3, 2)
-  leet_exam_year             Int?
-  has_law_class              Boolean  @default(false)
-  law_class_subjects         Json? // 표시용, 검색 안 함
-  personal_statement_summary String?  @db.Text
-  strengths_weaknesses       String?  @db.Text
-  career_goal                String?  @db.Text
-  is_special_admission       Boolean  @default(false)
+  // 정량
+  leet_score           Decimal? @db.Decimal(5, 2)
+  gpa                  Decimal? @db.Decimal(3, 2)
+  leet_exam_year       Int?
+  has_law_class        Boolean  @default(false)
+  law_class_subjects   Json? // 표시용, 검색 안 함
+  is_special_admission Boolean  @default(false)
+
+  // 자소서·정성 (사용자 직접 입력) — 멘티(MenteeRecord)의 정성 블록을 멘토에도 동일하게 둔다.
+  //   qualitative_activities      : 활동 목록 (활동별 STAR 분석의 입력). ActivityWithAttachments[] 형태.
+  //   core_keywords               : 사용자가 직접 입력한 핵심 키워드.
+  //   personal_statement_summary  : 멘티의 story_summary 에 대응하는 자기소개서 요약.
+  qualitative_activities     Json?
+  core_keywords              String? @db.VarChar(500)
+  personal_statement_summary String? @db.Text
+  strengths_weaknesses       String? @db.Text
+  career_goal                String? @db.Text
+
+  // AI 분석 결과 (LLM Output) — 멘티와 동일 구조
+  star_analysis     Json? // STAR 구조화 결과 — 단일 활동 분석 결과 누적
+  ai_story_outline  Json? // AI 추천 자소서 흐름: { intro, body: { label, text }[], conclusion }
+  ai_keywords       Json? // KeywordCount[] — 의미 병합·집계된 상위 키워드
+  is_ai_analyzed    Boolean   @default(false) // 통합 분석 완료 여부
+  ai_analyzed_at    DateTime? // 통합 분석 완료 시각
+  ai_summary_hash   String?   @db.VarChar(64) // 통합 분석(키워드+자소서) 캐시 hash
+  star_input_hashes Json? // 활동별 단일 STAR 분석 캐시: { "0": hash, "1": hash, ... }
 
   // 멘토 본인 로스쿨 정보 (cycle 시점 기준)
   lawschool_name  String? @db.VarChar(100) // 소속 로스쿨

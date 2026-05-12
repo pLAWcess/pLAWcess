@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "seed:mentees": "tsx seed-dummy-mentees.ts"
+    "seed:dummy": "tsx seed-dummy-data.ts"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
