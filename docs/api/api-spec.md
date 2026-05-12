@@ -4,7 +4,7 @@
 
 ## 인증
 
-모든 보호 엔드포인트는 `plawcess_token` HttpOnly 쿠키(JWT)로 인증한다.
+모든 보호 엔드포인트는 `plawcess_token` HttpOnly 쿠키(JWT)로 인증한다. 세션 토큰은 `iss: pLAWcess`, `aud: session` 으로 발급·검증된다 — 다른 audience 의 토큰(`password-reset` 등)은 세션으로 인정되지 않는다.
 
 **기본 막힘(deny by default)** — `/api` 아래 모든 라우트는 인증이 필요하다. 무인증 공개 라우트는 명시적으로 허용 목록에 등록되며, 그 목록은 `apps/api/scripts/verify-route-auth.ts` 의 `PUBLIC_PATHS` 가 단일 출처다 (이 스크립트가 "비공개 라우트는 쿠키 없이 호출 시 401" 을 검증한다).
 
