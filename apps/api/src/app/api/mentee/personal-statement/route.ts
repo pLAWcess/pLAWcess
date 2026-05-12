@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
+import { validateHwpUpload } from "@/lib/hwp-upload";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -98,12 +99,10 @@ export async function PATCH(req: NextRequest) {
   }
 
   const formData = await req.formData();
-  const file = formData.get("hwp");
-  if (!file || !(file instanceof Blob)) {
-    return NextResponse.json({ error: "hwp 파일이 없습니다" }, { status: 400 });
-  }
+  const v = await validateHwpUpload(formData.get("hwp"));
+  if (!v.ok) return NextResponse.json({ error: v.error }, { status: v.status });
+  const bytes = v.bytes;
 
-  const bytes = Buffer.from(await file.arrayBuffer());
   await prisma.menteeRecord.upsert({
     where: { user_id_process_year: { user_id: userId, process_year: year } },
     create: {

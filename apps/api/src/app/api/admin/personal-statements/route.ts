@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
+import { validateHwpUpload } from "@/lib/hwp-upload";
 
 function getProcessYear(req: NextRequest): number {
   const raw = req.nextUrl.searchParams.get("year");
@@ -49,12 +50,10 @@ export async function PATCH(req: NextRequest) {
   }
 
   const formData = await req.formData();
-  const file = formData.get("hwp");
-  if (!file || !(file instanceof Blob)) {
-    return NextResponse.json({ error: "hwp 파일이 없습니다" }, { status: 400 });
-  }
+  const v = await validateHwpUpload(formData.get("hwp"));
+  if (!v.ok) return NextResponse.json({ error: v.error }, { status: v.status });
+  const bytes = v.bytes;
 
-  const bytes = Buffer.from(await file.arrayBuffer());
   await prisma.schoolPersonalStatement.upsert({
     where: { school_name_process_year: { school_name: school, process_year: year } },
     create: { school_name: school, process_year: year, hwp_data: bytes },
