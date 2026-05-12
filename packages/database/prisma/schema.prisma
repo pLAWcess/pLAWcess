@@ -108,9 +108,11 @@ model User {
   undergrad_graduation_year Int?
 
   // 계정
-  account_status AccountStatus @default(active)
-  current_role   CurrentRole   @default(none)
-  password_hash  String?       @db.VarChar(100)
+  account_status         AccountStatus @default(active)
+  current_role           CurrentRole   @default(none)
+  password_hash          String?       @db.VarChar(100)
+  password_changed_at    DateTime?     @db.Timestamptz()
+  reminder_dismissed_at  DateTime?     @db.Timestamptz()
 
   // Soft Delete
   is_deleted Boolean   @default(false)
