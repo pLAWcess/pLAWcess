@@ -1,5 +1,6 @@
 // 더미데이터.txt 파서.
-// 입력은 마크다운 텍스트, 출력은 ParsedMentee[] + 파싱 실패 목록.
+// 입력은 마크다운 텍스트, 출력은 ParsedPerson[] + 파싱 실패 목록.
+// `## M..` = 멘토, `## T..` = 멘티 (kind 로 구분).
 // throw 대신 실패는 ParseFailure로 축적해 호출자가 표로 출력하게 한다.
 
 export type Gender = "male" | "female" | "other";
@@ -11,6 +12,8 @@ export type AcademicStatus =
   | "completed"
   | "expelled";
 
+export type PersonKind = "mentor" | "mentee";
+
 export type ParsedActivity = {
   category: string; // 구분 값 (교내활동 / 사회경험 / 대외활동 / 자격사항 / 기타 ...)
   name: string;
@@ -21,15 +24,16 @@ export type ParsedActivity = {
   content: string;
 };
 
-export type ParsedMentee = {
+export type ParsedPerson = {
   id: string; // "M02", "T13" 등
+  kind: PersonKind; // M → mentor, T → mentee
   gender: Gender;
   militaryStatus: MilitaryStatus;
   entryYear: number;
   graduationYear: number;
   firstMajor: string;
   secondMajor: string; // 항상 "법학"
-  academicStatus: AcademicStatus;
+  academicStatus: AcademicStatus; // 학부 학적 (졸업/졸업예정 기준)
   careerGoalRaw: string; // 헤더 진로 텍스트 원문 (리포트용)
   careerGoal: string | null; // career_goal 컬럼에 들어갈 값 — 변호사/검사/판사 또는 원문(=FE "기타")
   activities: ParsedActivity[];
@@ -42,7 +46,7 @@ export type ParseFailure = {
 };
 
 export type ParseResult = {
-  ok: ParsedMentee[];
+  ok: ParsedPerson[];
   failures: ParseFailure[];
 };
 
@@ -53,13 +57,17 @@ export type ParseResult = {
 export function parseDummyData(text: string): ParseResult {
   const result: ParseResult = { ok: [], failures: [] };
 
-  // 멘티 블록 분리 — `## M..` 또는 `## T..` 로 시작
-  const blocks = splitMenteeBlocks(text);
+  // 인물 블록 분리 — `## M..`(멘토) 또는 `## T..`(멘티) 로 시작
+  const blocks = splitPersonBlocks(text);
   for (const block of blocks) {
     parseOne(block, result);
   }
 
   return result;
+}
+
+export function kindOfId(id: string): PersonKind {
+  return id.startsWith("M") ? "mentor" : "mentee";
 }
 
 // ----------------------------------------------------------------
@@ -69,10 +77,10 @@ export function parseDummyData(text: string): ParseResult {
 type RawBlock = {
   id: string; // 헤더 line에서 ID만 prefetch — 실패 리포트용
   header: string; // 첫 줄
-  body: string; // 헤더 이후 ~ 다음 멘티 직전
+  body: string; // 헤더 이후 ~ 다음 인물 직전
 };
 
-function splitMenteeBlocks(text: string): RawBlock[] {
+function splitPersonBlocks(text: string): RawBlock[] {
   const lines = text.split(/\r?\n/);
   const blocks: RawBlock[] = [];
 
@@ -113,7 +121,7 @@ function extractIdLoose(headerLine: string): string {
 }
 
 // ----------------------------------------------------------------
-// 멘티 1명 파싱
+// 인물 1명 파싱
 // ----------------------------------------------------------------
 
 function parseOne(block: RawBlock, result: ParseResult): void {
@@ -131,6 +139,7 @@ function parseOne(block: RawBlock, result: ParseResult): void {
 
   result.ok.push({
     id: block.id,
+    kind: kindOfId(block.id),
     gender: header.value.gender,
     militaryStatus: header.value.militaryStatus,
     entryYear: header.value.entryYear,
