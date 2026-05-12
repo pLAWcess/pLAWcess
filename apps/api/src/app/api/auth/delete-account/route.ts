@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@plawcess/database";
-import { getTokenFromCookie, makeClearCookie } from "@/lib/auth";
+import { makeClearCookie } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth-guard";
 
 export async function DELETE(req: NextRequest) {
   // 1. 인증: 토큰에서 user_id 추출
-  const tokenPayload = getTokenFromCookie(req);
-  if (!tokenPayload) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-  }
+  const auth = requireAuth(req);
+  if (auth.error) return auth.error;
 
-  const userId = tokenPayload.user_id;
+  const userId = auth.payload.user_id;
 
   // 2. 요청 본체에서 password 추출
   let body: { password?: string };

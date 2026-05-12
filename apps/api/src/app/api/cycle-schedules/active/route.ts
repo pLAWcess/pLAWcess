@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
-import { getTokenFromCookie } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth-guard";
 
 export async function GET(req: NextRequest) {
-  const payload = getTokenFromCookie(req);
-  if (!payload) {
-    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-  }
+  const auth = requireAuth(req);
+  if (auth.error) return auth.error;
 
   const active = await prisma.cycleSchedule.findFirst({
     where: { is_active: true },

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@plawcess/database";
-import { getTokenFromCookie } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth-guard";
 
 export async function POST(req: NextRequest) {
-  const tokenPayload = getTokenFromCookie(req);
-  if (!tokenPayload) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-  }
+  const auth = requireAuth(req);
+  if (auth.error) return auth.error;
+  const tokenPayload = auth.payload;
 
   let body: { currentPassword?: string; newPassword?: string };
   try {

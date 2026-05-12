@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
-import { getTokenFromCookie } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth-guard";
 
 const REMINDER_THRESHOLD_MS = 180 * 24 * 60 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
-  const tokenPayload = getTokenFromCookie(req);
-  if (!tokenPayload) {
-    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-  }
+  const auth = requireAuth(req);
+  if (auth.error) return auth.error;
+  const tokenPayload = auth.payload;
 
   const user = await prisma.user.findUnique({
     where: { user_id: tokenPayload.user_id },
