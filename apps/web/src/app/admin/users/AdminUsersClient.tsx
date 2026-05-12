@@ -319,7 +319,8 @@ function Pagination({ page, totalPages, onPage }: { page: number; totalPages: nu
     <div className="flex items-center gap-1">
       <PageButton onClick={() => onPage(page - 1)} disabled={page === 1}>‹</PageButton>
       {pages.map((p, i) =>
-        p === '…' ? <span key={`e${i}`} className="px-2 text-xs text-text-placeholder">…</span>
+        p === '«' ? <PageButton key={`jl${i}`} onClick={() => onPage(Math.max(1, page - 5))}>«</PageButton>
+          : p === '»' ? <PageButton key={`jr${i}`} onClick={() => onPage(Math.min(totalPages, page + 5))}>»</PageButton>
           : <PageButton key={p} onClick={() => onPage(p)} active={p === page}>{p}</PageButton>
       )}
       <PageButton onClick={() => onPage(page + 1)} disabled={page === totalPages}>›</PageButton>
@@ -335,14 +336,14 @@ function PageButton({ onClick, disabled, active, children }: { onClick: () => vo
   );
 }
 
-function pageNumbers(current: number, total: number): (number | '…')[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages: (number | '…')[] = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  if (start > 2) pages.push('…');
+function pageNumbers(current: number, total: number): (number | '«' | '»')[] {
+  if (total <= 9) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | '«' | '»')[] = [1];
+  const start = Math.max(2, current - 2);
+  const end = Math.min(total - 1, current + 2);
+  if (start > 2) pages.push('«');
   for (let p = start; p <= end; p++) pages.push(p);
-  if (end < total - 1) pages.push('…');
+  if (end < total - 1) pages.push('»');
   pages.push(total);
   return pages;
 }
