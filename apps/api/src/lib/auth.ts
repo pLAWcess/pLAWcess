@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const COOKIE_NAME = "plawcess_token";
@@ -25,9 +25,13 @@ export function signToken(payload: TokenPayload): string {
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    // audience 미강제: 기존 세션 토큰(audience 없음) 호환을 위해.
-    // 토큰 종류 변환 공격은 verification·reset 토큰의 verify 함수가 자체 audience 강제로 차단.
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    // 세션 audience(`session`)·issuer(`pLAWcess`)만 인정한다. password-reset / email-verification
+    // 등 다른 종류 토큰(같은 JWT_SECRET 으로 서명됨)이 세션 토큰으로 오용되는 것을 차단.
+    // auth-tokens.ts 의 verify 함수들과 대칭.
+    return jwt.verify(token, JWT_SECRET, {
+      issuer: ISSUER,
+      audience: SESSION_AUDIENCE,
+    }) as TokenPayload;
   } catch {
     return null;
   }
