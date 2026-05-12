@@ -1507,7 +1507,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
             </div>
           </SortableContext>
         </DndContext>
-        {draftList.map((form, i) => (
+        {!readOnly && draftList.map((form, i) => (
           <ActivityFormCard
             key={`draft-${i}`}
             form={form}
