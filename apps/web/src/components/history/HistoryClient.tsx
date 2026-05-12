@@ -57,20 +57,22 @@ export default function HistoryClient({ years }: { years: number[] }) {
 
   useEffect(() => {
     if (!selectedYear) return;
-    const yearStr = `${selectedYear}학년도`;
     let cancelled = false;
-    setLoading(true);
-    setData(null);
-    Promise.all([
-      getBasicInfo(yearStr).catch(() => null),
-      getQuantitative(yearStr).catch(() => null),
-      getQualitative(yearStr).catch(() => null),
-      getPersonalStatement(yearStr).catch(() => null),
-    ]).then(([basicInfo, quantitative, qualitative, personalStatement]) => {
+    async function fetchAll() {
+      const yearStr = `${selectedYear}학년도`;
+      setLoading(true);
+      setData(null);
+      const [basicInfo, quantitative, qualitative, personalStatement] = await Promise.all([
+        getBasicInfo(yearStr).catch(() => null),
+        getQuantitative(yearStr).catch(() => null),
+        getQualitative(yearStr).catch(() => null),
+        getPersonalStatement(yearStr).catch(() => null),
+      ]);
       if (cancelled) return;
       setData({ basicInfo, quantitative, qualitative, personalStatement });
       setLoading(false);
-    });
+    }
+    fetchAll();
     return () => { cancelled = true; };
   }, [selectedYear]);
 
