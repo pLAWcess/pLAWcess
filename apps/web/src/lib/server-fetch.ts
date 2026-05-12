@@ -1,6 +1,12 @@
 import type { AuthUser } from '@/lib/api';
 import { decodeSessionToken } from '@/lib/jwt';
 
+export function getRoleHomePath(role: string): string {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'mentee' || role === 'mentor') return `/${role}/dashboard/basic-info`;
+  return '/login';
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const COOKIE_NAME = 'plawcess_token';
 

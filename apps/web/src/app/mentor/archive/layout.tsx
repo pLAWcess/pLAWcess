@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardShell from '@/components/layout/DashboardShell';
-import { getAuthUser, serverFetch } from '@/lib/server-fetch';
+import { getAuthUser, serverFetch, getRoleHomePath } from '@/lib/server-fetch';
 
 const COOKIE_NAME = 'plawcess_token';
 
@@ -14,7 +14,7 @@ export default async function MentorArchiveLayout({ children }: { children: Reac
     serverFetch<{ showReminder: boolean }>('/api/auth/password-reminder-status', token),
   ]);
   if (!initialUser) redirect('/login');
-  if (initialUser.current_role !== 'mentor') redirect('/login');
+  if (initialUser.current_role !== 'mentor') redirect(getRoleHomePath(initialUser.current_role));
 
   return (
     <DashboardShell initialUser={initialUser} showPasswordReminder={reminderStatus?.showReminder ?? false}>
