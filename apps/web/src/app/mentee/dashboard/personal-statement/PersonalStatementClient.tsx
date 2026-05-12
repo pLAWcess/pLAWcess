@@ -200,7 +200,7 @@ export default function PersonalStatementClient({
         </div>
         <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-12 flex items-center justify-center">
           <p className="text-sm text-text-secondary">
-            지망 학교를 먼저 설정해 주세요. (정량 데이터 페이지에서 설정 가능합니다)
+            지망 학교를 먼저 설정해 주세요. (기본 정보 페이지에서 설정 가능합니다)
           </p>
         </div>
       </div>
