@@ -7,7 +7,7 @@ const REMINDER_THRESHOLD_MS = 180 * 24 * 60 * 60 * 1000;
 export async function GET(req: NextRequest) {
   const tokenPayload = getTokenFromCookie(req);
   if (!tokenPayload) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
