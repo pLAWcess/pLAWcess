@@ -27,3 +27,8 @@ out/
 
 # git worktrees
 .worktrees/.claude/
+
+더미데이터.txt
+
+# 더미 멘티 시드 검증용 xlsx 덤프 (더미데이터 내용 포함 — 원격에 안 올림)
+tools/*.xlsx
