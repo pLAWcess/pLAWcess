@@ -8,6 +8,13 @@ export type GradeRow = Record<string, string>;
 
 const COLUMNS = ['년도', '학기', '학수번호', '과목명', '이수구분', '교양영역', '과목유형', '학점', '점수', '등급', '평점', '재수강년도', '재수강학기', '재수강과목', '삭제구분'];
 
+const LOCAL_CHROME_PATHS = [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium-browser',
+];
+
 async function getBrowser() {
   if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
     const chromium = (await import('@sparticuz/chromium')).default;
@@ -18,7 +25,10 @@ async function getBrowser() {
       headless: true,
     });
   }
-  return playwrightChromium.launch({ headless: true });
+  // 로컬 개발: 시스템 Chrome 사용
+  const { existsSync } = await import('fs');
+  const executablePath = LOCAL_CHROME_PATHS.find(p => existsSync(p));
+  return playwrightChromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 }
 
 function parseGradeTable(html: string): GradeRow[] {

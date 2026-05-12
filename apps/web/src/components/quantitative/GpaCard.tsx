@@ -41,6 +41,45 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const [showKupid, setShowKupid] = useState(false);
   const [kupidId, setKupidId] = useState('');
   const [kupidPw, setKupidPw] = useState('');
+  const [kupidLoading, setKupidLoading] = useState(false);
+  const [kupidError, setKupidError] = useState<string | null>(null);
+
+  async function handleKupidLogin() {
+    setKupidLoading(true);
+    setKupidError(null);
+    try {
+      const res = await fetch('/api/mentee/grades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: kupidId, pw: kupidPw }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setKupidError(json.error ?? '오류가 발생했습니다.');
+        return;
+      }
+      // rows: [{ 학점, 평점, ... }] → overall GPA 자동 계산
+      const rows: Record<string, string>[] = json.rows ?? [];
+      const credits = rows.map(r => ({ credit: parseFloat(r['학점'] ?? '0'), grade: parseFloat(r['평점'] ?? '0') })).filter(r => !isNaN(r.credit) && !isNaN(r.grade) && r.credit > 0);
+      if (credits.length > 0) {
+        const totalCredits = credits.reduce((s, r) => s + r.credit, 0);
+        const overall = Math.round((credits.reduce((s, r) => s + r.credit * r.grade, 0) / totalCredits) * 100) / 100;
+        const newData: GpaData = { ...data, overall, converted: calcConverted(overall) };
+        setData(newData);
+        setDraft(newData);
+        setDraftStr({ overall: String(overall), major: toStr(newData.major) });
+        if (onSave) await onSave(newData);
+      }
+      setShowKupid(false);
+      setKupidId('');
+      setKupidPw('');
+    } catch {
+      setKupidError('네트워크 오류가 발생했습니다.');
+    } finally {
+      setKupidLoading(false);
+    }
+  }
 
   const draftConverted = calcConverted(draft.overall);
 
@@ -189,15 +228,23 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
               />
             </div>
           </div>
+          {kupidError && (
+            <p className="text-xs text-red-500 mb-3">{kupidError}</p>
+          )}
           <div className="flex justify-end gap-2">
             <button
-              onClick={() => { setShowKupid(false); setKupidId(''); setKupidPw(''); }}
-              className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors"
+              onClick={() => { setShowKupid(false); setKupidId(''); setKupidPw(''); setKupidError(null); }}
+              disabled={kupidLoading}
+              className="px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-40"
             >
               취소
             </button>
-            <button className="px-4 py-2 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
-              로그인
+            <button
+              onClick={handleKupidLogin}
+              disabled={kupidLoading || !kupidId || !kupidPw}
+              className="px-4 py-2 text-sm text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {kupidLoading ? '불러오는 중...' : '로그인'}
             </button>
           </div>
         </div>
