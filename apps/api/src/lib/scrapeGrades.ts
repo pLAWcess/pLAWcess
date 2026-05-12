@@ -4,6 +4,8 @@ import type { Page, Frame } from 'playwright-core';
 const PORTAL_URL = 'https://portal.korea.ac.kr';
 const INFODEPOT_BASE = 'https://infodepot.korea.ac.kr';
 const INFODEPOT_GRADE_PATH = '/grade/SearchGradeAll.jsp';
+const REAL_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 export type GradeRow = Record<string, string>;
 export type ScrapeResult = {
@@ -37,7 +39,6 @@ async function getBrowser() {
 function extractGradeData(): ScrapeResult {
   const norm = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, ' ').trim();
 
-  // --- 1. 성적 테이블 ---
   const tables = Array.from(document.querySelectorAll('table'));
   const gradeTable = tables.find(t =>
     (t.textContent ?? '').includes('학수번호') &&
@@ -63,7 +64,7 @@ function extractGradeData(): ScrapeResult {
       const codeIdx = headers.findIndex(h => h.includes('학수번호'));
       for (const row of allRows) {
         const tds = Array.from(row.querySelectorAll('td'));
-        if (tds.length < Math.floor(headers.length / 2)) continue; // 섹션헤더 행 스킵
+        if (tds.length < Math.floor(headers.length / 2)) continue;
         const texts = tds.map(c => norm(c.textContent));
         if (codeIdx >= 0 && !texts[codeIdx]) continue;
         const obj: GradeRow = {};
@@ -73,7 +74,6 @@ function extractGradeData(): ScrapeResult {
     }
   }
 
-  // --- 2. 요약값: "평점/학점/백분율/증명" 라벨 + 옆 셀 숫자 ---
   const summary: Record<string, string> = {};
   const KEYWORDS = ['평점', '학점', '백분율', '증명', '평균', '취득', '신청'];
   for (const table of tables) {
@@ -83,14 +83,11 @@ function extractGradeData(): ScrapeResult {
         const label = cells[i];
         const next = cells[i + 1];
         if (!label || !next) continue;
-        if (KEYWORDS.some(k => label.includes(k)) && /^[\d.]+$/.test(next)) {
-          summary[label] = next;
-        }
+        if (KEYWORDS.some(k => label.includes(k)) && /^[\d.]+$/.test(next)) summary[label] = next;
       }
     }
   }
-  // 본문 텍스트에서도 "라벨: 숫자" / "라벨 숫자" 패턴 추출 (테이블이 아닐 경우 대비)
-  const bodyText = norm(document.body.textContent);
+  const bodyText = norm(document.body?.textContent);
   const patterns = [
     /평점평균[^\d]{0,10}([\d]\.[\d]{1,3})/g,
     /백분율[^\d]{0,10}([\d]{1,3}\.[\d]{1,3})/g,
@@ -105,7 +102,7 @@ function extractGradeData(): ScrapeResult {
     }
   }
 
-  return { rows, summary, debugText: bodyText.slice(0, 2000) };
+  return { rows, summary };
 }
 
 async function tryExtract(target: Page | Frame): Promise<ScrapeResult | null> {
@@ -118,45 +115,83 @@ async function tryExtract(target: Page | Frame): Promise<ScrapeResult | null> {
   }
 }
 
+async function bodySnippet(target: Page | Frame, max = 1500): Promise<string> {
+  try {
+    const t: string = await target.evaluate(() => document.body?.innerText ?? '');
+    return t.replace(/\s+/g, ' ').trim().slice(0, max);
+  } catch (e) {
+    return `[snippet error: ${e}]`;
+  }
+}
+
 export async function scrapeGrades(id: string, pw: string): Promise<ScrapeResult | null> {
   const browser = await getBrowser();
+  const diag: string[] = [];
   try {
-    const context = await browser.newContext();
+    const context = await browser.newContext({ userAgent: REAL_UA, locale: 'ko-KR' });
     const page = await context.newPage();
 
     // 1. 포털 로그인
-    await page.goto(PORTAL_URL, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    diag.push(`[1] portal: ${page.url()}`);
     await page.fill('#oneid', id);
     await page.fill('#_pw', pw);
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle', timeout: 20000 }),
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {}),
       page.click('#loginsubmit'),
     ]);
-    if (page.url().includes('LoginDeny')) return null;
+    await page.waitForTimeout(2000);
+    diag.push(`[2] after login: ${page.url()}`);
+    diag.push(`[2-text] ${await bodySnippet(page, 500)}`);
+    if (page.url().includes('LoginDeny')) {
+      console.log('[scrapeGrades]', diag.join('\n'));
+      return null;
+    }
 
     // 2. moveComponent로 infodepot SSO 세션 수립
     try {
       await page.evaluate(
         `moveComponent('${INFODEPOT_BASE}', '3', '${INFODEPOT_GRADE_PATH}', '84', '280', 'S')`
       );
-      await page.waitForTimeout(2000);
-    } catch { /* 없으면 직접 접근 */ }
+      diag.push('[3] moveComponent ok');
+    } catch (e) {
+      diag.push(`[3] moveComponent failed: ${e}`);
+    }
+    await page.waitForTimeout(2500);
 
     // 3. 새 탭으로 성적 페이지 접근
     const gradePage = await context.newPage();
-    await gradePage.goto(`${INFODEPOT_BASE}${INFODEPOT_GRADE_PATH}`, { waitUntil: 'networkidle', timeout: 30000 });
-    try { await gradePage.waitForSelector('table', { timeout: 8000 }); } catch { /* 없을 수도 */ }
+    try {
+      await gradePage.goto(`${INFODEPOT_BASE}${INFODEPOT_GRADE_PATH}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    } catch (e) {
+      diag.push(`[4] grade goto failed: ${e}`);
+    }
+    await gradePage.waitForTimeout(1500);
+    diag.push(`[4] grade page: ${gradePage.url()}`);
+    try { await gradePage.waitForSelector('table', { timeout: 8000 }); diag.push('[4] table appeared'); }
+    catch { diag.push('[4] no table within 8s'); }
+    diag.push(`[4-frames] ${gradePage.frames().map(f => f.url()).join(' | ')}`);
+    diag.push(`[4-text] ${await bodySnippet(gradePage, 1800)}`);
 
     // 4. 메인 프레임 + iframe 전부 시도해서 가장 많은 데이터 가진 것 선택
     let best: ScrapeResult | null = null;
     const candidates: (Page | Frame)[] = [gradePage, ...gradePage.frames().filter(f => f !== gradePage.mainFrame())];
     for (const c of candidates) {
       const r = await tryExtract(c);
+      diag.push(`[5] candidate (${'url' in c ? c.url() : '?'}) → rows=${r?.rows.length ?? 0}, summaryKeys=${r ? Object.keys(r.summary).length : 0}`);
       if (r && (!best || r.rows.length > best.rows.length || Object.keys(r.summary).length > Object.keys(best.summary).length)) {
         best = r;
       }
     }
-    return best ?? { rows: [], summary: {} };
+
+    const debugText = diag.join('\n');
+    console.log('[scrapeGrades]', debugText);
+    return best ? { ...best, debugText } : { rows: [], summary: {}, debugText };
+  } catch (e) {
+    diag.push(`[ERR] ${e}`);
+    const debugText = diag.join('\n');
+    console.log('[scrapeGrades]', debugText);
+    return { rows: [], summary: {}, debugText };
   } finally {
     await browser.close();
   }
