@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromCookie, type TokenPayload } from "./auth";
 
 /**
- * Admin 라우트 진입 시 호출. proxy 가드를 통과한 뒤에도 라우트 핸들러에서 한 번 더 검증한다(defense in depth).
+ * Admin 라우트 진입 시 호출. 전역 미들웨어가 없으므로 모든 /api/admin/* 라우트 핸들러가
+ * 직접 이 가드를 호출해 인증·권한을 검증해야 한다.
  *
  * 사용:
  *   const guard = requireAdmin(req);
