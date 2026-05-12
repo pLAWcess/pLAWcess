@@ -544,9 +544,11 @@ function AddItemPlaceholder({ onClick }: { onClick: () => void }) {
 function CareerGoalCard({
   value,
   onSave,
+  readOnly,
 }: {
   value: CareerGoal;
   onSave: (value: CareerGoal) => Promise<void>;
+  readOnly?: boolean;
 }) {
   const isPreset = (v: string): v is PresetOption => (CAREER_OPTIONS as readonly string[]).includes(v);
 
@@ -581,9 +583,9 @@ function CareerGoalCard({
     <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-text-primary">희망 진로</h2>
-        {isEditing
+        {!readOnly && (isEditing
           ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={saving} />
-          : <EditButton onClick={startEdit} />}
+          : <EditButton onClick={startEdit} />)}
       </div>
       <div className="min-h-[40px] flex flex-col gap-3">
         {isEditing ? (
@@ -672,8 +674,8 @@ function ActivityCard({
   star?: StarItem;
   expanded: boolean;
   onToggle: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   deleting: boolean;
   isAnalyzing?: boolean;
 }) {
@@ -690,15 +692,17 @@ function ActivityCard({
       <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
-          <button
-            onClick={onDelete}
-            disabled={deleting}
-            aria-label="활동 삭제"
-            title="활동 삭제"
-            className="shrink-0 p-2 -mr-2 -mt-1 rounded-md text-text-placeholder hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
-          >
-            <IconTrash />
-          </button>
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              aria-label="활동 삭제"
+              title="활동 삭제"
+              className="shrink-0 p-2 -mr-2 -mt-1 rounded-md text-text-placeholder hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+            >
+              <IconTrash />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-4 mt-2 text-sm text-text-secondary">
           <span className="flex items-center gap-1.5"><IconBuilding /> {activity.organization || '-'}</span>
@@ -736,11 +740,13 @@ function ActivityCard({
           </div>
         )}
         <hr className="border-border my-5" />
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={onEdit}
-            className="flex items-center justify-center gap-2 py-2.5 text-sm text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors">
-            <IconPencil /> 수정
-          </button>
+        <div className={`grid gap-3 ${onEdit ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {onEdit && (
+            <button onClick={onEdit}
+              className="flex items-center justify-center gap-2 py-2.5 text-sm text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors">
+              <IconPencil /> 수정
+            </button>
+          )}
           <button onClick={onToggle} disabled={!star}
             className="flex items-center justify-center gap-2 py-2.5 text-sm text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-40">
             <IconClipboard /> STAR 분석 {expanded ? '접기' : '펼치기'} <IconChevron open={expanded} />
@@ -1040,7 +1046,7 @@ function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
 // ================================================================
 // 페이지
 // ================================================================
-export default function QualitativeClient({ initialData, year }: { initialData?: QualitativeData; year: string }) {
+export default function QualitativeClient({ initialData, year, readOnly }: { initialData?: QualitativeData; year: string; readOnly?: boolean }) {
   const didInitRef = useRef(false);
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
   const [careerGoal, setCareerGoal] = useState<CareerGoal>(initialData?.careerGoal || '');
@@ -1395,8 +1401,14 @@ export default function QualitativeClient({ initialData, year }: { initialData?:
     if (serverActivities.length === 0) {
       return (
         <div className="flex flex-col gap-6 page-container">
-          <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
-          <EmptyDashboard onAdd={() => setActiveTab('교내')} />
+          <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} readOnly={readOnly} />
+          {readOnly ? (
+            <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 flex items-center justify-center">
+              <p className="text-text-secondary text-sm">이 연도에 작성한 활동 내역이 없습니다.</p>
+            </div>
+          ) : (
+            <EmptyDashboard onAdd={() => setActiveTab('교내')} />
+          )}
         </div>
       );
     }
@@ -1409,15 +1421,17 @@ export default function QualitativeClient({ initialData, year }: { initialData?:
 
     return (
       <div className="flex flex-col gap-6">
-        <SummaryAnalysisCard
-          state={summaryState}
-          analyzedAt={analysis?.analyzedAt ?? null}
-          onAnalyze={handleSummarize}
-          loading={summarizing}
-        />
+        {!readOnly && (
+          <SummaryAnalysisCard
+            state={summaryState}
+            analyzedAt={analysis?.analyzedAt ?? null}
+            onAnalyze={handleSummarize}
+            loading={summarizing}
+          />
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative">
           <div className="flex flex-col gap-6 min-w-0">
-            <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} />
+            <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} readOnly={readOnly} />
             <ActivityListTable
               activities={serverActivities}
               starByIdx={findStar}
@@ -1478,13 +1492,13 @@ export default function QualitativeClient({ initialData, year }: { initialData?:
                   <SortableActivityCard
                     key={`saved-${x.idx}`}
                     id={String(x.idx)}
-                    sortDisabled={sortDisabled}
+                    sortDisabled={sortDisabled || !!readOnly}
                     activity={x.activity}
                     star={findStar(x.idx)}
                     expanded={expandedSet.has(x.idx)}
                     onToggle={() => toggleExpand(x.idx)}
-                    onEdit={() => startEdit(x.idx)}
-                    onDelete={() => deleteActivity(x.idx)}
+                    onEdit={readOnly ? undefined : () => startEdit(x.idx)}
+                    onDelete={readOnly ? undefined : () => deleteActivity(x.idx)}
                     deleting={deletingIdx === x.idx}
                     isAnalyzing={analyzingIdx === x.idx}
                   />
@@ -1493,7 +1507,7 @@ export default function QualitativeClient({ initialData, year }: { initialData?:
             </div>
           </SortableContext>
         </DndContext>
-        {draftList.map((form, i) => (
+        {!readOnly && draftList.map((form, i) => (
           <ActivityFormCard
             key={`draft-${i}`}
             form={form}
@@ -1517,7 +1531,7 @@ export default function QualitativeClient({ initialData, year }: { initialData?:
             submitting={submitting}
           />
         ))}
-        <AddItemPlaceholder onClick={() => addDraft(category)} />
+        {!readOnly && <AddItemPlaceholder onClick={() => addDraft(category)} />}
       </div>
     );
   }

@@ -9,6 +9,7 @@ export type GpaData = GpaSection;
 type Props = {
   initialData: GpaData;
   onSave?: (data: GpaData) => Promise<void>;
+  readOnly?: boolean;
 };
 
 const GPA_MAX = 4.5;
@@ -27,7 +28,7 @@ function toStr(val: number | null): string {
   return val == null ? '' : String(val);
 }
 
-export default function GpaCard({ initialData, onSave }: Props) {
+export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const [data, setData] = useState<GpaData>(initialData);
   const [draft, setDraft] = useState<GpaData>(initialData);
   const [draftStr, setDraftStr] = useState({
@@ -65,10 +66,10 @@ export default function GpaCard({ initialData, onSave }: Props) {
     <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">GPA</h2>
-        {isEditing
+        {!readOnly && (isEditing
           ? <EditButtons onCancel={handleCancel} onSave={handleSave} disabled={isSaving} />
           : <EditButton onClick={() => { setDraft(data); setDraftStr({ overall: toStr(data.overall), major: toStr(data.major) }); setIsEditing(true); }} />
-        }
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-8">
@@ -76,7 +77,7 @@ export default function GpaCard({ initialData, onSave }: Props) {
         <div className="flex flex-col gap-2">
           <span className="text-sm text-text-secondary">전체 평점 평균</span>
           <div className="h-7 flex items-center">
-            {isEditing ? (
+            {isEditing && !readOnly ? (
               <input
                 type="text"
                 value={draftStr.overall}
@@ -102,7 +103,7 @@ export default function GpaCard({ initialData, onSave }: Props) {
         <div className="flex flex-col gap-2">
           <span className="text-sm text-text-secondary">전공 평점 평균</span>
           <div className="h-7 flex items-center">
-            {isEditing ? (
+            {isEditing && !readOnly ? (
               <input
                 type="text"
                 value={draftStr.major}
