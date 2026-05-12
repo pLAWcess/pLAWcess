@@ -9,6 +9,7 @@ export type LeetData = LeetSection;
 type Props = {
   initialData: LeetData;
   onSave?: (data: LeetData) => Promise<void>;
+  readOnly?: boolean;
 };
 
 function toDisplay(val: number | null): string {
@@ -20,7 +21,7 @@ function fromInput(val: string): number | null {
   return isNaN(n) ? null : n;
 }
 
-export default function LeetCard({ initialData, onSave }: Props) {
+export default function LeetCard({ initialData, onSave, readOnly }: Props) {
   const [data, setData] = useState<LeetData>(initialData);
   const [draft, setDraft] = useState<LeetData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
@@ -53,10 +54,10 @@ export default function LeetCard({ initialData, onSave }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">LEET 성적</h2>
         <div className="flex items-center gap-3">
-          {isEditing
+          {!readOnly && (isEditing
             ? <EditButtons onCancel={() => { setDraft(data); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
             : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
-          }
+          )}
         </div>
       </div>
       <table className="w-full text-sm table-fixed">
@@ -75,7 +76,7 @@ export default function LeetCard({ initialData, onSave }: Props) {
               {fields.map((f) => (
                 <td key={f.key} className="py-4 text-base font-semibold text-text-primary">
                   <div className="h-5">
-                    {isEditing ? (
+                    {isEditing && !readOnly ? (
                       <input
                         type="number"
                         value={draft[s.key][f.key] ?? ''}

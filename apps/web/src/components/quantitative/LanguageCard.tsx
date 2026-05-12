@@ -9,6 +9,7 @@ export type LanguageData = LanguageSection;
 type Props = {
   initialData: LanguageData;
   onSave?: (data: LanguageData) => Promise<void>;
+  readOnly?: boolean;
 };
 
 const fields: { label: string; key: keyof LanguageData }[] = [
@@ -21,7 +22,7 @@ function toDisplay(val: number | null): string {
   return val == null ? '-' : String(val);
 }
 
-export default function LanguageCard({ initialData, onSave }: Props) {
+export default function LanguageCard({ initialData, onSave, readOnly }: Props) {
   const [data, setData] = useState<LanguageData>(initialData);
   const [draft, setDraft] = useState<LanguageData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
@@ -42,17 +43,17 @@ export default function LanguageCard({ initialData, onSave }: Props) {
     <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">어학 성적</h2>
-        {isEditing
+        {!readOnly && (isEditing
           ? <EditButtons onCancel={() => { setDraft(data); setIsEditing(false); }} onSave={handleSave} disabled={isSaving} />
           : <EditButton onClick={() => { setDraft(data); setIsEditing(true); }} />
-        }
+        )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-8">
         {fields.map(({ label, key }) => (
           <div key={key} className="flex flex-col gap-2">
             <span className="text-sm text-text-secondary">{label}</span>
             <div className="h-7 flex items-center">
-              {isEditing ? (
+              {isEditing && !readOnly ? (
                 <input
                   type="text"
                   value={draft[key] ?? ''}
