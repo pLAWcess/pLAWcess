@@ -117,8 +117,12 @@ async function tryExtract(target: Page | Frame): Promise<ScrapeResult | null> {
 
 async function bodySnippet(target: Page | Frame, max = 1500): Promise<string> {
   try {
-    const t: string = await target.evaluate(() => document.body?.innerText ?? '');
-    return t.replace(/\s+/g, ' ').trim().slice(0, max);
+    // 브라우저 컨텍스트 안에서 잘라서 큰 문자열 전송 방지
+    const t: string = await target.evaluate((m) => {
+      const s = (document.body?.innerText ?? '').replace(/\s+/g, ' ').trim();
+      return s.slice(0, m);
+    }, max);
+    return t;
   } catch (e) {
     return `[snippet error: ${e}]`;
   }
