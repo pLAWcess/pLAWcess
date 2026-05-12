@@ -58,6 +58,7 @@ export default function HistoryClient({ years }: { years: number[] }) {
   useEffect(() => {
     if (!selectedYear) return;
     const yearStr = `${selectedYear}학년도`;
+    let cancelled = false;
     setLoading(true);
     setData(null);
     Promise.all([
@@ -66,9 +67,11 @@ export default function HistoryClient({ years }: { years: number[] }) {
       getQualitative(yearStr).catch(() => null),
       getPersonalStatement(yearStr).catch(() => null),
     ]).then(([basicInfo, quantitative, qualitative, personalStatement]) => {
+      if (cancelled) return;
       setData({ basicInfo, quantitative, qualitative, personalStatement });
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, [selectedYear]);
 
   if (years.length === 0) {
