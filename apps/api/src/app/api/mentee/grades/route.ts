@@ -75,16 +75,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const now = Date.now();
-  const last = lastCallByUser.get(token.user_id) ?? 0;
-  if (now - last < RATE_LIMIT_WINDOW_MS) {
-    const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - last)) / 1000);
-    return NextResponse.json(
-      { error: `잠시 후 다시 시도해주세요. (${retryAfter}초)` },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } },
-    );
+  // 프로덕션에서만 rate limit 적용 (스크래핑 비용 보호 / KUPID 로그인 제한 회피)
+  if (process.env.NODE_ENV === "production") {
+    const now = Date.now();
+    const last = lastCallByUser.get(token.user_id) ?? 0;
+    if (now - last < RATE_LIMIT_WINDOW_MS) {
+      const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - last)) / 1000);
+      return NextResponse.json(
+        { error: `잠시 후 다시 시도해주세요. (${retryAfter}초)` },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+    lastCallByUser.set(token.user_id, now);
   }
-  lastCallByUser.set(token.user_id, now);
 
   let body: { id?: unknown; pw?: unknown };
   try {
