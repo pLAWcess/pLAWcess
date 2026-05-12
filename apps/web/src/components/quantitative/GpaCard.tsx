@@ -74,6 +74,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
   const [kupidLoading, setKupidLoading] = useState(false);
   const [kupidError, setKupidError] = useState<string | null>(null);
   const [gradeRows, setGradeRows] = useState<GradeRow[] | null>(null);
+  const [gradeListOpen, setGradeListOpen] = useState(true);
 
   async function handleKupidLogin() {
     setKupidLoading(true);
@@ -105,6 +106,7 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
       setDraft(newData);
       setDraftStr({ overall: toStr(overall), major: toStr(major) });
       setGradeRows(rows);
+      setGradeListOpen(true);
       if (onSave) await onSave(newData);
 
       setShowKupid(false);
@@ -223,46 +225,59 @@ export default function GpaCard({ initialData, onSave, readOnly }: Props) {
         const totalCredits = validRows.reduce((s, r) => s + (parseFloat(r['학점'] ?? '') || 0), 0);
         return (
           <div className="mt-6 border-t border-border pt-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-text-primary">수강 과목</h3>
+            <button
+              onClick={() => setGradeListOpen(o => !o)}
+              className="w-full flex items-center justify-between mb-3 group"
+            >
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  className={`text-text-secondary transition-transform ${gradeListOpen ? 'rotate-90' : ''}`}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+                수강 과목
+              </h3>
               <div className="flex items-center gap-4 text-xs text-text-secondary">
                 <span>총 <span className="font-semibold text-text-primary">{validRows.length}</span>과목</span>
                 <span>총 <span className="font-semibold text-text-primary">{totalCredits}</span>학점</span>
               </div>
-            </div>
-            <div className="overflow-auto max-h-72">
-              <table className="w-full text-xs table-fixed">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="pb-2 text-left text-text-secondary font-normal w-16">년도</th>
-                    <th className="pb-2 text-left text-text-secondary font-normal w-14">학기</th>
-                    <th className="pb-2 text-left text-text-secondary font-normal">과목명</th>
-                    <th className="pb-2 text-left text-text-secondary font-normal w-20">이수구분</th>
-                    <th className="pb-2 text-right text-text-secondary font-normal w-10">학점</th>
-                    <th className="pb-2 text-right text-text-secondary font-normal w-10">등급</th>
-                    <th className="pb-2 text-right text-text-secondary font-normal w-10">평점</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {gradeRows.map((row, i) => {
-                    const isRetaken = (row['삭제구분'] ?? '') !== '';
-                    const cls = isRetaken ? 'line-through text-text-placeholder' : 'text-text-primary';
-                    const subCls = isRetaken ? 'text-text-placeholder' : 'text-text-secondary';
-                    return (
-                      <tr key={i} className={`border-b border-border last:border-0 ${isRetaken ? 'opacity-50' : ''}`}>
-                        <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['년도']}</td>
-                        <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['학기']}</td>
-                        <td className={`py-2 truncate pr-2 ${cls}`}>{row['과목명']}</td>
-                        <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['이수구분']}</td>
-                        <td className={`py-2 text-right whitespace-nowrap ${cls}`}>{row['학점']}</td>
-                        <td className={`py-2 text-right whitespace-nowrap ${cls}`}>{row['등급']}</td>
-                        <td className={`py-2 text-right whitespace-nowrap font-semibold ${cls}`}>{row['평점']}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            </button>
+            {gradeListOpen && (
+              <div className="overflow-auto max-h-72">
+                <table className="w-full text-xs table-fixed">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="pb-2 text-left text-text-secondary font-normal w-16">년도</th>
+                      <th className="pb-2 text-left text-text-secondary font-normal w-14">학기</th>
+                      <th className="pb-2 text-left text-text-secondary font-normal">과목명</th>
+                      <th className="pb-2 text-left text-text-secondary font-normal w-20">이수구분</th>
+                      <th className="pb-2 text-right text-text-secondary font-normal w-10">학점</th>
+                      <th className="pb-2 text-right text-text-secondary font-normal w-10">등급</th>
+                      <th className="pb-2 text-right text-text-secondary font-normal w-10">평점</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gradeRows.map((row, i) => {
+                      const isRetaken = (row['삭제구분'] ?? '') !== '';
+                      const cls = isRetaken ? 'line-through text-text-placeholder' : 'text-text-primary';
+                      const subCls = isRetaken ? 'text-text-placeholder' : 'text-text-secondary';
+                      return (
+                        <tr key={i} className={`border-b border-border last:border-0 ${isRetaken ? 'opacity-50' : ''}`}>
+                          <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['년도']}</td>
+                          <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['학기']}</td>
+                          <td className={`py-2 truncate pr-2 ${cls}`}>{row['과목명']}</td>
+                          <td className={`py-2 whitespace-nowrap ${subCls}`}>{row['이수구분']}</td>
+                          <td className={`py-2 text-right whitespace-nowrap ${cls}`}>{row['학점']}</td>
+                          <td className={`py-2 text-right whitespace-nowrap ${cls}`}>{row['등급']}</td>
+                          <td className={`py-2 text-right whitespace-nowrap font-semibold ${cls}`}>{row['평점']}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         );
       })()}
