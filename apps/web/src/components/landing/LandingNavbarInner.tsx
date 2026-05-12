@@ -11,9 +11,6 @@ const NAV_ITEMS = [
   { href: '/guide', label: '이용 가이드' },
   { href: '/faq', label: 'FAQ' },
   { href: '/announcements', label: '공지사항' },
-  { href: '/mentee/dashboard', label: '멘티' },
-  { href: '/mentor/dashboard', label: '멘토' },
-  { href: '/admin/users', label: '어드민' },
 ];
 
 export default function LandingNavbarInner({ initialUser }: { initialUser: AuthUser | null }) {

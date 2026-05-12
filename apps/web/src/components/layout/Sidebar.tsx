@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearUser, type AuthUser } from '@/lib/api';
 
-type NavItem = { label: string; href: string; match?: string; exact?: boolean; dividerBefore?: boolean };
+type NavItem = { label: string; href: string; match?: string; matchAny?: string[]; exact?: boolean; dividerBefore?: boolean };
 type NavSection = { section: string; items: NavItem[] };
 type NavConfig = NavItem[] | NavSection[];
 
@@ -25,7 +25,7 @@ const menteeNavItems: NavItem[] = [
 ];
 
 const mentorNavItems: NavItem[] = [
-  { label: '프로세스 대시보드', href: '/mentor/dashboard', exact: true },
+  { label: '멘토 대시보드', href: '/mentor/dashboard', exact: true, matchAny: ['/mentor/mentees'] },
   { label: '기본정보', href: '/mentor/dashboard/basic-info' },
   { label: '정량 데이터', href: '/mentor/dashboard/quantitative' },
   { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
@@ -72,9 +72,13 @@ interface SidebarProps {
 
 function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose?: () => void }) {
   const matchPath = item.match ?? item.href;
-  const isActive = item.exact
+  const baseActive = item.exact
     ? pathname === matchPath
     : pathname === matchPath || pathname.startsWith(matchPath + '/');
+  const extraActive = (item.matchAny ?? []).some(
+    (p) => pathname === p || pathname.startsWith(p + '/'),
+  );
+  const isActive = baseActive || extraActive;
   return (
     <Link
       href={item.href}
@@ -103,7 +107,16 @@ export default function Sidebar({ mobileOpen, onClose, initialRole, initialUser,
 
   const isAdmin = pathname.startsWith('/admin') || initialRole === 'admin';
   const isMentor = pathname.startsWith('/mentor') || initialRole === 'mentor';
-  const config: NavConfig = isAdmin ? adminNavSections : isMentor ? mentorNavItems : menteeNavItems;
+  const rawConfig: NavConfig = isAdmin ? adminNavSections : isMentor ? mentorNavItems : menteeNavItems;
+
+  // admin 계정이 본인 영역(/admin/*) 이외의 페이지를 볼 때 '설정' 항목을 숨긴다.
+  // /settings 진입 시 settings/layout 이 role=admin 으로 사이드바를 강제 전환해 UI가 깨지기 때문.
+  const userIsAdmin = initialUser?.current_role === 'admin' || initialRole === 'admin';
+  const hideSettings = userIsAdmin && !pathname.startsWith('/admin');
+  const shouldKeep = (item: NavItem) => !(hideSettings && item.href === '/settings');
+  const config: NavConfig = isSections(rawConfig)
+    ? rawConfig.map((s) => ({ ...s, items: s.items.filter(shouldKeep) }))
+    : rawConfig.filter(shouldKeep);
 
   const navContent = (
     <nav className="flex flex-col gap-1 px-2 pb-2">

@@ -10,9 +10,9 @@ import { saveUser } from '@/lib/api';
 const API_BASE = '';
 
 const ROLE_REDIRECT: Record<string, string> = {
-  mentee: '/mentee/dashboard',
+  mentee: '/mentee/dashboard/basic-info',
   mentor: '/mentor/dashboard',
-  admin: '/admin/users',
+  admin: '/admin/schedule',
 };
 
 export default function LoginPage() {
@@ -87,6 +87,39 @@ export default function LoginPage() {
     router.push(ROLE_REDIRECT['admin'] ?? '/');
   }
 
+  async function handleTestMentorLogin() {
+    setError('');
+    setLoading(true);
+
+    const testLoginId = process.env.NEXT_PUBLIC_TEST_MENTOR_LOGIN_ID ?? 'test.mentor';
+    const testPassword = process.env.NEXT_PUBLIC_TEST_MENTOR_PASSWORD ?? 'test1234';
+
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ loginId: testLoginId, password: testPassword }),
+      });
+    } catch {
+      setError('테스트 로그인 실패: 서버에 연결할 수 없습니다.');
+      setLoading(false);
+      return;
+    }
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(`테스트 로그인 실패: ${data.error ?? '알 수 없는 오류'}`);
+      return;
+    }
+
+    saveUser(data.user);
+    router.push(ROLE_REDIRECT['mentor'] ?? '/');
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 shrink-0">
@@ -146,13 +179,22 @@ export default function LoginPage() {
               </button>
 
               {process.env.NEXT_PUBLIC_SHOW_DEV_LOGIN === 'true' && (
-                <button
-                  type="button"
-                  onClick={() => handleTestAdminLogin()}
-                  className="w-full py-2.5 text-sm font-semibold text-brand bg-blue-50 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
-                >
-                  [dev용] Admin으로 빠른 로그인
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleTestAdminLogin()}
+                    className="w-full py-2.5 text-sm font-semibold text-brand bg-blue-50 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
+                  >
+                    [dev용] Admin으로 빠른 로그인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestMentorLogin()}
+                    className="w-full py-2.5 text-sm font-semibold text-brand bg-blue-50 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
+                  >
+                    [dev용] Mentor로 빠른 로그인
+                  </button>
+                </div>
               )}
 
               <p className="text-center text-sm text-text-secondary flex justify-center gap-4">

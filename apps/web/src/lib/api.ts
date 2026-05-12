@@ -934,3 +934,117 @@ export async function updateSchoolQuestions(
   );
   await jsonOrError(res, "문항 저장 실패");
 }
+
+// ----------------------------------------------------------------
+// Mentor Process Dashboard (#232)
+// ----------------------------------------------------------------
+
+export type ProcessStatus = "inactive" | "waiting" | "active";
+
+export type MatchedMentee = {
+  matchId: string;
+  name: string;
+  targetSchoolGa: string | null;
+  admissionTypeGa: string | null;
+  targetSchoolNa: string | null;
+  admissionTypeNa: string | null;
+  personalStatementStatus: "not_submitted";
+};
+
+export type MentorProcessStatus = {
+  status: ProcessStatus;
+  processYear: number | null;
+  matchAnnounceDate: string | null;
+  matchedMentees: MatchedMentee[] | null;
+};
+
+export type HistoryMentee = {
+  matchId: string;
+  name: string;
+  targetSchoolGa: string | null;
+  admissionTypeGa: string | null;
+  targetSchoolNa: string | null;
+  admissionTypeNa: string | null;
+  phone: string | null;
+};
+
+export type MentorHistory = {
+  history: Array<{
+    processYear: number;
+    mentees: HistoryMentee[];
+  }>;
+};
+
+export async function getMentorProcessStatus(): Promise<MentorProcessStatus> {
+  const res = await fetch(`${API_BASE}/api/mentor/process-status`, {
+    headers: headers(),
+    credentials: "include",
+  });
+  return jsonOrError(res, "프로세스 상태 조회 실패");
+}
+
+export async function getMentorHistory(): Promise<MentorHistory> {
+  const res = await fetch(`${API_BASE}/api/mentor/history`, {
+    headers: headers(),
+    credentials: "include",
+  });
+  return jsonOrError(res, "참여 이력 조회 실패");
+}
+
+export type MenteeDetailResponse = {
+  matchId: string;
+  user: {
+    name: string;
+    email: string;
+    phone: string | null;
+    birthDate: string | null;
+    gender: "male" | "female" | "other" | null;
+    militaryStatus: "completed" | "not_completed" | "not_applicable" | null;
+    studentId: string | null;
+    undergradSchool: string | null;
+    firstMajor: string | null;
+    secondMajor: string | null;
+    entryYear: number | null;
+    graduationYear: number | null;
+    academicStatus: "enrolled" | "on_leave" | "graduated" | "completed" | "expelled" | null;
+  };
+  admission: {
+    targetSchoolGa: string | null;
+    isSpecialGa: boolean;
+    targetSchoolNa: string | null;
+    isSpecialNa: boolean;
+    preferredGroup: string | null;
+  };
+  quantitative: {
+    leet: {
+      total: number | null;
+      verbal: { raw: number | null; standard: number | null; percentile: number | null };
+      reasoning: { raw: number | null; standard: number | null; percentile: number | null };
+    };
+    gpa: { overall: number | null; major: number | null; converted: number | null };
+    language: { toeic: number | null; toefl: number | null; teps: number | null };
+  };
+  qualitative: {
+    careerGoal: string | null;
+    coreKeywords: string | null;
+    activities: unknown;
+  };
+  personalStatement: {
+    ga: { hasHwp: boolean; textAnswers: unknown };
+    na: { hasHwp: boolean; textAnswers: unknown };
+  };
+  requests: {
+    strengthsWeaknesses: string | null;
+    desiredMentor: string | null;
+    specialNotes: string | null;
+    extraRequest: string | null;
+  };
+};
+
+export async function getMatchedMenteeDetail(matchId: string): Promise<MenteeDetailResponse> {
+  const res = await fetch(`${API_BASE}/api/mentor/mentees/${encodeURIComponent(matchId)}`, {
+    headers: headers(),
+    credentials: "include",
+  });
+  return jsonOrError(res, "멘티 정보 조회 실패");
+}
