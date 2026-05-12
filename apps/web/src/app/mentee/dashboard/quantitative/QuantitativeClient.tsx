@@ -13,17 +13,17 @@ export default function QuantitativeClient({ initialData, year, readOnly }: Prop
   const [data, setData] = useState<QuantitativeData>(initialData);
 
   async function handleSaveLeet(leet: LeetSection) {
-    const updated = await patchQuantitative(year, { leet });
+    const updated = await patchQuantitative('mentee', year, { leet });
     setData(updated);
   }
 
   async function handleSaveGpa(gpa: GpaSection) {
-    const updated = await patchQuantitative(year, { gpa });
+    const updated = await patchQuantitative('mentee', year, { gpa });
     setData(updated);
   }
 
   async function handleSaveLanguage(language: LanguageSection) {
-    const updated = await patchQuantitative(year, { language });
+    const updated = await patchQuantitative('mentee', year, { language });
     setData(updated);
   }
 

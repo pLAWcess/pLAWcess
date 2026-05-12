@@ -232,9 +232,23 @@ model MentorRecord {
   user_id      String @db.Uuid
   process_year Int
 
-  // 정량
-  leet_score           Decimal? @db.Decimal(5, 2)
-  gpa                  Decimal? @db.Decimal(3, 2)
+  // 정량 — 멘티(MenteeRecord)의 2단계 정량 블록을 멘토에도 동일하게 둔다.
+  gpa           Decimal? @db.Decimal(3, 2) // 전체 평점 (매칭 알고리즘용)
+  gpa_major     Decimal? @db.Decimal(3, 2) // 전공 평점
+  gpa_converted Decimal? @db.Decimal(5, 2) // 환산점수
+
+  leet_score                Decimal? @db.Decimal(5, 2) // 표준점수 합계 (매칭 알고리즘용)
+  leet_verbal_raw           Int? // 언어이해 원점수
+  leet_verbal_standard      Int? // 언어이해 표준점수
+  leet_verbal_percentile    Decimal? @db.Decimal(5, 2) // 언어이해 백분위
+  leet_reasoning_raw        Int? // 추리논증 원점수
+  leet_reasoning_standard   Int? // 추리논증 표준점수
+  leet_reasoning_percentile Decimal? @db.Decimal(5, 2) // 추리논증 백분위
+
+  toeic_score Int?
+  toefl_score Int?
+  teps_score  Int?
+
   leet_exam_year       Int?
   has_law_class        Boolean  @default(false)
   law_class_subjects   Json? // 표시용, 검색 안 함
