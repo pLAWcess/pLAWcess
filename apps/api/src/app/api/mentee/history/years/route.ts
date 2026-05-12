@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   const records = await prisma.menteeRecord.findMany({
     where: { user_id: userId },
     select: { process_year: true },
+    distinct: ["process_year"],
     orderBy: { process_year: "desc" },
   });
 
