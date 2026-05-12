@@ -168,9 +168,6 @@ model MenteeRecord {
   toefl_score Int?
   teps_score  Int?
 
-  // KUPID에서 불러온 수강 과목 원본 (표시용) — GradeRow[]
-  kupid_grades Json?
-
   // 희망 로스쿨 — 가/나군 단일 슬롯, 슬롯별 학교 + 특별전형 여부
   target_school_ga String? @db.VarChar(100) // 가군
   is_special_ga    Boolean @default(false)
