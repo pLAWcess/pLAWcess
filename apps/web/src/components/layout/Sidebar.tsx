@@ -19,6 +19,7 @@ const menteeNavItems: NavItem[] = [
   { label: '자기소개서', href: '/mentee/dashboard/personal-statement' },
   { label: '프로세스 신청', href: '/mentee/applications' },
   { label: '합격 아카이브', href: '/mentee/archive' },
+  { label: '지난기록', href: '/mentee/history' },
   { label: '공지사항', href: '/mentee/announcements', dividerBefore: true },
   { label: '설정', href: '/settings', exact: true },
 ];
@@ -29,6 +30,7 @@ const mentorNavItems: NavItem[] = [
   { label: '정량 데이터', href: '/mentor/dashboard/quantitative' },
   { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
   { label: '합격 아카이브', href: '/mentor/archive' },
+  { label: '지난기록', href: '/mentor/history' },
   { label: '공지사항', href: '/mentor/announcements', dividerBefore: true },
   { label: '설정', href: '/settings', exact: true },
 ];
