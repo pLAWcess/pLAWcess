@@ -33,6 +33,26 @@
 
 ---
 
+## `/api/auth/login` — POST
+
+**Body:** `{ loginId?: string, email?: string, password: string }` (loginId 우선, 없으면 email)
+
+**Response 200:** `{ user: { user_id, name, login_id, email, current_role, account_status, military_status } }` + `Set-Cookie: plawcess_token`
+
+**Rate limit (#179)** — brute-force / credential stuffing 방어. `identifier`(입력한 loginId/email 을 소문자·trim 정규화) 와 클라이언트 IP 두 축으로 최근 15분 *실패* 횟수를 센다:
+- `identifier` 당 15분에 5회 실패 → 이후 그 identifier 의 요청은 `429`
+- IP 당 15분에 30회 실패 → 이후 그 IP 의 요청은 `429`
+- 한도 초과 응답: `429 { error: "너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요." }` + `Retry-After` 헤더(초)
+- 레이트 리미터(`login_attempts` 테이블) 장애 시 fail-open(로그인 허용).
+
+**Errors:**
+- 400: 요청 형식 / 아이디·비밀번호 누락
+- 401: 아이디 또는 비밀번호 불일치 (계정 존재 여부 비노출 — 동일 메시지)
+- 403: `account_status === "blocked"`
+- 429: rate limit 초과 (위 참조)
+
+---
+
 ## `/api/auth/me` — GET
 
 현재 사용자의 신상 + 계정 정보 조회.
