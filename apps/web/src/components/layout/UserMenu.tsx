@@ -37,8 +37,10 @@ export default function UserMenu({ user, onLogout }: Props) {
   const roleLabel = ROLE_LABEL[user.current_role] ?? user.current_role;
   const profileHref =
     user.current_role === 'admin'
-      ? '/admin/dashboard'
-      : `/${user.current_role}/dashboard/basic-info`;
+      ? '/admin/schedule'
+      : user.current_role === 'mentor'
+        ? '/mentor/dashboard'
+        : `/${user.current_role}/dashboard/basic-info`;
 
   return (
     <div ref={ref} className="relative">
@@ -93,8 +95,36 @@ export default function UserMenu({ user, onLogout }: Props) {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>
-            내 대시보드
+            {user.current_role === 'admin' ? '관리자 대시보드' : '내 대시보드'}
           </Link>
+          {user.current_role === 'admin' && (
+            <>
+              <Link
+                href="/mentee/dashboard/basic-info"
+                onClick={() => setOpen(false)}
+                role="menuitem"
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-gray-50 transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                멘티 대시보드
+              </Link>
+              <Link
+                href="/mentor/dashboard"
+                onClick={() => setOpen(false)}
+                role="menuitem"
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary hover:bg-gray-50 transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                멘토 대시보드
+              </Link>
+            </>
+          )}
           {(user.current_role === 'mentee' || user.current_role === 'mentor') && (
             <Link
               href={`/${user.current_role}/history`}

@@ -2,8 +2,9 @@ import type { AuthUser } from '@/lib/api';
 import { decodeSessionToken } from '@/lib/jwt';
 
 export function getRoleHomePath(role: string): string {
-  if (role === 'admin') return '/admin/dashboard';
-  if (role === 'mentee' || role === 'mentor') return `/${role}/dashboard/basic-info`;
+  if (role === 'admin') return '/admin/schedule';
+  if (role === 'mentor') return '/mentor/dashboard';
+  if (role === 'mentee') return '/mentee/dashboard/basic-info';
   return '/login';
 }
 

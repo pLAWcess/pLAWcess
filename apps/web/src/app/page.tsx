@@ -8,7 +8,8 @@ import Footer from '@/components/layout/Footer';
 
 function getStartHref(user: AuthUser | null): string {
   if (!user) return '/login';
-  if (user.current_role === 'admin') return '/admin/dashboard';
+  if (user.current_role === 'admin') return '/admin/schedule';
+  if (user.current_role === 'mentor') return '/mentor/dashboard';
   return `/${user.current_role}/dashboard/basic-info`;
 }
 

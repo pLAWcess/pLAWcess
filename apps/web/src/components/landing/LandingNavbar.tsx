@@ -65,12 +65,7 @@ export default function LandingNavbar({ initialUser }: Props) {
     router.push('/');
   }
 
-  const allNavItems = [
-    ...NAV_ITEMS,
-    { href: '/mentee/dashboard', label: '멘티' },
-    { href: '/mentor/dashboard', label: '멘토' },
-    { href: '/admin/users', label: '어드민' },
-  ];
+  const allNavItems = NAV_ITEMS;
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-border shrink-0" ref={menuRef}>
@@ -97,11 +92,6 @@ export default function LandingNavbar({ initialUser }: Props) {
               {label}
             </Link>
           ))}
-          <>
-            <Link href="/mentee/dashboard" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">멘티</Link>
-            <Link href="/mentor/dashboard" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">멘토</Link>
-            <Link href="/admin/users" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">어드민</Link>
-          </>
         </nav>
 
         {/* Right: Action buttons + mobile hamburger */}
