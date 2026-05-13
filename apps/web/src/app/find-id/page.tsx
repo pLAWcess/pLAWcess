@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
 import { readJson } from '@/lib/http';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const API_BASE = '';
 
 export default function FindIdPage() {
   const [email, setEmail] = useState('');
