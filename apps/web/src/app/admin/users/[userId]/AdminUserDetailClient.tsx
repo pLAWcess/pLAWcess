@@ -200,7 +200,7 @@ function ProfileCard({
             { label: '연락처', view: user.phone || '-', edit: <UnderlineInput value={draft.phone} onChange={(v) => setDraft({ ...draft, phone: v })} /> },
           ],
           [
-            { label: '이메일', view: user.email, edit: <span className="text-base text-text-secondary">{user.email}</span>, hint: '로그인 식별자' },
+            { label: '이메일', view: user.email, edit: <span className="text-base text-text-secondary">{user.email}</span> },
             { label: '학번', view: user.studentId || '-', edit: <UnderlineInput value={draft.studentId} onChange={(v) => setDraft({ ...draft, studentId: v })} /> },
           ],
           [
@@ -209,7 +209,7 @@ function ProfileCard({
           ],
           [
             { label: '소속 학교', view: user.schoolName || '-', edit: <SelectField value={draft.schoolName} options={SCHOOLS} onChange={(v) => setDraft({ ...draft, schoolName: v })} placeholder="학교 선택" /> },
-            { label: '학적 상태', view: academicLabel(user.academicStatus), edit: <span className="text-base text-text-secondary">{academicLabel(user.academicStatus)}</span>, hint: '신청서에서 변경' },
+            { label: '학적 상태', view: academicLabel(user.academicStatus), edit: <span className="text-base text-text-secondary">{academicLabel(user.academicStatus)}</span> },
           ],
         ].map((row, rowIdx, all) => (
           <div
@@ -241,7 +241,6 @@ function MentorCard({ user }: { user: AdminUserDetail }) {
     <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-base font-semibold text-text-primary">멘토 정보</h2>
-        <span className="text-xs text-text-placeholder">신청서에서 변경</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4 sm:gap-0">

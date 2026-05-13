@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@plawcess/database";
+import { Prisma, prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
 
 const DEFAULT_LIMIT = 50;
@@ -21,6 +21,9 @@ function parsePagination(req: NextRequest):
   return { page, limit };
 }
 
+const VALID_STATUSES = ["active", "inactive", "blocked"] as const;
+type ValidStatus = (typeof VALID_STATUSES)[number];
+
 export async function GET(req: NextRequest) {
   const guard = requireAdmin(req);
   if (guard.error) return guard.error;
@@ -37,7 +40,29 @@ export async function GET(req: NextRequest) {
   if (pg.error) return pg.error;
   const { page, limit } = pg;
 
-  const where = { is_deleted: false, current_role: role } as const;
+  // 검색어 (이름·학번 contains, 대소문자 무시)
+  const q = (req.nextUrl.searchParams.get("q") ?? "").trim();
+
+  // 계정 상태 필터
+  const statusRaw = req.nextUrl.searchParams.get("status");
+  const status = statusRaw && (VALID_STATUSES as readonly string[]).includes(statusRaw)
+    ? (statusRaw as ValidStatus)
+    : null;
+
+  const where: Prisma.UserWhereInput = {
+    is_deleted: false,
+    current_role: role,
+    ...(status ? { account_status: status } : {}),
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { student_id: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+
   const [users, totalCount] = await prisma.$transaction([
     prisma.user.findMany({
       where,
@@ -48,10 +73,8 @@ export async function GET(req: NextRequest) {
         user_id: true,
         name: true,
         student_id: true,
-        phone: true,
         account_status: true,
         undergrad_first_major: true,
-        undergrad_second_major: true,
       },
     }),
     prisma.user.count({ where }),
@@ -64,8 +87,6 @@ export async function GET(req: NextRequest) {
         name: u.name,
         studentId: u.student_id ?? "",
         firstMajor: u.undergrad_first_major,
-        secondMajor: u.undergrad_second_major,
-        phone: u.phone ?? "",
         accountStatus: u.account_status,
       })),
       totalCount,
@@ -100,7 +121,6 @@ export async function GET(req: NextRequest) {
         studentId: u.student_id ?? "",
         lawSchool: r?.lawschool_name ?? null,
         cohort: r?.lawschool_grade ?? null,
-        phone: u.phone ?? "",
         accountStatus: u.account_status,
       };
     }),

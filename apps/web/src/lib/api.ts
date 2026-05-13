@@ -489,8 +489,6 @@ export type AdminMenteeRow = {
   name: string;
   studentId: string;
   firstMajor: string | null;
-  secondMajor: string | null;
-  phone: string;
   accountStatus: AdminAccountStatus;
 };
 
@@ -500,7 +498,6 @@ export type AdminMentorRow = {
   studentId: string;
   lawSchool: string | null;
   cohort: number | null;
-  phone: string;
   accountStatus: AdminAccountStatus;
 };
 
@@ -564,14 +561,6 @@ export type AdminAnnouncementRow = AnnouncementRow & {
   deletedAt: string | null;
 };
 
-function buildPaging(page?: number, limit?: number): string {
-  const params = new URLSearchParams();
-  if (page !== undefined) params.set("page", String(page));
-  if (limit !== undefined) params.set("limit", String(limit));
-  const s = params.toString();
-  return s ? `&${s}` : "";
-}
-
 async function jsonOrError<T>(res: Response, fallback: string): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
@@ -582,20 +571,32 @@ async function jsonOrError<T>(res: Response, fallback: string): Promise<T> {
 
 // 회원관리 ----------------------------------------------------------
 
+export type AdminUsersQuery = {
+  page?: number;
+  limit?: number;
+  q?: string;
+  status?: AdminAccountStatus;
+};
+
 export async function getAdminUsers(
   role: "mentee",
-  page?: number, limit?: number,
+  options?: AdminUsersQuery,
 ): Promise<Paged<AdminMenteeRow>>;
 export async function getAdminUsers(
   role: "mentor",
-  page?: number, limit?: number,
+  options?: AdminUsersQuery,
 ): Promise<Paged<AdminMentorRow>>;
 export async function getAdminUsers(
   role: "mentee" | "mentor",
-  page?: number, limit?: number,
+  options: AdminUsersQuery = {},
 ): Promise<Paged<AdminMenteeRow> | Paged<AdminMentorRow>> {
+  const params = new URLSearchParams({ role });
+  if (options.page !== undefined) params.set("page", String(options.page));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  if (options.q) params.set("q", options.q);
+  if (options.status) params.set("status", options.status);
   const res = await fetch(
-    `${API_BASE}/api/admin/users?role=${role}${buildPaging(page, limit)}`,
+    `${API_BASE}/api/admin/users?${params.toString()}`,
     { headers: headers(), credentials: "include" },
   );
   return jsonOrError(res, "회원 목록 조회 실패");

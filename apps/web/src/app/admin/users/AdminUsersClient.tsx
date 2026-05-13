@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
@@ -17,6 +17,7 @@ const STATUS_LABELS: Record<AdminAccountStatus, string> = {
   blocked: '차단',
 };
 const PAGE_SIZE = 5;
+const SEARCH_DEBOUNCE_MS = 300;
 
 function StatusBadge({ status }: { status: AdminAccountStatus }) {
   const styles: Record<AdminAccountStatus, string> = {
@@ -82,12 +83,6 @@ function UsersPageContent({ initialMenteeData }: { initialMenteeData: Paged<Admi
           <p className="mt-1 text-sm text-text-secondary">회원 정보를 조회하고 관리합니다</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" />
-            </svg>
-            회원 추가
-          </button>
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
             {STATUS_FILTER_OPTIONS.map(({ value, label }) => (
               <button
@@ -142,13 +137,10 @@ function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMe
       role="mentee"
       initialData={initialData}
       statusFilter={statusFilter}
-      searchKeys={['name', 'studentId', 'firstMajor', 'secondMajor', 'phone']}
       columns={[
         { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
         { key: 'studentId', label: '학번', sortable: true },
-        { key: 'firstMajor', label: '제1전공', sortable: true, render: (m) => m.firstMajor ?? '-' },
-        { key: 'secondMajor', label: '제2전공', render: (m) => m.secondMajor ?? '-' },
-        { key: 'phone', label: '연락처' },
+        { key: 'firstMajor', label: '전공', sortable: true, render: (m) => m.firstMajor ?? '-' },
         { key: 'accountStatus', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.accountStatus} /> },
       ]}
     />
@@ -161,13 +153,11 @@ function MentorPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatu
       role="mentor"
       initialData={null}
       statusFilter={statusFilter}
-      searchKeys={['name', 'studentId', 'lawSchool', 'phone']}
       columns={[
         { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
         { key: 'studentId', label: '학번', sortable: true },
         { key: 'lawSchool', label: '소속 로스쿨', sortable: true, render: (m) => m.lawSchool ?? '-' },
         { key: 'cohort', label: '기수', sortable: true, render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
-        { key: 'phone', label: '연락처' },
         { key: 'accountStatus', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.accountStatus} /> },
       ]}
     />
@@ -178,7 +168,6 @@ type UserListPanelProps<T extends { userId: string; accountStatus: AdminAccountS
   role: 'mentee' | 'mentor';
   initialData: Paged<T> | null;
   columns: ColumnDef<T>[];
-  searchKeys: (keyof T)[];
   statusFilter: 'all' | AdminAccountStatus;
 };
 
@@ -186,7 +175,6 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
   role,
   initialData,
   columns,
-  searchKeys,
   statusFilter,
 }: UserListPanelProps<T>) {
   const [rows, setRows] = useState<T[]>(initialData?.data as T[] ?? []);
@@ -195,20 +183,54 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [sort, setSort] = useState<SortState<T>>(null);
 
-  const isFirstRender = initialData !== null && page === 1;
+  // 검색어 debounce — 입력 도중 매번 API를 때리지 않도록.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // 검색·필터·탭 변경 시 1페이지로 리셋. 같은 페이지에 머물러 있다가
+  // 결과가 비는 경우를 막기 위해.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, statusFilter, role]);
+
+  // initialData가 1페이지 무필터 조건과 일치하면 첫 렌더 fetch를 건너뛴다.
+  const firstLoadRef = useRef(true);
 
   useEffect(() => {
-    if (isFirstRender && rows.length > 0) return;
+    const canUseInitial =
+      firstLoadRef.current &&
+      role === 'mentee' &&
+      initialData !== null &&
+      page === 1 &&
+      debouncedQuery === '' &&
+      statusFilter === 'all';
+
+    if (canUseInitial) {
+      firstLoadRef.current = false;
+      return;
+    }
+
+    firstLoadRef.current = false;
     let cancelled = false;
+
     async function load() {
       setLoading(true);
       setError(null);
       try {
+        const options = {
+          page,
+          limit: PAGE_SIZE,
+          q: debouncedQuery || undefined,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+        };
         const res = role === 'mentee'
-          ? await getAdminUsers('mentee', page, PAGE_SIZE)
-          : await getAdminUsers('mentor', page, PAGE_SIZE);
+          ? await getAdminUsers('mentee', options)
+          : await getAdminUsers('mentor', options);
         if (cancelled) return;
         setRows(res.data as unknown as T[]);
         setTotalCount(res.totalCount);
@@ -221,26 +243,22 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
     }
     load();
     return () => { cancelled = true; };
-  }, [role, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [role, page, debouncedQuery, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
+  // 정렬은 현재 페이지(최대 5개) 내에서만 적용 — 시각적 안정성을 위해.
+  // 전체 정렬이 필요하면 추후 서버 정렬로 확장.
   const processed = useMemo(() => {
-    let result = rows;
-    const q = query.trim().toLowerCase();
-    if (q) result = result.filter((r) => searchKeys.some((k) => String(r[k] ?? '').toLowerCase().includes(q)));
-    if (statusFilter !== 'all') result = result.filter((r) => r.accountStatus === statusFilter);
-    if (sort) {
-      result = [...result].sort((a, b) => {
-        const av = String(a[sort.key] ?? '');
-        const bv = String(b[sort.key] ?? '');
-        const cmp = av.localeCompare(bv, 'ko');
-        return sort.dir === 'asc' ? cmp : -cmp;
-      });
-    }
-    return result;
-  }, [rows, query, statusFilter, sort, searchKeys]);
+    if (!sort) return rows;
+    return [...rows].sort((a, b) => {
+      const av = String(a[sort.key] ?? '');
+      const bv = String(b[sort.key] ?? '');
+      const cmp = av.localeCompare(bv, 'ko');
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
+  }, [rows, sort]);
 
   const onSort = (key: keyof T) => {
     setSort((prev) => {
@@ -255,7 +273,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
       <div className="flex items-center mb-4 gap-4">
         <div className="flex items-center gap-2 text-text-placeholder">
           <SearchIcon />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="검색..." className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="이름 또는 학번 검색..." className="w-56 text-sm bg-transparent focus:outline-none placeholder:text-text-placeholder" />
         </div>
       </div>
 
