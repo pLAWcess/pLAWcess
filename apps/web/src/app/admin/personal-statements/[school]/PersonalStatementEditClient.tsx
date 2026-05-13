@@ -9,6 +9,7 @@ import {
   type Question,
 } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 
 const YEAR = new Date().getFullYear().toString();
 
@@ -46,18 +47,24 @@ export default function PersonalStatementEditClient({
   const [uploadingHwp, setUploadingHwp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  // 문항을 편집했지만 아직 "문항 저장" 안 한 상태 (HWP 업로드는 즉시 저장이라 제외)
+  const questionsDirtyRef = useRef(false);
+  useBeforeUnloadGuard(() => questionsDirtyRef.current);
 
   function addQuestion() {
+    questionsDirtyRef.current = true;
     setQuestions((prev) => [...prev, newQuestion(prev.length + 1)]);
   }
 
   function updateQuestion(id: string, field: keyof Question, value: string | number | null) {
+    questionsDirtyRef.current = true;
     setQuestions((prev) =>
       prev.map((q) => (q.id === id ? { ...q, [field]: value } : q)),
     );
   }
 
   function removeQuestion(id: string) {
+    questionsDirtyRef.current = true;
     setQuestions((prev) => {
       const filtered = prev.filter((q) => q.id !== id);
       return filtered.map((q, i) => ({ ...q, order: i + 1 }));
@@ -68,6 +75,7 @@ export default function PersonalStatementEditClient({
     setSavingQ(true);
     try {
       await updateSchoolQuestions(YEAR, school, questions);
+      questionsDirtyRef.current = false;
       toast.success('문항을 저장했습니다.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '저장 실패');

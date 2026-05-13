@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import {
   getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
@@ -1073,6 +1074,11 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   const [selectedUnified, setSelectedUnified] = useState<string | null>(null);
   const toast = useToast();
   const confirm = useConfirm();
+
+  // 새로고침/탭 닫기 시 저장 안 한 활동(작성 중인 새 활동 폼, 편집 중인 카드) 경고
+  useBeforeUnloadGuard(
+    !readOnly && (editingIdx !== null || Object.values(drafts).some((arr) => arr.length > 0)),
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

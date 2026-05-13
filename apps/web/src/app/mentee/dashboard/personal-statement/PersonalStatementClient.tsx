@@ -12,6 +12,7 @@ import {
 } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 
 const AUTO_SAVE_MS = 60_000;
 
@@ -61,6 +62,9 @@ export default function PersonalStatementClient({
   const [, setTick] = useState(0);
   const toast = useToast();
   const confirm = useConfirm();
+
+  // 새로고침/탭 닫기 시 저장 안 한 변경사항 경고 (탭 전환은 handleTabChange 에서 별도 처리)
+  useBeforeUnloadGuard(() => !readOnly && (dirtyRef.current.ga || dirtyRef.current.na));
 
   const tabs: { group: Group; school: string }[] = [];
   if (data.ga.school) tabs.push({ group: 'ga', school: data.ga.school });

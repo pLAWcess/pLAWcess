@@ -4,6 +4,7 @@ import { useState } from 'react';
 import ConcernCard from '@/components/concerns/ConcernCard';
 import { submitMenteeApplication, patchConcern, type CycleSchedule, type BasicInfoAdmission, type ConcernData } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -51,6 +52,9 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   }
 
   const hasUnsavedCard = editingCards.size > 0;
+
+  // 새로고침/탭 닫기 시 저장 안 한 고민 카드·추가 요청사항 경고
+  useBeforeUnloadGuard(hasUnsavedCard || extraRequest !== (initialConcerns?.extraRequest ?? ''));
 
   const activeSchedule = initialSchedule;
   const admission = initialAdmission;
