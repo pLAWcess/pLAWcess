@@ -66,7 +66,7 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">연도 설정</h1>
         <p className="mt-1 text-sm text-text-secondary">서비스 전체에 적용될 활성 입시 연도를 관리합니다</p>

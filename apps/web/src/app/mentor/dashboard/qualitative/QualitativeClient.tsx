@@ -759,13 +759,14 @@ function SortableActivityCard({
     zIndex: isDragging ? 10 : undefined,
   };
 
+  // 핸들 활성 시 wrapper 에 좌측 padding 을 두고 핸들을 그 영역 안에 배치 — 카드 폭 일관.
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className={sortDisabled ? '' : 'relative pl-7'}>
       {!sortDisabled && (
         <div
           {...attributes}
           {...listeners}
-          className="absolute -left-7 top-6 cursor-grab active:cursor-grabbing text-text-placeholder hover:text-text-secondary touch-none select-none"
+          className="absolute left-0 top-6 cursor-grab active:cursor-grabbing text-text-placeholder hover:text-text-secondary touch-none select-none"
           aria-label="드래그하여 순서 변경"
         >
           <IconDragHandle />

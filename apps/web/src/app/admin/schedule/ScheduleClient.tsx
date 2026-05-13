@@ -104,7 +104,7 @@ export default function ScheduleClient({ initialSchedules }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">스케줄 관리</h1>
         <p className="mt-1 text-sm text-text-secondary">연도별 사업 일정을 관리하고 멘티·멘토에게 공개합니다</p>
