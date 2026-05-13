@@ -1,7 +1,9 @@
 import { jwtVerify } from 'jose';
 import type { AuthUser } from '@/lib/api';
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+const rawSecret = process.env.JWT_SECRET;
+if (!rawSecret) throw new Error('JWT_SECRET 환경변수가 설정되지 않았습니다.');
+const secret = new TextEncoder().encode(rawSecret);
 
 export async function decodeSessionToken(token: string): Promise<AuthUser | null> {
   if (!token) return null;

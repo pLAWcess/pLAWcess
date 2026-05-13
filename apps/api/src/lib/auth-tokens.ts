@@ -1,6 +1,10 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+// JWT_SECRET 미설정 시 모듈 로드 시점에 즉시·명확하게 죽는다(fail fast). auth.ts 와 동일.
+const rawJwtSecret = process.env.JWT_SECRET;
+if (!rawJwtSecret) throw new Error("JWT_SECRET 환경변수가 설정되지 않았습니다.");
+const JWT_SECRET = rawJwtSecret;
+
 const ISSUER = "pLAWcess";
 
 const SIGNUP_VERIFICATION_AUDIENCE = "email-verification:signup";
