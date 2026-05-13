@@ -62,6 +62,31 @@ export async function PATCH(
           where: { application_id: id },
           data,
         });
+
+        // record_status 동기화: revision_requested 일 때만 draft 로 열어줌.
+        // 나머지(submitted/approved/rejected) 는 submitted 로 잠금.
+        // 우리 서비스에는 별도 "수정 요청 해제" 가 없어서 Application 상태가 진실의 원천 (single source of truth).
+        const recordStatus = dbStatus === "revision_requested" ? "draft" : "submitted";
+        const link = await tx.application.findUnique({
+          where: { application_id: id },
+          select: { mentee_record_id: true, mentor_record_id: true },
+        });
+        if (link?.mentee_record_id) {
+          await tx.menteeRecord.update({
+            where: { record_id: link.mentee_record_id },
+            data: {
+              record_status: recordStatus as Prisma.MenteeRecordUpdateInput["record_status"],
+            },
+          });
+        }
+        if (link?.mentor_record_id) {
+          await tx.mentorRecord.update({
+            where: { record_id: link.mentor_record_id },
+            data: {
+              record_status: recordStatus as Prisma.MentorRecordUpdateInput["record_status"],
+            },
+          });
+        }
       }
 
       // memo: 비어있지 않고, 같은 application 의 가장 최근 memo 와 다르면 새 INSERT
