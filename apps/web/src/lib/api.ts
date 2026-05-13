@@ -699,6 +699,7 @@ export type PatchAdminUserBody = {
   birthDate?: string | null;                          // YYYY.MM.DD. (멘토 카드 편집용)
   gender?: AdminUserGender | null;
   militaryStatus?: AdminUserMilitaryStatus | null;    // 멘토 카드 편집용
+  email?: string;                                     // 어드민 권한 — unique 충돌 시 백엔드 에러
   phone?: string;
   studentId?: string;
   firstMajor?: string;
@@ -706,6 +707,10 @@ export type PatchAdminUserBody = {
   schoolName?: string;
   admissionYear?: number | null;                      // 멘토 카드 편집용
   graduationYear?: number | null;                     // 멘토 카드 편집용
+  // 다음 4개는 가장 최근 MentorRecord/MenteeRecord 에 저장 (currentRole 기준)
+  academicStatus?: AdminUserAcademicStatus | null;
+  currentLawschool?: string | null;                   // 멘토 record 의 lawschool_name
+  cohort?: number | null;                             // 멘토 record 의 lawschool_grade
   accountStatus?: AdminAccountStatus;
   currentRole?: AdminUserCurrentRole;
 };

@@ -34,9 +34,62 @@ const ACCOUNT_STATUS_LABELS: Record<AdminAccountStatus, string> = {
 const GENDER_OPTIONS = Object.values(GENDER_LABELS);
 const ROLE_OPTIONS = Object.values(ROLE_LABELS);
 const ACCOUNT_STATUS_OPTIONS = Object.values(ACCOUNT_STATUS_LABELS);
+const ACADEMIC_OPTIONS = Object.values(ACADEMIC_LABELS);
 
 function accountStatusFromLabel(l: string): AdminAccountStatus {
   return (Object.entries(ACCOUNT_STATUS_LABELS).find(([, lb]) => lb === l)?.[0] as AdminAccountStatus) ?? 'active';
+}
+function academicFromLabel(l: string): AdminUserAcademicStatus | null {
+  return (Object.entries(ACADEMIC_LABELS).find(([, lb]) => lb === l)?.[0] as AdminUserAcademicStatus) ?? null;
+}
+
+// 인라인 검증 helper — 입력 즉시 라벨 옆에 빨간 메시지 표시.
+const BIRTH_DATE_FMT_ERROR = 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)';
+const YEAR_FMT_ERROR = '숫자 4자리로 입력해주세요 (예: 2021)';
+const COHORT_ERROR = '숫자(1~50)로 입력해주세요';
+const EMAIL_ERROR = '이메일 형식이 올바르지 않습니다';
+const EMAIL_RE_CLIENT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateBirthDate(v: string): string {
+  if (v === '') return '';
+  return /^\d{4}\.\d{2}\.\d{2}\.$/.test(v) ? '' : BIRTH_DATE_FMT_ERROR;
+}
+function validateYear4(v: string): string {
+  if (v === '') return '';
+  return /^\d{4}$/.test(v) ? '' : YEAR_FMT_ERROR;
+}
+function validateCohort(v: string): string {
+  if (v === '') return '';
+  const n = Number(v);
+  return /^\d{1,2}$/.test(v) && n >= 1 && n <= 50 ? '' : COHORT_ERROR;
+}
+function validateEmail(v: string): string {
+  if (v === '') return '이메일은 비울 수 없습니다';
+  return EMAIL_RE_CLIENT.test(v) ? '' : EMAIL_ERROR;
+}
+
+/* 프로필 카드 행 셀 공용 타입·컴포넌트 — 라벨 옆 인라인 에러 표시 통일. */
+type ProfileRow = {
+  label: string;
+  view: React.ReactNode;
+  edit: React.ReactNode;
+  error?: string;
+};
+
+function FieldCell({ cell, colIdx, isEditing }: { cell: ProfileRow; colIdx: number; isEditing: boolean }) {
+  return (
+    <div className={`flex flex-col gap-2${colIdx === 1 ? ' sm:pl-8 pt-4 sm:pt-0' : ''}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-text-secondary shrink-0">{cell.label}</span>
+        {isEditing && cell.error && (
+          <p className="text-xs text-red-500 flex-1 text-right">{cell.error}</p>
+        )}
+      </div>
+      <div className="h-6">
+        {isEditing ? cell.edit : <span className="text-base text-text-primary">{cell.view}</span>}
+      </div>
+    </div>
+  );
 }
 
 const SCHOOLS = LAW_SCHOOLS.map((s) => s.name);
@@ -272,49 +325,46 @@ function MentorProfileCard({
   const [birthStr, setBirthStr] = useState<string>(user.birthDate);
   const [admissionStr, setAdmissionStr] = useState<string>(user.admissionYear?.toString() ?? '');
   const [graduationStr, setGraduationStr] = useState<string>(user.graduationYear?.toString() ?? '');
+  const [cohortStr, setCohortStr] = useState<string>(user.cohort?.toString() ?? '');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  function syncFromUser(u: AdminUserDetail) {
+    setDraft(u);
+    setBirthStr(u.birthDate);
+    setAdmissionStr(u.admissionYear?.toString() ?? '');
+    setGraduationStr(u.graduationYear?.toString() ?? '');
+    setCohortStr(u.cohort?.toString() ?? '');
+  }
+
   useEffect(() => {
-    if (!isEditing) {
-      setDraft(user);
-      setBirthStr(user.birthDate);
-      setAdmissionStr(user.admissionYear?.toString() ?? '');
-      setGraduationStr(user.graduationYear?.toString() ?? '');
-    }
+    if (!isEditing) syncFromUser(user);
   }, [user, isEditing]);
 
   function startEdit() {
-    setDraft(user);
-    setBirthStr(user.birthDate);
-    setAdmissionStr(user.admissionYear?.toString() ?? '');
-    setGraduationStr(user.graduationYear?.toString() ?? '');
+    syncFromUser(user);
     setSaveError(null);
     setIsEditing(true);
   }
 
   function cancel() {
-    setDraft(user);
-    setBirthStr(user.birthDate);
-    setAdmissionStr(user.admissionYear?.toString() ?? '');
-    setGraduationStr(user.graduationYear?.toString() ?? '');
+    syncFromUser(user);
     setSaveError(null);
     setIsEditing(false);
   }
 
+  // 입력별 실시간 검증 결과
+  const birthErr = validateBirthDate(birthStr);
+  const admissionErr = validateYear4(admissionStr);
+  const graduationErr = validateYear4(graduationStr);
+  const cohortErr = validateCohort(cohortStr);
+  const emailErr = validateEmail(draft.email);
+  const hasAnyError = !!(birthErr || admissionErr || graduationErr || cohortErr || emailErr);
+
   async function save() {
-    // 간단 검증: birthDate (입력 시) YYYY.MM.DD. 형식, 연도 4자리
-    if (birthStr && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(birthStr)) {
-      setSaveError('생년월일은 YYYY.MM.DD. 형식이어야 합니다.');
-      return;
-    }
-    if (admissionStr && !/^\d{4}$/.test(admissionStr)) {
-      setSaveError('학부 입학년도는 숫자 4자리여야 합니다.');
-      return;
-    }
-    if (graduationStr && !/^\d{4}$/.test(graduationStr)) {
-      setSaveError('학부 졸업년도는 숫자 4자리여야 합니다.');
+    if (hasAnyError) {
+      setSaveError('입력값을 확인해주세요.');
       return;
     }
     setIsSaving(true);
@@ -325,10 +375,14 @@ function MentorProfileCard({
         militaryStatus: draft.militaryStatus,
         firstMajor: draft.firstMajor,
         secondMajor: draft.secondMajor,
+        email: draft.email,
         phone: draft.phone,
         birthDate: birthStr || null,
         admissionYear: admissionStr ? Number(admissionStr) : null,
         graduationYear: graduationStr ? Number(graduationStr) : null,
+        academicStatus: draft.academicStatus,
+        currentLawschool: draft.currentLawschool ?? null,
+        cohort: cohortStr ? Number(cohortStr) : null,
       });
       setIsEditing(false);
     } catch (e: unknown) {
@@ -363,12 +417,13 @@ function MentorProfileCard({
       )}
 
       <div className="px-4 sm:px-8 py-2">
-        {[
+        {([
           [
             {
               label: '생년월일',
               view: user.birthDate || '-',
               edit: <UnderlineInput value={birthStr} onChange={setBirthStr} placeholder="예: 2000.03.15." />,
+              error: birthErr,
             },
             {
               label: '성별',
@@ -377,11 +432,24 @@ function MentorProfileCard({
             },
           ],
           [
-            { label: '소속 로스쿨', view: user.currentLawschool || '-', edit: <span className="text-base text-text-secondary">{user.currentLawschool || '-'}</span> },
-            { label: '로스쿨 기수', view: user.cohort != null ? `${user.cohort}기` : '-', edit: <span className="text-base text-text-secondary">{user.cohort != null ? `${user.cohort}기` : '-'}</span> },
+            {
+              label: '소속 로스쿨',
+              view: user.currentLawschool || '-',
+              edit: <UnderlineInput value={draft.currentLawschool ?? ''} onChange={(v) => setDraft({ ...draft, currentLawschool: v })} placeholder="예: 고려대학교 로스쿨" />,
+            },
+            {
+              label: '로스쿨 기수',
+              view: user.cohort != null ? `${user.cohort}기` : '-',
+              edit: <UnderlineInput value={cohortStr} onChange={(v) => /^\d*$/.test(v) && setCohortStr(v)} placeholder="예: 17" />,
+              error: cohortErr,
+            },
           ],
           [
-            { label: '학적상태', view: academicLabel(user.academicStatus), edit: <span className="text-base text-text-secondary">{academicLabel(user.academicStatus)}</span> },
+            {
+              label: '학적상태',
+              view: academicLabel(user.academicStatus),
+              edit: <SelectField value={data.academicStatus ? ACADEMIC_LABELS[data.academicStatus] : ''} options={ACADEMIC_OPTIONS} onChange={(v) => setDraft({ ...draft, academicStatus: academicFromLabel(v) })} placeholder="학적상태 선택" />,
+            },
             {
               label: '병역여부',
               view: militaryLabel(user.militaryStatus),
@@ -397,11 +465,13 @@ function MentorProfileCard({
               label: '학부 입학년도',
               view: user.admissionYear?.toString() ?? '-',
               edit: <UnderlineInput value={admissionStr} onChange={(v) => /^\d*$/.test(v) && setAdmissionStr(v)} placeholder="예: 2021" />,
+              error: admissionErr,
             },
             {
               label: '학부 졸업년도',
               view: user.graduationYear?.toString() ?? '-',
               edit: <UnderlineInput value={graduationStr} onChange={(v) => /^\d*$/.test(v) && setGraduationStr(v)} placeholder="예: 2025" />,
+              error: graduationErr,
             },
           ],
           // 어드민 전용 영역 — 멘토 본인 화면엔 없는 연락 정보
@@ -409,7 +479,8 @@ function MentorProfileCard({
             {
               label: '이메일',
               view: user.email,
-              edit: <span className="text-base text-text-secondary">{user.email}</span>,
+              edit: <UnderlineInput value={draft.email} onChange={(v) => setDraft({ ...draft, email: v })} placeholder="mentor@example.com" />,
+              error: emailErr,
             },
             {
               label: '연락처',
@@ -417,18 +488,13 @@ function MentorProfileCard({
               edit: <UnderlineInput value={draft.phone} onChange={(v) => setDraft({ ...draft, phone: v })} placeholder="010-0000-0000" />,
             },
           ],
-        ].map((row, rowIdx, all) => (
+        ] as ProfileRow[][]).map((row, rowIdx, all) => (
           <div
             key={rowIdx}
             className={`grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border py-5 ${rowIdx < all.length - 1 ? 'border-b border-border' : ''}`}
           >
             {row.map((cell, colIdx) => (
-              <div key={cell.label} className={`flex flex-col gap-2${colIdx === 1 ? ' sm:pl-8 pt-4 sm:pt-0' : ''}`}>
-                <span className="text-sm text-text-secondary">{cell.label}</span>
-                <div className="h-6">
-                  {isEditing ? cell.edit : <span className="text-base text-text-primary">{cell.view}</span>}
-                </div>
-              </div>
+              <FieldCell key={cell.label} cell={cell} colIdx={colIdx} isEditing={isEditing} />
             ))}
           </div>
         ))}
@@ -458,44 +524,38 @@ function MenteeProfileCard({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  function syncFromUser(u: AdminUserDetail) {
+    setDraft(u);
+    setBirthStr(u.birthDate);
+    setAdmissionStr(u.admissionYear?.toString() ?? '');
+    setGraduationStr(u.graduationYear?.toString() ?? '');
+  }
+
   useEffect(() => {
-    if (!isEditing) {
-      setDraft(user);
-      setBirthStr(user.birthDate);
-      setAdmissionStr(user.admissionYear?.toString() ?? '');
-      setGraduationStr(user.graduationYear?.toString() ?? '');
-    }
+    if (!isEditing) syncFromUser(user);
   }, [user, isEditing]);
 
   function startEdit() {
-    setDraft(user);
-    setBirthStr(user.birthDate);
-    setAdmissionStr(user.admissionYear?.toString() ?? '');
-    setGraduationStr(user.graduationYear?.toString() ?? '');
+    syncFromUser(user);
     setSaveError(null);
     setIsEditing(true);
   }
 
   function cancel() {
-    setDraft(user);
-    setBirthStr(user.birthDate);
-    setAdmissionStr(user.admissionYear?.toString() ?? '');
-    setGraduationStr(user.graduationYear?.toString() ?? '');
+    syncFromUser(user);
     setSaveError(null);
     setIsEditing(false);
   }
 
+  const birthErr = validateBirthDate(birthStr);
+  const admissionErr = validateYear4(admissionStr);
+  const graduationErr = validateYear4(graduationStr);
+  const emailErr = validateEmail(draft.email);
+  const hasAnyError = !!(birthErr || admissionErr || graduationErr || emailErr);
+
   async function save() {
-    if (birthStr && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(birthStr)) {
-      setSaveError('생년월일은 YYYY.MM.DD. 형식이어야 합니다.');
-      return;
-    }
-    if (admissionStr && !/^\d{4}$/.test(admissionStr)) {
-      setSaveError('학부 입학년도는 숫자 4자리여야 합니다.');
-      return;
-    }
-    if (graduationStr && !/^\d{4}$/.test(graduationStr)) {
-      setSaveError('학부 졸업년도는 숫자 4자리여야 합니다.');
+    if (hasAnyError) {
+      setSaveError('입력값을 확인해주세요.');
       return;
     }
     setIsSaving(true);
@@ -508,10 +568,12 @@ function MenteeProfileCard({
         secondMajor: draft.secondMajor,
         studentId: draft.studentId,
         schoolName: draft.schoolName,
+        email: draft.email,
         phone: draft.phone,
         birthDate: birthStr || null,
         admissionYear: admissionStr ? Number(admissionStr) : null,
         graduationYear: graduationStr ? Number(graduationStr) : null,
+        academicStatus: draft.academicStatus,
       });
       setIsEditing(false);
     } catch (e: unknown) {
@@ -546,12 +608,13 @@ function MenteeProfileCard({
       )}
 
       <div className="px-4 sm:px-8 py-2">
-        {[
+        {([
           [
             {
               label: '생년월일',
               view: user.birthDate || '-',
               edit: <UnderlineInput value={birthStr} onChange={setBirthStr} placeholder="예: 2000.03.15." />,
+              error: birthErr,
             },
             {
               label: '성별',
@@ -568,15 +631,21 @@ function MenteeProfileCard({
               label: '학부 입학년도',
               view: user.admissionYear?.toString() ?? '-',
               edit: <UnderlineInput value={admissionStr} onChange={(v) => /^\d*$/.test(v) && setAdmissionStr(v)} placeholder="예: 2021" />,
+              error: admissionErr,
             },
             {
               label: '학부 졸업년도',
               view: user.graduationYear?.toString() ?? '-',
               edit: <UnderlineInput value={graduationStr} onChange={(v) => /^\d*$/.test(v) && setGraduationStr(v)} placeholder="예: 2025" />,
+              error: graduationErr,
             },
           ],
           [
-            { label: '학적상태', view: academicLabel(user.academicStatus), edit: <span className="text-base text-text-secondary">{academicLabel(user.academicStatus)}</span> },
+            {
+              label: '학적상태',
+              view: academicLabel(user.academicStatus),
+              edit: <SelectField value={data.academicStatus ? ACADEMIC_LABELS[data.academicStatus] : ''} options={ACADEMIC_OPTIONS} onChange={(v) => setDraft({ ...draft, academicStatus: academicFromLabel(v) })} placeholder="학적상태 선택" />,
+            },
             {
               label: '병역여부',
               view: militaryLabel(user.militaryStatus),
@@ -589,21 +658,21 @@ function MenteeProfileCard({
             { label: '학부 학교', view: user.schoolName || '-', edit: <UnderlineInput value={draft.schoolName} onChange={(v) => setDraft({ ...draft, schoolName: v })} placeholder="학부 학교명" /> },
           ],
           [
-            { label: '이메일', view: user.email, edit: <span className="text-base text-text-secondary">{user.email}</span> },
+            {
+              label: '이메일',
+              view: user.email,
+              edit: <UnderlineInput value={draft.email} onChange={(v) => setDraft({ ...draft, email: v })} placeholder="mentee@example.com" />,
+              error: emailErr,
+            },
             { label: '연락처', view: user.phone || '-', edit: <UnderlineInput value={draft.phone} onChange={(v) => setDraft({ ...draft, phone: v })} placeholder="010-0000-0000" /> },
           ],
-        ].map((row, rowIdx, all) => (
+        ] as ProfileRow[][]).map((row, rowIdx, all) => (
           <div
             key={rowIdx}
             className={`grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border py-5 ${rowIdx < all.length - 1 ? 'border-b border-border' : ''}`}
           >
             {row.map((cell, colIdx) => (
-              <div key={cell.label} className={`flex flex-col gap-2${colIdx === 1 ? ' sm:pl-8 pt-4 sm:pt-0' : ''}`}>
-                <span className="text-sm text-text-secondary">{cell.label}</span>
-                <div className="h-6">
-                  {isEditing ? cell.edit : <span className="text-base text-text-primary">{cell.view}</span>}
-                </div>
-              </div>
+              <FieldCell key={cell.label} cell={cell} colIdx={colIdx} isEditing={isEditing} />
             ))}
           </div>
         ))}

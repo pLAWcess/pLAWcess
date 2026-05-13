@@ -109,6 +109,7 @@ type PatchBody = {
   birthDate?: string | null;                      // YYYY.MM.DD. 형식
   gender?: string | null;
   militaryStatus?: string | null;
+  email?: string;
   phone?: string;
   studentId?: string;
   firstMajor?: string;
@@ -116,16 +117,22 @@ type PatchBody = {
   schoolName?: string;
   admissionYear?: number | null;
   graduationYear?: number | null;
+  // 다음 3개는 가장 최근 MentorRecord/MenteeRecord 에 저장 (current_role 기준)
+  academicStatus?: string | null;
+  currentLawschool?: string | null;
+  cohort?: number | null;
   accountStatus?: string;
   currentRole?: string;
 };
 
 const VALID_GENDER = new Set(["male", "female", "other"]);
 const VALID_MILITARY = new Set(["completed", "not_completed", "not_applicable"]);
+const VALID_ACADEMIC = new Set(["enrolled", "on_leave", "completed", "graduated", "expelled"]);
 const VALID_ACCOUNT_STATUS = new Set(["active", "inactive", "blocked"]);
 const VALID_CURRENT_ROLE = new Set(["none", "mentee", "mentor", "admin"]);
 
 const BIRTH_DATE_RE = /^(\d{4})\.(\d{2})\.(\d{2})\.$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function PATCH(
   req: NextRequest,
@@ -146,10 +153,11 @@ export async function PATCH(
     return NextResponse.json({ error: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  // birthYear → birth_date 변환에 기존 month/day 보존이 필요하므로 현재 row 조회
+  // birthYear → birth_date 변환에 기존 month/day 보존이 필요하므로 현재 row 조회.
+  // current_role 은 academicStatus/currentLawschool/cohort 를 어느 record 에 저장할지 결정용.
   const existing = await prisma.user.findUnique({
     where: { user_id: userId },
-    select: { birth_date: true, is_deleted: true },
+    select: { birth_date: true, current_role: true, is_deleted: true },
   });
   if (!existing || existing.is_deleted) {
     return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
@@ -168,6 +176,12 @@ export async function PATCH(
       return NextResponse.json({ error: "phone 형식이 올바르지 않습니다." }, { status: 400 });
     }
     data.phone = body.phone.trim() || null;
+  }
+  if (body.email !== undefined) {
+    if (typeof body.email !== "string" || !EMAIL_RE.test(body.email.trim())) {
+      return NextResponse.json({ error: "email 형식이 올바르지 않습니다." }, { status: 400 });
+    }
+    data.email = body.email.trim();
   }
   if (body.studentId !== undefined) {
     if (typeof body.studentId !== "string") {
@@ -282,10 +296,69 @@ export async function PATCH(
     try {
       await prisma.user.update({ where: { user_id: userId }, data });
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
-        return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === "P2025") {
+          return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
+        }
+        if (e.code === "P2002") {
+          // email unique 충돌 케이스
+          return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
+        }
       }
       throw e;
+    }
+  }
+
+  // academicStatus / currentLawschool / cohort 는 가장 최근 MentorRecord 또는 MenteeRecord 에 저장.
+  // current_role 기준으로 어느 record 를 업데이트할지 결정.
+  // record 가 없으면 silent skip — 신청서가 없는 회원은 후속 신청 시 입력될 값.
+  const hasAcademic = body.academicStatus !== undefined;
+  const hasLawschool = body.currentLawschool !== undefined;
+  const hasCohort = body.cohort !== undefined;
+
+  if (hasAcademic) {
+    if (body.academicStatus !== null && (typeof body.academicStatus !== "string" || !VALID_ACADEMIC.has(body.academicStatus))) {
+      return NextResponse.json({ error: "academicStatus 가 올바르지 않습니다." }, { status: 400 });
+    }
+  }
+  if (hasCohort) {
+    if (body.cohort !== null && (typeof body.cohort !== "number" || !Number.isInteger(body.cohort) || body.cohort < 1 || body.cohort > 50)) {
+      return NextResponse.json({ error: "cohort 는 1~50 정수 또는 null 이어야 합니다." }, { status: 400 });
+    }
+  }
+  if (hasLawschool) {
+    if (body.currentLawschool !== null && typeof body.currentLawschool !== "string") {
+      return NextResponse.json({ error: "currentLawschool 형식이 올바르지 않습니다." }, { status: 400 });
+    }
+  }
+
+  if (hasAcademic || hasLawschool || hasCohort) {
+    const role = existing.current_role;
+    if (role === "mentor") {
+      const latest = await prisma.mentorRecord.findFirst({
+        where: { user_id: userId },
+        orderBy: { process_year: "desc" },
+        select: { record_id: true },
+      });
+      if (latest) {
+        const mData: Prisma.MentorRecordUpdateInput = {};
+        if (hasAcademic) mData.academic_status = body.academicStatus as Prisma.MentorRecordUpdateInput["academic_status"];
+        if (hasLawschool) mData.lawschool_name = body.currentLawschool && body.currentLawschool.trim() ? body.currentLawschool.trim() : null;
+        if (hasCohort) mData.lawschool_grade = body.cohort ?? null;
+        await prisma.mentorRecord.update({ where: { record_id: latest.record_id }, data: mData });
+      }
+    } else if (role === "mentee" && hasAcademic) {
+      const latest = await prisma.menteeRecord.findFirst({
+        where: { user_id: userId },
+        orderBy: { process_year: "desc" },
+        select: { record_id: true },
+      });
+      if (latest) {
+        await prisma.menteeRecord.update({
+          where: { record_id: latest.record_id },
+          data: { academic_status: body.academicStatus as Prisma.MenteeRecordUpdateInput["academic_status"] },
+        });
+      }
     }
   }
 
