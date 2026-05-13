@@ -1,5 +1,6 @@
 import type { AuthUser } from '@/lib/api';
 import { decodeSessionToken } from '@/lib/jwt';
+import { redirect } from 'next/navigation';
 
 export function getRoleHomePath(role: string): string {
   if (role === 'admin') return '/admin/schedule';
@@ -21,6 +22,28 @@ export async function serverFetch<T>(path: string, token: string): Promise<T | n
     return res.json();
   } catch {
     return null;
+  }
+}
+
+// 데이터가 반드시 있어야 하는 페이지용. 조회에 실패하면 빈 폼으로 떨어뜨리는 대신
+// throw 해서 error.tsx 가 받게 한다(= 사용자에게 "데이터가 사라진 것처럼" 보이는 사고 방지).
+// 401 은 세션 만료로 보고 로그인으로 보낸다.
+export async function serverFetchOrThrow<T>(path: string, token: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: { Cookie: `${COOKIE_NAME}=${token}` },
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error('서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.');
+  }
+  if (res.status === 401) redirect('/login');
+  if (!res.ok) throw new Error(`데이터를 불러오지 못했어요. (HTTP ${res.status})`);
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error('서버 응답을 처리하지 못했어요.');
   }
 }
 

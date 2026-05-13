@@ -1,21 +1,15 @@
 import { cookies } from 'next/headers';
 import QuantitativeClient from './QuantitativeClient';
-import { serverFetch, getActiveProcessYear } from '@/lib/server-fetch';
+import { serverFetchOrThrow, getActiveProcessYear } from '@/lib/server-fetch';
 import type { QuantitativeData } from '@/lib/api';
-
-const EMPTY: QuantitativeData = {
-  leet: {
-    verbal: { raw: null, standard: null, percentile: null },
-    reasoning: { raw: null, standard: null, percentile: null },
-  },
-  gpa: { overall: null, major: null, converted: null },
-  language: { toeic: null, toefl: null, teps: null },
-};
 
 export default async function QuantitativePage() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
   const year = await getActiveProcessYear(token);
-  const data = await serverFetch<QuantitativeData>(`/api/mentee/quantitative?year=${encodeURIComponent(year)}`, token) ?? EMPTY;
+  const data = await serverFetchOrThrow<QuantitativeData>(
+    `/api/mentee/quantitative?year=${encodeURIComponent(year)}`,
+    token,
+  );
 
   return (
     <div className="flex flex-col gap-6 page-container w-full">
