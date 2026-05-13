@@ -8,6 +8,7 @@ import Footer from '@/components/layout/Footer';
 import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import { readJson } from '@/lib/http';
 import { validatePassword } from '@/lib/password';
+import ConsentSection, { type ConsentState } from './ConsentSection';
 
 const API_BASE = '';
 const COOLDOWN_SEC = 60;
@@ -62,6 +63,12 @@ export default function SignupPage() {
   const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
   const [checkLoading, setCheckLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 동의 (#159) — 필수 1개 + 선택 1개. 필수 미체크 시 가입 불가.
+  const [consent, setConsent] = useState<ConsentState>({
+    privacyRequired: false,
+    thirdParty: false,
+  });
 
   // 이메일 인증
   const [emailVerifyState, setEmailVerifyState] = useState<EmailVerifyState>('idle');
@@ -179,6 +186,8 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
 
+    if (!consent.privacyRequired) { setError('개인정보 수집·이용에 동의해주세요.'); return; }
+    if (!consent.thirdParty) { setError('개인정보 제3자 제공에 동의해주세요.'); return; }
     if (!checkResult?.ok) { setError('아이디 중복확인을 해주세요.'); return; }
     if (emailVerifyState !== 'verified') { setError('이메일 인증을 완료해주세요.'); return; }
     const pwValid = validatePassword(form.password);
@@ -449,12 +458,15 @@ export default function SignupPage() {
                 </div>
               </Field>
 
+              {/* 동의 (#159) */}
+              <ConsentSection value={consent} onChange={setConsent} />
+
               {error && <p className="text-sm text-red-500">{error}</p>}
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-3 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors mt-2 disabled:opacity-50"
+                disabled={loading || !consent.privacyRequired || !consent.thirdParty}
+                className="w-full py-3 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? '가입 중...' : '계정 만들기'}
               </button>

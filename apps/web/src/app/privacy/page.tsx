@@ -2,6 +2,8 @@ import LandingNavbarServer from '@/components/landing/LandingNavbarServer';
 import Footer from '@/components/layout/Footer';
 import type { Metadata } from 'next';
 
+const PDF_PATH = '/개인정보처리방침.pdf';
+
 export const metadata: Metadata = {
   title: 'pLAWcess | 개인정보처리방침',
   description: 'pLAWcess 개인정보처리방침',
@@ -12,90 +14,37 @@ export default function PrivacyPage() {
     <div className="flex flex-col min-h-screen">
       <LandingNavbarServer />
       <main className="flex-1 bg-page-bg">
-        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-24">
-          <h1 className="text-3xl font-extrabold text-text-primary tracking-tight">
-            개인정보처리방침
-          </h1>
-          <p className="mt-3 text-sm text-text-secondary">
-            시행일: 2026년 4월 15일
-          </p>
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 sm:py-14">
+          <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">개인정보처리방침</h1>
+            <a
+              href={PDF_PATH}
+              download
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-secondary border border-border rounded-md hover:bg-white transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              PDF 다운로드
+            </a>
+          </div>
 
-          <div className="mt-10 space-y-10">
-            <section>
-              <h2 className="text-xl font-bold text-text-primary">
-                1. 수집하는 개인정보 항목
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-text-body">
-                pLAWcess(이하 &ldquo;서비스&rdquo;)는 멘토링 매칭 서비스 제공을 위해 아래와 같은 개인정보를 수집합니다.
-              </p>
-              <ul className="mt-3 list-disc list-inside space-y-1 text-base text-text-body">
-                <li>필수: 이름, 이메일 주소, 학번, 학년/졸업연도</li>
-                <li>선택: LEET 점수, 학점(GPA), 어학 점수, 자기소개서, 지원 희망 학교</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-text-primary">
-                2. 개인정보 수집 및 이용 목적
-              </h2>
-              <ul className="mt-4 list-disc list-inside space-y-1 text-base text-text-body">
-                <li>멘토-멘티 매칭 서비스 제공</li>
-                <li>서비스 이용에 관한 공지사항 전달</li>
-                <li>서비스 개선을 위한 통계 분석(익명 처리 후)</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-text-primary">
-                3. 개인정보 보유 및 이용 기간
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-text-body">
-                회원 탈퇴 시 즉시 파기합니다. 단, 관계 법령에 따라 보존이 필요한 경우 해당 기간 동안 보관합니다.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-text-primary">
-                4. 개인정보의 파기 절차 및 방법
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-text-body">
-                전자적 파일 형태로 저장된 개인정보는 기록을 재생할 수 없는 기술적 방법을 사용하여 삭제합니다.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-text-primary">
-                5. 개인정보 처리 위탁
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-text-body">
-                현재 개인정보 처리를 외부에 위탁하지 않습니다.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-text-primary">
-                6. 이용자의 권리
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-text-body">
-                이용자는 언제든지 자신의 개인정보를 조회, 수정, 삭제할 수 있습니다. 관련 요청은 아래 문의처로 연락해주세요.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-text-primary">
-                7. 문의처
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-text-body">
-                개인정보 관련 문의는{' '}
-                <a
-                  href="mailto:kusisedu@gmail.com"
-                  className="text-brand hover:underline"
-                >
-                  kusisedu@gmail.com
+          <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+            <object
+              data={PDF_PATH}
+              type="application/pdf"
+              className="w-full h-[80vh]"
+              aria-label="개인정보처리방침 PDF"
+            >
+              <div className="px-6 py-10 text-center text-sm text-text-secondary">
+                PDF 를 표시할 수 없습니다.{' '}
+                <a href={PDF_PATH} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+                  새 탭에서 열기
                 </a>
-                으로 연락해주세요.
-              </p>
-            </section>
+              </div>
+            </object>
           </div>
         </div>
       </main>
