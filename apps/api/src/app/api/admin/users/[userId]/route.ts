@@ -4,6 +4,14 @@ import { requireAdmin } from "@/lib/admin-guard";
 
 type ParticipationItem = { year: number; role: "mentee" | "mentor" };
 
+function formatBirthDate(d: Date | null): string {
+  if (!d) return "";
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}.${m}.${day}.`;
+}
+
 async function buildUserDetail(userId: string) {
   const user = await prisma.user.findUnique({
     where: { user_id: userId },
@@ -12,12 +20,15 @@ async function buildUserDetail(userId: string) {
       name: true,
       birth_date: true,
       gender: true,
+      military_status: true,
       phone: true,
       email: true,
       student_id: true,
       undergrad_first_major: true,
       undergrad_second_major: true,
       undergrad_school_name: true,
+      undergrad_entry_year: true,
+      undergrad_graduation_year: true,
       account_status: true,
       current_role: true,
       is_deleted: true,
@@ -57,13 +68,17 @@ async function buildUserDetail(userId: string) {
     userId: user.user_id,
     name: user.name,
     birthYear: user.birth_date?.getUTCFullYear() ?? null,
+    birthDate: formatBirthDate(user.birth_date ?? null),
     gender: user.gender,
+    militaryStatus: user.military_status,
     phone: user.phone ?? "",
     email: user.email,
     studentId: user.student_id ?? "",
     firstMajor: user.undergrad_first_major ?? "",
     secondMajor: user.undergrad_second_major ?? "",
     schoolName: user.undergrad_school_name ?? "",
+    admissionYear: user.undergrad_entry_year ?? null,
+    graduationYear: user.undergrad_graduation_year ?? null,
     academicStatus,
     accountStatus: user.account_status,
     currentRole: user.current_role,
@@ -91,19 +106,26 @@ export async function GET(
 type PatchBody = {
   name?: string;
   birthYear?: number | null;
+  birthDate?: string | null;                      // YYYY.MM.DD. 형식
   gender?: string | null;
+  militaryStatus?: string | null;
   phone?: string;
   studentId?: string;
   firstMajor?: string;
   secondMajor?: string;
   schoolName?: string;
+  admissionYear?: number | null;
+  graduationYear?: number | null;
   accountStatus?: string;
   currentRole?: string;
 };
 
 const VALID_GENDER = new Set(["male", "female", "other"]);
+const VALID_MILITARY = new Set(["completed", "not_completed", "not_applicable"]);
 const VALID_ACCOUNT_STATUS = new Set(["active", "inactive", "blocked"]);
 const VALID_CURRENT_ROLE = new Set(["none", "mentee", "mentor", "admin"]);
+
+const BIRTH_DATE_RE = /^(\d{4})\.(\d{2})\.(\d{2})\.$/;
 
 export async function PATCH(
   req: NextRequest,
@@ -194,6 +216,47 @@ export async function PATCH(
       );
     }
     data.current_role = body.currentRole as Prisma.UserUpdateInput["current_role"];
+  }
+  if (body.militaryStatus !== undefined) {
+    if (body.militaryStatus !== null && (typeof body.militaryStatus !== "string" || !VALID_MILITARY.has(body.militaryStatus))) {
+      return NextResponse.json({ error: "militaryStatus 는 completed|not_completed|not_applicable 또는 null 이어야 합니다." }, { status: 400 });
+    }
+    data.military_status = body.militaryStatus as Prisma.UserUpdateInput["military_status"];
+  }
+  if (body.admissionYear !== undefined) {
+    if (body.admissionYear === null) {
+      data.undergrad_entry_year = null;
+    } else if (typeof body.admissionYear === "number" && Number.isInteger(body.admissionYear) && body.admissionYear >= 1900 && body.admissionYear <= 2100) {
+      data.undergrad_entry_year = body.admissionYear;
+    } else {
+      return NextResponse.json({ error: "admissionYear 는 1900~2100 정수 또는 null 이어야 합니다." }, { status: 400 });
+    }
+  }
+  if (body.graduationYear !== undefined) {
+    if (body.graduationYear === null) {
+      data.undergrad_graduation_year = null;
+    } else if (typeof body.graduationYear === "number" && Number.isInteger(body.graduationYear) && body.graduationYear >= 1900 && body.graduationYear <= 2100) {
+      data.undergrad_graduation_year = body.graduationYear;
+    } else {
+      return NextResponse.json({ error: "graduationYear 는 1900~2100 정수 또는 null 이어야 합니다." }, { status: 400 });
+    }
+  }
+  if (body.birthDate !== undefined) {
+    if (body.birthDate === null || body.birthDate === "") {
+      data.birth_date = null;
+    } else if (typeof body.birthDate === "string") {
+      const m = BIRTH_DATE_RE.exec(body.birthDate);
+      if (!m) {
+        return NextResponse.json({ error: "birthDate 는 YYYY.MM.DD. 형식이어야 합니다." }, { status: 400 });
+      }
+      const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+      if (y < 1900 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) {
+        return NextResponse.json({ error: "birthDate 의 연/월/일 범위가 올바르지 않습니다." }, { status: 400 });
+      }
+      data.birth_date = new Date(Date.UTC(y, mo - 1, d));
+    } else {
+      return NextResponse.json({ error: "birthDate 형식이 올바르지 않습니다." }, { status: 400 });
+    }
   }
   if (body.birthYear !== undefined) {
     if (body.birthYear === null) {

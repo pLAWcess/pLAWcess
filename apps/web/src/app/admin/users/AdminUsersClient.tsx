@@ -7,6 +7,7 @@ import {
   getAdminUsers,
   type AdminMenteeRow,
   type AdminMentorRow,
+  type AdminAdminRow,
   type AdminAccountStatus,
   type Paged,
 } from '@/lib/api';
@@ -40,7 +41,7 @@ function SearchIcon() {
   );
 }
 
-type Tab = 'mentee' | 'mentor';
+type Tab = 'mentee' | 'mentor' | 'admin';
 
 export default function AdminUsersClient({
   initialMenteeData,
@@ -65,7 +66,8 @@ function UsersPageContent({ initialMenteeData }: { initialMenteeData: Paged<Admi
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const tab: Tab = params.get('tab') === 'mentor' ? 'mentor' : 'mentee';
+  const tabParam = params.get('tab');
+  const tab: Tab = tabParam === 'mentor' ? 'mentor' : tabParam === 'admin' ? 'admin' : 'mentee';
 
   const [statusFilter, setStatusFilter] = useState<'all' | AdminAccountStatus>('all');
 
@@ -104,12 +106,12 @@ function UsersPageContent({ initialMenteeData }: { initialMenteeData: Paged<Admi
       <div className="flex gap-1 border-b border-border">
         <TabButton active={tab === 'mentee'} onClick={() => setTab('mentee')}>멘티 회원</TabButton>
         <TabButton active={tab === 'mentor'} onClick={() => setTab('mentor')}>멘토 회원</TabButton>
+        <TabButton active={tab === 'admin'} onClick={() => setTab('admin')}>관리자</TabButton>
       </div>
 
-      {tab === 'mentee'
-        ? <MenteePanel initialData={initialMenteeData} statusFilter={statusFilter} />
-        : <MentorPanel statusFilter={statusFilter} />
-      }
+      {tab === 'mentee' && <MenteePanel initialData={initialMenteeData} statusFilter={statusFilter} />}
+      {tab === 'mentor' && <MentorPanel statusFilter={statusFilter} />}
+      {tab === 'admin' && <AdminPanel statusFilter={statusFilter} />}
     </div>
   );
 }
@@ -162,8 +164,24 @@ function MentorPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatu
   );
 }
 
+function AdminPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatus }) {
+  return (
+    <UserListPanel<AdminAdminRow>
+      role="admin"
+      initialData={null}
+      statusFilter={statusFilter}
+      columns={[
+        { key: 'name', label: '이름', render: (a) => <Link href={`/admin/users/${a.userId}`} className="text-brand hover:underline font-medium">{a.name}</Link> },
+        { key: 'studentId', label: '학번' },
+        { key: 'email', label: '이메일' },
+        { key: 'accountStatus', label: '계정 상태', render: (a) => <StatusBadge status={a.accountStatus} /> },
+      ]}
+    />
+  );
+}
+
 type UserListPanelProps<T extends { userId: string; accountStatus: AdminAccountStatus }> = {
-  role: 'mentee' | 'mentor';
+  role: 'mentee' | 'mentor' | 'admin';
   initialData: Paged<T> | null;
   columns: ColumnDef<T>[];
   statusFilter: 'all' | AdminAccountStatus;
@@ -225,9 +243,10 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
           q: debouncedQuery || undefined,
           status: statusFilter === 'all' ? undefined : statusFilter,
         };
-        const res = role === 'mentee'
-          ? await getAdminUsers('mentee', options)
-          : await getAdminUsers('mentor', options);
+        const res =
+          role === 'mentee' ? await getAdminUsers('mentee', options)
+          : role === 'mentor' ? await getAdminUsers('mentor', options)
+          : await getAdminUsers('admin', options);
         if (cancelled) return;
         setRows(res.data as unknown as T[]);
         setTotalCount(res.totalCount);

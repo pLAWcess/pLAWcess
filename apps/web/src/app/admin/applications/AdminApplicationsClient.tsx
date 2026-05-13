@@ -148,12 +148,14 @@ function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentor
           statusFilter={statusFilter}
           metaForModal={(a) => [
             { label: '학번', value: a.studentId },
-            { label: '소속 학교', value: a.school ?? '-' },
+            { label: '소속 로스쿨', value: a.school ?? '-' },
+            { label: '기수', value: a.cohort != null ? `${a.cohort}기` : '-' },
           ]}
           columns={[
             { key: 'name', label: '이름', sortable: true },
             { key: 'studentId', label: '학번', sortable: true },
-            { key: 'school', label: '소속 학교', sortable: true, render: (a) => a.school ?? '-' },
+            { key: 'school', label: '소속 로스쿨', sortable: true, render: (a) => a.school ?? '-' },
+            { key: 'cohort', label: '기수', sortable: true, render: (a) => a.cohort != null ? `${a.cohort}기` : '-' },
             { key: 'status', label: '신청 상태', sortable: true, render: (a) => <StatusBadge status={a.status} /> },
             { key: 'memo', label: '요청사항 및 관리자메모', render: (a) => <MemoCell memo={a.memo} /> },
           ]}

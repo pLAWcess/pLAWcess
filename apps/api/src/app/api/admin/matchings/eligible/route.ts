@@ -3,6 +3,19 @@ import { prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
 import { resolveProcessYear } from "@/lib/active-cycle";
 
+/**
+ * preferred_group 이 '가'면 가군이 1지망, 아니면 나군이 1지망.
+ * preferred_group 미지정인 경우는 가군을 1지망으로 fallback.
+ */
+function pickPreferenceSchools(
+  preferredGroup: string | null,
+  ga: string | null,
+  na: string | null,
+): { first: string | null; second: string | null } {
+  if (preferredGroup === "나") return { first: na, second: ga };
+  return { first: ga, second: na };
+}
+
 export async function GET(req: NextRequest) {
   const guard = requireAdmin(req);
   if (guard.error) return guard.error;
@@ -28,7 +41,16 @@ export async function GET(req: NextRequest) {
     prisma.application.findMany({
       where: { role: "mentee", process_year: year, application_status: "approved" },
       orderBy: { user: { name: "asc" } },
-      select: baseSelect,
+      select: {
+        ...baseSelect,
+        mentee_record: {
+          select: {
+            target_school_ga: true,
+            target_school_na: true,
+            preferred_group: true,
+          },
+        },
+      },
     }),
     prisma.application.findMany({
       where: { role: "mentor", process_year: year, application_status: "approved" },
@@ -56,19 +78,29 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     year,
-    mentees: menteeRows.map((r) => ({
-      applicationId: r.application_id,
-      userId: r.user.user_id,
-      name: r.user.name,
-      studentId: r.user.student_id ?? "",
-      major: r.user.undergrad_first_major ?? "",
-      accountStatus: r.user.account_status,
-    })),
+    mentees: menteeRows.map((r) => {
+      const pref = pickPreferenceSchools(
+        r.mentee_record?.preferred_group ?? null,
+        r.mentee_record?.target_school_ga ?? null,
+        r.mentee_record?.target_school_na ?? null,
+      );
+      return {
+        applicationId: r.application_id,
+        userId: r.user.user_id,
+        name: r.user.name,
+        studentId: r.user.student_id ?? "",
+        major: r.user.undergrad_first_major ?? "",
+        firstPreferenceSchool: pref.first,
+        secondPreferenceSchool: pref.second,
+        accountStatus: r.user.account_status,
+      };
+    }),
     mentors: mentorRows.map((r) => ({
       applicationId: r.application_id,
       userId: r.user.user_id,
       name: r.user.name,
       studentId: r.user.student_id ?? "",
+      undergradMajor: r.user.undergrad_first_major ?? "",
       lawSchool: lawschoolByUser.get(r.user.user_id) ?? null,
       accountStatus: r.user.account_status,
     })),

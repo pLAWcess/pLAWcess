@@ -516,9 +516,18 @@ export type AdminMentorApplicationRow = {
   name: string;
   studentId: string;
   school: string | null;
+  cohort: number | null;
   status: ApplicationStatusLabel;
   memo: string | null;
   submittedAt: string | null;
+};
+
+export type AdminAdminRow = {
+  userId: string;
+  name: string;
+  studentId: string;
+  email: string;
+  accountStatus: AdminAccountStatus;
 };
 
 export type EligibleMentee = {
@@ -527,6 +536,8 @@ export type EligibleMentee = {
   name: string;
   studentId: string;
   major: string;
+  firstPreferenceSchool: string | null;
+  secondPreferenceSchool: string | null;
   accountStatus: AdminAccountStatus;
 };
 
@@ -535,6 +546,7 @@ export type EligibleMentor = {
   userId: string;
   name: string;
   studentId: string;
+  undergradMajor: string;
   lawSchool: string | null;
   accountStatus: AdminAccountStatus;
 };
@@ -587,9 +599,13 @@ export async function getAdminUsers(
   options?: AdminUsersQuery,
 ): Promise<Paged<AdminMentorRow>>;
 export async function getAdminUsers(
-  role: "mentee" | "mentor",
+  role: "admin",
+  options?: AdminUsersQuery,
+): Promise<Paged<AdminAdminRow>>;
+export async function getAdminUsers(
+  role: "mentee" | "mentor" | "admin",
   options: AdminUsersQuery = {},
-): Promise<Paged<AdminMenteeRow> | Paged<AdminMentorRow>> {
+): Promise<Paged<AdminMenteeRow> | Paged<AdminMentorRow> | Paged<AdminAdminRow>> {
   const params = new URLSearchParams({ role });
   if (options.page !== undefined) params.set("page", String(options.page));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
@@ -642,6 +658,7 @@ export async function patchAdminApplication(
 
 export type AdminUserGender = "male" | "female" | "other";
 export type AdminUserAcademicStatus = "enrolled" | "on_leave" | "completed" | "graduated" | "expelled";
+export type AdminUserMilitaryStatus = "completed" | "not_completed" | "not_applicable";
 export type AdminUserCurrentRole = "none" | "mentee" | "mentor" | "admin";
 
 export type AdminUserParticipation = { year: number; role: "mentee" | "mentor" };
@@ -650,13 +667,17 @@ export type AdminUserDetail = {
   userId: string;
   name: string;
   birthYear: number | null;
+  birthDate: string;                         // YYYY.MM.DD. (멘토 본인 화면 통일용)
   gender: AdminUserGender | null;
+  militaryStatus: AdminUserMilitaryStatus | null;
   phone: string;
   email: string;
   studentId: string;
   firstMajor: string;
   secondMajor: string;
   schoolName: string;
+  admissionYear: number | null;
+  graduationYear: number | null;
   academicStatus: AdminUserAcademicStatus | null;
   accountStatus: AdminAccountStatus;
   currentRole: AdminUserCurrentRole;
@@ -675,12 +696,16 @@ export async function getAdminUser(userId: string): Promise<AdminUserDetail> {
 export type PatchAdminUserBody = {
   name?: string;
   birthYear?: number | null;
+  birthDate?: string | null;                          // YYYY.MM.DD. (멘토 카드 편집용)
   gender?: AdminUserGender | null;
+  militaryStatus?: AdminUserMilitaryStatus | null;    // 멘토 카드 편집용
   phone?: string;
   studentId?: string;
   firstMajor?: string;
   secondMajor?: string;
   schoolName?: string;
+  admissionYear?: number | null;                      // 멘토 카드 편집용
+  graduationYear?: number | null;                     // 멘토 카드 편집용
   accountStatus?: AdminAccountStatus;
   currentRole?: AdminUserCurrentRole;
 };

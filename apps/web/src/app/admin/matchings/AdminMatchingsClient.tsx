@@ -6,7 +6,6 @@ import { useToast } from '@/components/ui/Toast';
 import {
   type EligibleMentee,
   type EligibleMentor,
-  type AdminAccountStatus,
   type EligiblePool,
 } from '@/lib/api';
 
@@ -33,20 +32,6 @@ const MATCH_STATUS_OPTIONS = Object.values(MATCH_STATUS_LABELS);
 
 function matchStatusFromLabel(l: string): MatchStatus {
   return (Object.entries(MATCH_STATUS_LABELS).find(([, lb]) => lb === l)?.[0] as MatchStatus) ?? 'editing';
-}
-
-function StatusBadge({ status }: { status: AdminAccountStatus }) {
-  const styles: Record<AdminAccountStatus, string> = {
-    active: 'bg-green-500 text-white',
-    inactive: 'bg-gray-200 text-gray-600',
-    blocked: 'bg-red-500 text-white',
-  };
-  const labels: Record<AdminAccountStatus, string> = { active: '활성', inactive: '비활성', blocked: '차단' };
-  return (
-    <span className={`inline-flex items-center justify-center min-w-[56px] px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
-      {labels[status]}
-    </span>
-  );
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -109,18 +94,21 @@ export default function AdminMatchingsClient({ initialPool }: { initialPool: Eli
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
           <ApprovedTable
             title={`승인된 멘티 신청자 목록 (${pool.mentees.length}명)`}
-            columns={['이름', '학번', '전공', '현재 역할', '상태']}
+            columns={['이름', '전공', '제1지망 학교', '제2지망 학교']}
             rows={pool.mentees.map((m) => [
-              m.name, m.studentId, m.major, '멘티',
-              <StatusBadge key="s" status={m.accountStatus} />,
+              m.name,
+              m.major || '-',
+              m.firstPreferenceSchool ?? '-',
+              m.secondPreferenceSchool ?? '-',
             ])}
           />
           <ApprovedTable
             title={`승인된 멘토 신청자 목록 (${pool.mentors.length}명)`}
-            columns={['이름', '학번', '소속 학교', '현재 역할', '상태']}
+            columns={['이름', '학부 전공', '소속 로스쿨']}
             rows={pool.mentors.map((m) => [
-              m.name, m.studentId, m.lawSchool ?? '-', '멘토',
-              <StatusBadge key="s" status={m.accountStatus} />,
+              m.name,
+              m.undergradMajor || '-',
+              m.lawSchool ?? '-',
             ])}
           />
         </div>

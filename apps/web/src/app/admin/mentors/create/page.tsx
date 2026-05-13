@@ -45,9 +45,9 @@ export default function AdminUsersPage() {
 
   const fields = [
     { key: 'name', label: '이름', type: 'text', placeholder: '홍길동', required: true },
-    { key: 'email', label: '이메일', type: 'email', placeholder: 'mentor@example.com', required: true },
+    { key: 'email', label: '아이디', type: 'text', placeholder: 'mentor01', required: true },
     { key: 'password', label: '임시 비밀번호', type: 'password', placeholder: '••••••••', required: true },
-    { key: 'currentLawschool', label: '재직 법전원', type: 'text', placeholder: '고려대학교', required: false },
+    { key: 'currentLawschool', label: '소속 로스쿨', type: 'text', placeholder: '고려대학교', required: false },
   ] as const;
 
   return (
@@ -89,7 +89,7 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm">
             <thead className="bg-page-bg border-b border-border">
               <tr>
-                {['이름', '이메일', '법전원', '생성일'].map((h) => (
+                {['이름', '아이디', '소속 로스쿨', '생성일'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-text-secondary font-medium">{h}</th>
                 ))}
               </tr>

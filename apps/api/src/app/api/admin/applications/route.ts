@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   // mentor 의 경우 페이지에 들어온 user_id 들로 latest mentor_record 조회
-  let lawschoolByUser: Map<string, string | null> | null = null;
+  let mentorInfoByUser: Map<string, { lawschool: string | null; cohort: number | null }> | null = null;
   if (role === "mentor") {
     const userIds = rows.map((r) => r.user.user_id);
     const records =
@@ -87,12 +87,12 @@ export async function GET(req: NextRequest) {
         : await prisma.mentorRecord.findMany({
             where: { user_id: { in: userIds } },
             orderBy: { process_year: "desc" },
-            select: { user_id: true, lawschool_name: true },
+            select: { user_id: true, lawschool_name: true, lawschool_grade: true },
           });
-    lawschoolByUser = new Map();
+    mentorInfoByUser = new Map();
     for (const r of records) {
-      if (!lawschoolByUser.has(r.user_id)) {
-        lawschoolByUser.set(r.user_id, r.lawschool_name);
+      if (!mentorInfoByUser.has(r.user_id)) {
+        mentorInfoByUser.set(r.user_id, { lawschool: r.lawschool_name, cohort: r.lawschool_grade });
       }
     }
   }
@@ -111,7 +111,8 @@ export async function GET(req: NextRequest) {
     if (role === "mentee") {
       return { ...base, major: row.user.undergrad_first_major ?? "" };
     }
-    return { ...base, school: lawschoolByUser?.get(row.user.user_id) ?? null };
+    const info = mentorInfoByUser?.get(row.user.user_id);
+    return { ...base, school: info?.lawschool ?? null, cohort: info?.cohort ?? null };
   });
 
   return NextResponse.json({ data, totalCount, page, limit });

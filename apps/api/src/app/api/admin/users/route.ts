@@ -29,9 +29,9 @@ export async function GET(req: NextRequest) {
   if (guard.error) return guard.error;
 
   const role = req.nextUrl.searchParams.get("role");
-  if (role !== "mentee" && role !== "mentor") {
+  if (role !== "mentee" && role !== "mentor" && role !== "admin") {
     return NextResponse.json(
-      { error: "role 은 mentee 또는 mentor 여야 합니다." },
+      { error: "role 은 mentee | mentor | admin 이어야 합니다." },
       { status: 400 },
     );
   }
@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
       select: {
         user_id: true,
         name: true,
+        email: true,
         student_id: true,
         account_status: true,
         undergrad_first_major: true,
@@ -87,6 +88,21 @@ export async function GET(req: NextRequest) {
         name: u.name,
         studentId: u.student_id ?? "",
         firstMajor: u.undergrad_first_major,
+        accountStatus: u.account_status,
+      })),
+      totalCount,
+      page,
+      limit,
+    });
+  }
+
+  if (role === "admin") {
+    return NextResponse.json({
+      data: users.map((u) => ({
+        userId: u.user_id,
+        name: u.name,
+        studentId: u.student_id ?? "",
+        email: u.email,
         accountStatus: u.account_status,
       })),
       totalCount,
