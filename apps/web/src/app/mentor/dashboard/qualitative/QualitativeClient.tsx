@@ -1229,7 +1229,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
             items={inTab.map((x) => String(x.idx))}
             strategy={verticalListSortingStrategy}
           >
-            <div className={`flex flex-col gap-6 ${!sortDisabled ? 'pl-7' : ''}`}>
+            <div className="flex flex-col gap-6">
               {inTab.map((x) => {
                 if (editingIdx === x.idx && editDraft) {
                   return (
