@@ -11,6 +11,7 @@ import {
   type AdminUserAcademicStatus,
   type AdminUserMilitaryStatus,
   type AdminUserCurrentRole,
+  type AdminAccountStatus,
   type PatchAdminUserBody,
 } from '@/lib/api';
 import { LAW_SCHOOLS } from '@/constants/basic-info';
@@ -26,8 +27,17 @@ const ROLE_LABELS: Record<AdminUserCurrentRole, string> = {
   mentee: '멘티', mentor: '멘토', admin: '관리자', none: '미지정',
 };
 
+const ACCOUNT_STATUS_LABELS: Record<AdminAccountStatus, string> = {
+  active: '활성', inactive: '비활성', blocked: '차단',
+};
+
 const GENDER_OPTIONS = Object.values(GENDER_LABELS);
 const ROLE_OPTIONS = Object.values(ROLE_LABELS);
+const ACCOUNT_STATUS_OPTIONS = Object.values(ACCOUNT_STATUS_LABELS);
+
+function accountStatusFromLabel(l: string): AdminAccountStatus {
+  return (Object.entries(ACCOUNT_STATUS_LABELS).find(([, lb]) => lb === l)?.[0] as AdminAccountStatus) ?? 'active';
+}
 
 const SCHOOLS = LAW_SCHOOLS.map((s) => s.name);
 
@@ -316,6 +326,7 @@ function MentorProfileCard({
         militaryStatus: draft.militaryStatus,
         firstMajor: draft.firstMajor,
         secondMajor: draft.secondMajor,
+        phone: draft.phone,
         birthDate: birthStr || null,
         admissionYear: admissionStr ? Number(admissionStr) : null,
         graduationYear: graduationStr ? Number(graduationStr) : null,
@@ -394,6 +405,19 @@ function MentorProfileCard({
               edit: <UnderlineInput value={graduationStr} onChange={(v) => /^\d*$/.test(v) && setGraduationStr(v)} placeholder="예: 2025" />,
             },
           ],
+          // 어드민 전용 영역 — 멘토 본인 화면엔 없는 연락 정보
+          [
+            {
+              label: '이메일',
+              view: user.email,
+              edit: <span className="text-base text-text-secondary">{user.email}</span>,
+            },
+            {
+              label: '연락처',
+              view: user.phone || '-',
+              edit: <UnderlineInput value={draft.phone} onChange={(v) => setDraft({ ...draft, phone: v })} placeholder="010-0000-0000" />,
+            },
+          ],
         ].map((row, rowIdx, all) => (
           <div
             key={rowIdx}
@@ -449,7 +473,12 @@ function AccountCard({
   }
 
   const data = isEditing ? draft : user;
-  const isActive = data.accountStatus === 'active';
+
+  // 차단(blocked) 상태는 강조 색상 — 한눈에 보이도록.
+  const statusTextClass =
+    user.accountStatus === 'active' ? 'text-brand'
+    : user.accountStatus === 'blocked' ? 'text-red-500'
+    : 'text-text-secondary';
 
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
@@ -464,20 +493,18 @@ function AccountCard({
       {saveError && <p className="mb-3 text-sm text-red-500">{saveError}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4 sm:gap-0">
-        <div className="sm:pr-8 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-text-secondary">활성화 여부</p>
-            <div className="h-6 flex items-center mt-2">
-              <span className={`text-base font-medium ${isActive ? 'text-brand' : 'text-text-secondary'}`}>
-                {data.accountStatus === 'active' ? '활성' : data.accountStatus === 'inactive' ? '비활성' : '차단'}
-              </span>
-            </div>
+        <div className="sm:pr-8 flex flex-col gap-2">
+          <span className="text-sm text-text-secondary">계정 상태</span>
+          <div className="h-6">
+            {isEditing
+              ? <SelectField
+                  value={ACCOUNT_STATUS_LABELS[data.accountStatus]}
+                  options={ACCOUNT_STATUS_OPTIONS}
+                  onChange={(v) => setDraft({ ...draft, accountStatus: accountStatusFromLabel(v) })}
+                />
+              : <span className={`text-base font-medium ${statusTextClass}`}>{ACCOUNT_STATUS_LABELS[user.accountStatus]}</span>
+            }
           </div>
-          <Toggle
-            disabled={!isEditing}
-            on={isActive}
-            onChange={(on) => setDraft({ ...draft, accountStatus: on ? 'active' : 'inactive' })}
-          />
         </div>
         <div className="sm:pl-8 flex flex-col gap-2">
           <span className="text-sm text-text-secondary">현재 역할</span>
@@ -551,31 +578,3 @@ function UnderlineInput({
   );
 }
 
-function Toggle({
-  on,
-  onChange,
-  disabled,
-}: {
-  on: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      disabled={disabled}
-      onClick={() => onChange(!on)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        on ? 'bg-brand' : 'bg-gray-300'
-      } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-    >
-      <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-          on ? 'translate-x-5' : 'translate-x-0.5'
-        }`}
-      />
-    </button>
-  );
-}

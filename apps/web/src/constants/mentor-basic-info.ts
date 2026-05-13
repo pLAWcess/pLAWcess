@@ -1,4 +1,7 @@
-import { LAW_SCHOOLS } from './basic-info';
+import { LAW_SCHOOLS, MAJOR_OPTIONS } from './basic-info';
+
+// 다른 모듈이 기존 경로(@/constants/mentor-basic-info)로 import할 수 있도록 re-export.
+export { MAJOR_OPTIONS };
 
 export type MentorPersonalInfo = {
   name: string;
@@ -39,35 +42,8 @@ export const ACADEMIC_STATUS_OPTIONS = ['재학', '휴학', '졸업'];
 
 export const MILITARY_STATUS_OPTIONS = ['군필', '미필', '해당없음'];
 
-// 학부 전공 — 일반적인 전공 + 기타
-export const MAJOR_OPTIONS = [
-  '법학',
-  '경영학',
-  '경제학',
-  '정치외교학',
-  '행정학',
-  '사회학',
-  '심리학',
-  '교육학',
-  '국어국문학',
-  '영어영문학',
-  '사학',
-  '철학',
-  '수학',
-  '물리학',
-  '화학',
-  '생명과학',
-  '컴퓨터공학',
-  '전자공학',
-  '기계공학',
-  '화학공학',
-  '산업공학',
-  '건축학',
-  '의학',
-  '약학',
-  '간호학',
-  '기타',
-];
+// 학부 전공은 basic-info.MAJOR_OPTIONS(고려대 실제 학과 목록)를 재사용한다.
+// 자유전공학부 같은 실제 학과명을 검색하려면 추상 전공명 리스트는 부적합.
 
 
 export const fieldRows: {

@@ -211,10 +211,12 @@ export default function AdminMatchingsClient({ initialPool }: { initialPool: Eli
 }
 
 function ApprovedTable({ title, columns, rows }: { title: string; columns: string[]; rows: React.ReactNode[][] }) {
+  // 신청자가 많아져도 페이지 전체가 길어지지 않도록 테이블만 세로 스크롤.
+  // 6~7행 정도가 보이는 높이.
   return (
     <div>
       <h3 className="text-sm font-semibold text-text-primary mb-4">{title}</h3>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-auto max-h-[320px] border border-border rounded-md">
       <table className="w-full table-auto min-w-[320px]">
         <thead>
           <tr className="border-b border-border">
