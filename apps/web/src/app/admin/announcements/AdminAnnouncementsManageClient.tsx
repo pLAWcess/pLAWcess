@@ -275,7 +275,7 @@ export default function AdminAnnouncementsManageClient({
   }
 
   async function handleHardDelete(id: string) {
-    const ok = await confirm({ title: '공지사항 영구삭제', message: '영구삭제하면 복원할 수 없습니다. 계속할까요?', confirmText: '영구삭제', danger: true });
+    const ok = await confirm({ title: '공지사항 영구삭제', message: '영구삭제하면 복원할 수 없습니다.\n계속할까요?', confirmText: '영구삭제', danger: true });
     if (!ok) return;
     setDeletingId(id);
     try {

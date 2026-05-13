@@ -79,8 +79,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
+      {/* 위치는 인라인 스타일로 고정 — Tailwind 클래스 생성 여부와 무관하게 항상 우하단에 뜨도록 */}
       <div
-        className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-[min(92vw,24rem)] pointer-events-none"
+        style={{
+          position: 'fixed',
+          right: '1rem',
+          bottom: '1rem',
+          zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          maxWidth: 'min(92vw, 24rem)',
+          pointerEvents: 'none',
+        }}
         role="region"
         aria-live="polite"
       >

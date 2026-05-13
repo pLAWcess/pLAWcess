@@ -64,7 +64,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     <ConfirmContext.Provider value={confirm}>
       {children}
       {pending && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center px-4">
+        <div
+          className="flex items-center justify-center px-4"
+          style={{ position: 'fixed', inset: 0, zIndex: 110 }}
+        >
           <div className="absolute inset-0 bg-black/40" onClick={() => close(false)} />
           <div
             role="dialog"

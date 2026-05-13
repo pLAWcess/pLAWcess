@@ -199,7 +199,7 @@ export default function PersonalStatementClient({
     if (next === activeTab) return;
     if (dirtyRef.current[activeTab]) {
       const ok = await confirm({
-        message: '저장하지 않은 변경사항이 있을 수 있습니다. 탭을 전환하시겠습니까?',
+        message: '저장하지 않은 변경사항이 있을 수 있습니다.\n탭을 전환하시겠습니까?',
         confirmText: '전환',
       });
       if (!ok) return;
