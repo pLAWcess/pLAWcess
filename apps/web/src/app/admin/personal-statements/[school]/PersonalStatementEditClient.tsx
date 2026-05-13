@@ -8,6 +8,7 @@ import {
   updateSchoolQuestions,
   type Question,
 } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 const YEAR = new Date().getFullYear().toString();
 
@@ -44,6 +45,7 @@ export default function PersonalStatementEditClient({
   const [savingQ, setSavingQ] = useState(false);
   const [uploadingHwp, setUploadingHwp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
 
   function addQuestion() {
     setQuestions((prev) => [...prev, newQuestion(prev.length + 1)]);
@@ -66,8 +68,9 @@ export default function PersonalStatementEditClient({
     setSavingQ(true);
     try {
       await updateSchoolQuestions(YEAR, school, questions);
+      toast.success('문항을 저장했습니다.');
     } catch (e) {
-      alert(e instanceof Error ? e.message : '저장 실패');
+      toast.error(e instanceof Error ? e.message : '저장 실패');
     } finally {
       setSavingQ(false);
     }
@@ -75,7 +78,7 @@ export default function PersonalStatementEditClient({
 
   async function handleHwpFile(file: File) {
     if (!file.name.match(/\.(hwp|hwpx)$/i)) {
-      alert('.hwp 또는 .hwpx 파일만 업로드할 수 있습니다.');
+      toast.error('.hwp 또는 .hwpx 파일만 업로드할 수 있습니다.');
       return;
     }
     setUploadingHwp(true);
@@ -87,8 +90,9 @@ export default function PersonalStatementEditClient({
         setHwpBase64(result.split(',')[1]);
       };
       reader.readAsDataURL(file);
+      toast.success('HWP 양식을 업로드했습니다.');
     } catch (e) {
-      alert(e instanceof Error ? e.message : '업로드 실패');
+      toast.error(e instanceof Error ? e.message : '업로드 실패');
     } finally {
       setUploadingHwp(false);
     }

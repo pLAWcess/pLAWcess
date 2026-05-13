@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EditButton, EditButtons } from '@/components/ui/EditButton';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import {
   getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, deleteQualitativeActivity,
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type Attachment,
@@ -245,6 +247,7 @@ function AttachmentSection({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const toast = useToast();
   const total = existing.length + newFiles.length;
   const remainingSlots = Math.max(0, MAX_FILES_PER_ACTIVITY - total);
   const newFilesBytes = newFiles.reduce((sum, f) => sum + f.size, 0);
@@ -278,7 +281,7 @@ function AttachmentSection({
       if (IMAGE_MIMES.has(f.type)) imagesBytesUsed += f.size;
       accepted.push(f);
     }
-    if (errors.length > 0) alert(errors.join('\n'));
+    if (errors.length > 0) toast.error(errors.join('\n'));
     if (accepted.length > 0) onAddFiles(accepted);
   }
 
@@ -865,6 +868,8 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   const [editFiles, setEditFiles] = useState<File[]>([]);
   const [draftFiles, setDraftFiles] = useState<Record<string, File[]>>({});
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -932,7 +937,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       setExpandedSet((p) => new Set([...p, idx]));
     } catch (err) {
       console.error(err);
-      alert('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setAnalyzingIdx(null);
     }
@@ -970,7 +975,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       );
       applyData(saved);
       if (saved.inlineStar) setExpandedSet((p) => new Set([...p, analyzeIdx]));
-      if (saved.inlineError) alert(saved.inlineError);
+      if (saved.inlineError) toast.error(saved.inlineError);
       return { ok: true, attachmentErrors: saved.attachmentErrors };
     }
 
@@ -1015,7 +1020,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
     );
     applyData(finalSaved);
     if (finalSaved.inlineStar) setExpandedSet((p) => new Set([...p, analyzeIdx]));
-    if (finalSaved.inlineError) alert(finalSaved.inlineError);
+    if (finalSaved.inlineError) toast.error(finalSaved.inlineError);
     if (finalSaved.attachmentErrors?.length) collectedErrors.push(...finalSaved.attachmentErrors);
 
     return { ok: true, attachmentErrors: collectedErrors.length > 0 ? collectedErrors : undefined };
@@ -1032,13 +1037,13 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       const files = getDraftFiles(category, index);
       const { attachmentErrors } = await saveAndAnalyze(next, newIdx, files);
       if (attachmentErrors && attachmentErrors.length > 0) {
-        alert('일부 첨부 처리에 문제가 있었어요:\n' + attachmentErrors.join('\n'));
+        toast.error('일부 첨부 처리에 문제가 있었어요:\n' + attachmentErrors.join('\n'));
       }
       removeDraft(category, index);
       clearDraftFilesAt(category, index);
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : '저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error(err instanceof Error ? err.message : '저장에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
       setAnalyzingIdx(null);
@@ -1066,14 +1071,14 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       const idx = editingIdx;
       const { attachmentErrors } = await saveAndAnalyze(next, idx, editFiles);
       if (attachmentErrors && attachmentErrors.length > 0) {
-        alert('일부 첨부 처리에 문제가 있었어요:\n' + attachmentErrors.join('\n'));
+        toast.error('일부 첨부 처리에 문제가 있었어요:\n' + attachmentErrors.join('\n'));
       }
       setEditingIdx(null);
       setEditDraft(null);
       setEditFiles([]);
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : '수정에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error(err instanceof Error ? err.message : '수정에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
       setAnalyzingIdx(null);
@@ -1083,7 +1088,13 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   async function deleteActivity(idx: number) {
     if (deletingIdx !== null) return;
     const target = serverActivities[idx];
-    if (!confirm(`"${target?.name || '이 활동'}"을(를) 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.`)) return;
+    const ok = await confirm({
+      title: '활동 삭제',
+      message: `"${target?.name || '이 활동'}"을(를) 삭제할까요?\n삭제 후에는 되돌릴 수 없습니다.`,
+      confirmText: '삭제',
+      danger: true,
+    });
+    if (!ok) return;
     setDeletingIdx(idx);
     try {
       const data = await deleteQualitativeActivity('mentor', year, idx);
@@ -1102,7 +1113,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       else if (editingIdx !== null && editingIdx > idx) { setEditingIdx(editingIdx - 1); }
     } catch (err) {
       console.error(err);
-      alert('활동 삭제에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error('활동 삭제에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
       setDeletingIdx(null);
     }
@@ -1147,7 +1158,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
     } catch (err) {
       console.error(err);
       setServerActivities(prevActivities);
-      alert('순서 저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error('순서 저장에 실패했어요. 잠시 후 다시 시도해주세요.');
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { use } from 'react';
+import { useToast } from '@/components/ui/Toast';
 
 type ApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'revision_requested';
 
@@ -89,6 +90,7 @@ export default function AdminApplicationDetailPage({ params }: { params: Promise
 
   const [status, setStatus] = useState<ApplicationStatus>(app?.application_status ?? 'submitted');
   const [memo, setMemo] = useState('');
+  const toast = useToast();
 
   if (!app) {
     return (
@@ -220,7 +222,7 @@ export default function AdminApplicationDetailPage({ params }: { params: Promise
           className="px-5 py-2.5 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
           onClick={() => {
             // TODO: API 연결 - 상태 저장 + 메모 저장
-            alert('저장되었습니다.');
+            toast.info('이 화면은 아직 mock 데이터예요. 저장 기능은 API 연결 후 동작합니다.');
           }}
         >
           저장

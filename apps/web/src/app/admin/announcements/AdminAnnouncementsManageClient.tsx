@@ -9,6 +9,8 @@ import {
   hardDeleteAnnouncement,
   type AdminAnnouncementRow,
 } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 function CreateModal({
   onClose,
@@ -190,6 +192,8 @@ export default function AdminAnnouncementsManageClient({
   const [editTarget, setEditTarget] = useState<AdminAnnouncementRow | null>(null);
   const [showCreate, setShowCreate] = useState(openCreate);
   const [filter, setFilter] = useState<'all' | 'published' | 'unpublished' | 'deleted'>('all');
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const creationOrder = useMemo(() => {
     const sorted = [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -223,7 +227,7 @@ export default function AdminAnnouncementsManageClient({
       const updated = await updateAnnouncement(a.announcementId, { isPublished: !a.isPublished });
       setList((prev) => prev.map((item) => item.announcementId === updated.announcementId ? updated : item));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '수정 실패');
+      toast.error(e instanceof Error ? e.message : '수정 실패');
     } finally {
       setTogglingId(null);
     }
@@ -235,7 +239,7 @@ export default function AdminAnnouncementsManageClient({
       const updated = await updateAnnouncement(a.announcementId, { isPinned: !a.isPinned });
       setList((prev) => prev.map((item) => item.announcementId === updated.announcementId ? updated : item));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '수정 실패');
+      toast.error(e instanceof Error ? e.message : '수정 실패');
     } finally {
       setTogglingId(null);
     }
@@ -247,14 +251,15 @@ export default function AdminAnnouncementsManageClient({
       const updated = await updateAnnouncement(id, { restore: true });
       setList((prev) => prev.map((item) => item.announcementId === id ? updated : item));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '복원 실패');
+      toast.error(e instanceof Error ? e.message : '복원 실패');
     } finally {
       setDeletingId(null);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('이 공지사항을 삭제할까요?')) return;
+    const ok = await confirm({ title: '공지사항 삭제', message: '이 공지사항을 삭제할까요?', confirmText: '삭제', danger: true });
+    if (!ok) return;
     setDeletingId(id);
     try {
       await deleteAnnouncement(id);
@@ -262,7 +267,7 @@ export default function AdminAnnouncementsManageClient({
         item.announcementId === id ? { ...item, deletedAt: new Date().toISOString() } : item
       ));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '삭제 실패');
+      toast.error(e instanceof Error ? e.message : '삭제 실패');
       refresh();
     } finally {
       setDeletingId(null);
@@ -270,13 +275,14 @@ export default function AdminAnnouncementsManageClient({
   }
 
   async function handleHardDelete(id: string) {
-    if (!confirm('영구삭제하면 복원할 수 없습니다. 계속할까요?')) return;
+    const ok = await confirm({ title: '공지사항 영구삭제', message: '영구삭제하면 복원할 수 없습니다. 계속할까요?', confirmText: '영구삭제', danger: true });
+    if (!ok) return;
     setDeletingId(id);
     try {
       await hardDeleteAnnouncement(id);
       setList((prev) => prev.filter((item) => item.announcementId !== id));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '영구삭제 실패');
+      toast.error(e instanceof Error ? e.message : '영구삭제 실패');
     } finally {
       setDeletingId(null);
     }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SelectField from '@/components/ui/SelectField';
+import { useToast } from '@/components/ui/Toast';
 import {
   type EligibleMentee,
   type EligibleMentor,
@@ -62,6 +63,7 @@ export default function AdminMatchingsClient({ initialPool }: { initialPool: Eli
 
   const [results, setResults] = useState<MatchResult[] | null>(null);
   const [running, setRunning] = useState(false);
+  const toast = useToast();
 
   const handleRunMatching = async () => {
     setRunning(true);
@@ -85,13 +87,12 @@ export default function AdminMatchingsClient({ initialPool }: { initialPool: Eli
 
   const handleSaveDraft = async () => {
     // TODO: POST /api/admin/matchings/draft — 별도 이슈
-    alert('임시저장됨 (mock)');
+    toast.info('임시저장 기능은 BE 매칭 API 구현 후 동작합니다.');
   };
 
   const handleConfirmAll = async () => {
     // TODO: POST /api/admin/matchings/confirm — 별도 이슈
-    setResults((prev) => prev?.map((r) => (r.status === 'rejected' ? r : { ...r, status: 'confirmed' })) ?? null);
-    alert('매칭이 확정되었습니다 (mock)');
+    toast.info('매칭 확정 기능은 BE 매칭 API 구현 후 동작합니다.');
   };
 
   return (

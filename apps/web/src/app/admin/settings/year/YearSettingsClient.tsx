@@ -7,6 +7,8 @@ import {
   deleteCycleSchedule,
   type CycleSchedule,
 } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 function yearLabel(year: number) {
   return `${year}학년도 입시`;
@@ -18,6 +20,8 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
   const [schedules, setSchedules] = useState<CycleSchedule[]>(initialSchedules);
   const [confirming, setConfirming] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const active = schedules.find((s) => s.is_active) ?? null;
 
@@ -39,19 +43,25 @@ export default function YearSettingsClient({ initialSchedules }: Props) {
       const created = await createCycleSchedule(nextYear);
       setSchedules((prev) => [created, ...prev]);
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '연도 생성 실패');
+      toast.error(e instanceof Error ? e.message : '연도 생성 실패');
     } finally {
       setAdding(false);
     }
   }
 
   async function handleDelete(year: number) {
-    if (!confirm(`${yearLabel(year)} 데이터를 정말 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    const ok = await confirm({
+      title: '연도 삭제',
+      message: `${yearLabel(year)} 데이터를 정말 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`,
+      confirmText: '삭제',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteCycleSchedule(year);
       setSchedules((prev) => prev.filter((s) => s.process_year !== year));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '삭제 실패');
+      toast.error(e instanceof Error ? e.message : '삭제 실패');
     }
   }
 

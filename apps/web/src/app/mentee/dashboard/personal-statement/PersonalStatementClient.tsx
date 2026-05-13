@@ -10,6 +10,8 @@ import {
   type PersonalStatementData,
   type TextAnswer,
 } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 const AUTO_SAVE_MS = 60_000;
 
@@ -57,6 +59,8 @@ export default function PersonalStatementClient({
   const editorRefNa = useRef<RhwpEditor | null>(null);
   const isSavingRef = useRef(false);
   const [, setTick] = useState(0);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const tabs: { group: Group; school: string }[] = [];
   if (data.ga.school) tabs.push({ group: 'ga', school: data.ga.school });
@@ -139,8 +143,9 @@ export default function PersonalStatementClient({
       }
       setSavedAt((prev) => ({ ...prev, [activeTab]: new Date() }));
       dirtyRef.current[activeTab] = false;
+      toast.success('저장되었습니다.');
     } catch (e) {
-      alert(e instanceof Error ? e.message : '저장 실패');
+      toast.error(e instanceof Error ? e.message : '저장 실패');
     } finally {
       isSavingRef.current = false;
       setSaving(false);
@@ -149,7 +154,13 @@ export default function PersonalStatementClient({
 
   async function handleReset() {
     if (isSavingRef.current || resetting) return;
-    if (!confirm('편집한 내용을 모두 버리고 학교 양식으로 되돌립니다. 계속하시겠습니까?')) return;
+    const ok = await confirm({
+      title: '양식으로 초기화',
+      message: '편집한 내용을 모두 버리고 학교 양식으로 되돌립니다. 계속하시겠습니까?',
+      confirmText: '초기화',
+      danger: true,
+    });
+    if (!ok) return;
     setResetting(true);
     try {
       const resolved = await resetPersonalStatementHwp(year, activeTab);
@@ -161,7 +172,7 @@ export default function PersonalStatementClient({
       setSavedAt((prev) => ({ ...prev, [activeTab]: null }));
       setReloadKey((k) => k + 1); // HwpEditor 리마운트 → 양식 다시 로드
     } catch (e) {
-      alert(e instanceof Error ? e.message : '초기화 실패');
+      toast.error(e instanceof Error ? e.message : '초기화 실패');
     } finally {
       setResetting(false);
     }
@@ -180,14 +191,18 @@ export default function PersonalStatementClient({
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert(e instanceof Error ? e.message : '다운로드 실패');
+      toast.error(e instanceof Error ? e.message : '다운로드 실패');
     }
   }
 
-  function handleTabChange(next: Group) {
+  async function handleTabChange(next: Group) {
     if (next === activeTab) return;
     if (dirtyRef.current[activeTab]) {
-      if (!confirm('저장하지 않은 변경사항이 있을 수 있습니다. 탭을 전환하시겠습니까?')) return;
+      const ok = await confirm({
+        message: '저장하지 않은 변경사항이 있을 수 있습니다. 탭을 전환하시겠습니까?',
+        confirmText: '전환',
+      });
+      if (!ok) return;
     }
     setActiveTab(next);
   }

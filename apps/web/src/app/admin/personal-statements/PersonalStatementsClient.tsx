@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { uploadSchoolTemplate, type SchoolTemplate } from '@/lib/api';
 import { LAW_SCHOOLS } from '@/constants/basic-info';
+import { useToast } from '@/components/ui/Toast';
 
 const SCHOOLS = LAW_SCHOOLS.map((s) => s.name);
 const PAGE_SIZE = 5;
@@ -31,6 +32,7 @@ export default function PersonalStatementsClient({
   const [filter, setFilter] = useState<Filter>('all');
   const pendingSchoolRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
 
   const filtered = SCHOOLS.filter((school) => {
     if (search.trim() && !school.includes(search.trim())) return false;
@@ -64,7 +66,7 @@ export default function PersonalStatementsClient({
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file || !school) return;
     if (!file.name.match(/\.(hwp|hwpx)$/i)) {
-      alert('.hwp 또는 .hwpx 파일만 업로드할 수 있습니다.');
+      toast.error('.hwp 또는 .hwpx 파일만 업로드할 수 있습니다.');
       return;
     }
     setUploading(school);
@@ -75,8 +77,9 @@ export default function PersonalStatementsClient({
         ...prev,
         [school]: { school_name: school, uploaded_at: now, updated_at: now },
       }));
+      toast.success('자기소개서 양식을 업로드했습니다.');
     } catch (e) {
-      alert(e instanceof Error ? e.message : '업로드 실패');
+      toast.error(e instanceof Error ? e.message : '업로드 실패');
     } finally {
       setUploading(null);
       pendingSchoolRef.current = null;

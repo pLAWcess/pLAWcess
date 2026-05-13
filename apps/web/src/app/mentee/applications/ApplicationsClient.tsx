@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import ConcernCard from '@/components/concerns/ConcernCard';
 import { submitMenteeApplication, patchConcern, type CycleSchedule, type BasicInfoAdmission, type ConcernData } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -37,6 +38,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [extraRequest, setExtraRequest] = useState(initialConcerns?.extraRequest ?? '');
   const [editingCards, setEditingCards] = useState<Set<string>>(new Set());
+  const toast = useToast();
 
   function makeEditingHandler(key: string) {
     return (isEditing: boolean) => {
@@ -64,7 +66,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   async function handleSubmit() {
     if (isClosed || isNotRegistered) return;
     if (hasUnsavedCard) {
-      alert('저장하지 않은 내용이 있습니다. 완료 버튼을 누른 후 다시 시도해주세요.');
+      toast.error('저장하지 않은 내용이 있습니다. 완료 버튼을 누른 후 다시 시도해주세요.');
       return;
     }
     if (!agreed) {
@@ -76,9 +78,9 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
     try {
       await patchConcern(year, { extraRequest });
       await submitMenteeApplication(year);
-      alert('신청서가 제출되었습니다.');
+      toast.success('신청서가 제출되었습니다.');
     } catch (e) {
-      alert(e instanceof Error ? e.message : '신청서 제출에 실패했습니다.');
+      toast.error(e instanceof Error ? e.message : '신청서 제출에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
     }
