@@ -7,9 +7,11 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import {
   getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
+  listPreviousQualitativeYears,
   type QualitativeActivity, type QualitativeData, type StarItem, type ActivityCategory, type KeywordCount,
   type StoryOutline, type Attachment,
 } from '@/lib/api';
+import ImportActivitiesModal from '@/components/mentee/qualitative/ImportActivitiesModal';
 import {
   DndContext,
   PointerSensor,
@@ -1074,6 +1076,8 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   const [draftFiles, setDraftFiles] = useState<Record<string, File[]>>({});
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
   const [selectedUnified, setSelectedUnified] = useState<string | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [hasPreviousYears, setHasPreviousYears] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -1117,6 +1121,14 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       .catch(() => {})
       .finally(() => setPageLoading(false));
   }, [applyData, initialData]);
+
+  // 이전 연도 캐리오버 진입점 노출 여부 — submitted/readOnly 가 아닐 때만 의미 있음
+  useEffect(() => {
+    if (readOnly) return;
+    listPreviousQualitativeYears(year)
+      .then((rows) => setHasPreviousYears(rows.some((r) => r.activityCount > 0)))
+      .catch(() => setHasPreviousYears(false));
+  }, [year, readOnly]);
 
   // 탭 이동 시 STAR 펼침 상태 초기화 (탭 진입 시 기본은 접힘)
   useEffect(() => {
@@ -1563,11 +1575,29 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
     (analysis?.activitiesAnalyzed ?? []).length === serverActivities.length &&
     (analysis?.activitiesAnalyzed ?? []).every(Boolean);
 
+  const showImportButton = !readOnly && hasPreviousYears;
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">정성 데이터</h1>
-        <p className="text-sm text-text-secondary mt-1">경험과 활동 정보를 입력하고 AI 분석을 받아보세요</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">정성 데이터</h1>
+          <p className="text-sm text-text-secondary mt-1">경험과 활동 정보를 입력하고 AI 분석을 받아보세요</p>
+        </div>
+        {showImportButton && (
+          <button
+            type="button"
+            onClick={() => setImportModalOpen(true)}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm text-text-secondary bg-white border border-border rounded-md hover:text-text-primary hover:bg-gray-50 transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            이전 활동 가져오기
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-border shadow-sm px-2 py-2">
@@ -1618,6 +1648,19 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
           </div>
         </div>
       ) : activeTab === '대시보드' ? renderDashboard() : renderCategoryTab(activeTab)}
+
+      <ImportActivitiesModal
+        open={importModalOpen}
+        currentYear={year}
+        onClose={() => setImportModalOpen(false)}
+        onImported={() => {
+          setPageLoading(true);
+          getQualitative('mentee', year)
+            .then(applyData)
+            .catch(() => {})
+            .finally(() => setPageLoading(false));
+        }}
+      />
     </div>
   );
 }

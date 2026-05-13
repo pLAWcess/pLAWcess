@@ -461,6 +461,72 @@ export async function summarizeQualitative(
   return res.json();
 }
 
+// ----------------------------------------------------------------
+// 정성 이전 연도 캐리오버 (멘티 전용)
+// spec: docs/superpowers/specs/2026-05-14-mentee-qualitative-carryover-design.md
+// ----------------------------------------------------------------
+export type PreviousYearSummary = {
+  processYear: number;
+  activityCount: number;
+  hasAiAnalysis: boolean;
+};
+
+export async function listPreviousQualitativeYears(
+  currentYear: string,
+): Promise<PreviousYearSummary[]> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative/previous-years?year=${encodeURIComponent(currentYear)}`,
+    { headers: headers(), credentials: "include" },
+  );
+  if (!res.ok) throw new Error("이전 연도 목록을 불러오지 못했습니다.");
+  const body = await res.json();
+  return body.years as PreviousYearSummary[];
+}
+
+export type PreviousActivitiesResponse = {
+  processYear: number;
+  activities: QualitativeActivity[];
+  starAnalyzedIndices: number[];
+};
+
+export async function getPreviousQualitativeActivities(
+  year: number,
+): Promise<PreviousActivitiesResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative/previous-activities?year=${year}`,
+    { headers: headers(), credentials: "include" },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "이전 활동을 불러오지 못했습니다.");
+  }
+  return res.json();
+}
+
+export async function importPreviousQualitativeActivities(params: {
+  currentYear: string;
+  fromYear: number;
+  activityIndices: number[];
+}): Promise<{ importedCount: number; currentActivityCount: number }> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/qualitative/import-activities?year=${encodeURIComponent(params.currentYear)}`,
+    {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify({
+        fromYear: params.fromYear,
+        activityIndices: params.activityIndices,
+      }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "가져오기 실패");
+  }
+  return res.json();
+}
+
 export async function deleteQualitativeActivity(role: QualRole, year: string, index: number): Promise<QualitativeData> {
   const res = await fetch(
     `${qualBase(role)}?year=${encodeURIComponent(year)}&index=${index}`,
