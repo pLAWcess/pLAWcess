@@ -107,10 +107,9 @@ function UserDetailView({
         </div>
       </div>
 
-      {initial.currentRole === 'mentor'
-        ? <MentorProfileCard user={initial} onSave={persist} />
-        : <ProfileCard user={initial} onSave={persist} />
-      }
+      {initial.currentRole === 'mentor' ? <MentorProfileCard user={initial} onSave={persist} />
+       : initial.currentRole === 'mentee' ? <MenteeProfileCard user={initial} onSave={persist} />
+       : <ProfileCard user={initial} onSave={persist} />}
       <AccountCard user={initial} onSave={persist} />
       <ParticipationCard participation={initial.participation} />
     </div>
@@ -417,6 +416,181 @@ function MentorProfileCard({
               view: user.phone || '-',
               edit: <UnderlineInput value={draft.phone} onChange={(v) => setDraft({ ...draft, phone: v })} placeholder="010-0000-0000" />,
             },
+          ],
+        ].map((row, rowIdx, all) => (
+          <div
+            key={rowIdx}
+            className={`grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border py-5 ${rowIdx < all.length - 1 ? 'border-b border-border' : ''}`}
+          >
+            {row.map((cell, colIdx) => (
+              <div key={cell.label} className={`flex flex-col gap-2${colIdx === 1 ? ' sm:pl-8 pt-4 sm:pt-0' : ''}`}>
+                <span className="text-sm text-text-secondary">{cell.label}</span>
+                <div className="h-6">
+                  {isEditing ? cell.edit : <span className="text-base text-text-primary">{cell.view}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── 멘티 프로필 카드 (편집 가능)
+ * 멘티가 본인 [기본정보] 페이지에서 보는 카드와 동일한 레이아웃·필드 +
+ * 카드 맨 아래에 어드민 전용 영역(학번/학부 학교/이메일/연락처) 추가.
+ * 학적상태는 신청서 기반이라 read-only.
+ * ─────────────────────────────────────────────────────────── */
+
+function MenteeProfileCard({
+  user,
+  onSave,
+}: {
+  user: AdminUserDetail;
+  onSave: (patch: PatchAdminUserBody) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<AdminUserDetail>(user);
+  const [birthStr, setBirthStr] = useState<string>(user.birthDate);
+  const [admissionStr, setAdmissionStr] = useState<string>(user.admissionYear?.toString() ?? '');
+  const [graduationStr, setGraduationStr] = useState<string>(user.graduationYear?.toString() ?? '');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraft(user);
+      setBirthStr(user.birthDate);
+      setAdmissionStr(user.admissionYear?.toString() ?? '');
+      setGraduationStr(user.graduationYear?.toString() ?? '');
+    }
+  }, [user, isEditing]);
+
+  function startEdit() {
+    setDraft(user);
+    setBirthStr(user.birthDate);
+    setAdmissionStr(user.admissionYear?.toString() ?? '');
+    setGraduationStr(user.graduationYear?.toString() ?? '');
+    setSaveError(null);
+    setIsEditing(true);
+  }
+
+  function cancel() {
+    setDraft(user);
+    setBirthStr(user.birthDate);
+    setAdmissionStr(user.admissionYear?.toString() ?? '');
+    setGraduationStr(user.graduationYear?.toString() ?? '');
+    setSaveError(null);
+    setIsEditing(false);
+  }
+
+  async function save() {
+    if (birthStr && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(birthStr)) {
+      setSaveError('생년월일은 YYYY.MM.DD. 형식이어야 합니다.');
+      return;
+    }
+    if (admissionStr && !/^\d{4}$/.test(admissionStr)) {
+      setSaveError('학부 입학년도는 숫자 4자리여야 합니다.');
+      return;
+    }
+    if (graduationStr && !/^\d{4}$/.test(graduationStr)) {
+      setSaveError('학부 졸업년도는 숫자 4자리여야 합니다.');
+      return;
+    }
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        gender: draft.gender,
+        militaryStatus: draft.militaryStatus,
+        firstMajor: draft.firstMajor,
+        secondMajor: draft.secondMajor,
+        studentId: draft.studentId,
+        schoolName: draft.schoolName,
+        phone: draft.phone,
+        birthDate: birthStr || null,
+        admissionYear: admissionStr ? Number(admissionStr) : null,
+        graduationYear: graduationStr ? Number(graduationStr) : null,
+      });
+      setIsEditing(false);
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : '저장 실패');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const data = isEditing ? draft : user;
+
+  return (
+    <div className="bg-white rounded-xl border border-border shadow-sm">
+      <div className="flex items-center justify-between px-4 sm:px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-brand-muted flex items-center justify-center text-brand">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
+          <p className="text-xl font-bold text-text-primary">{user.name}</p>
+        </div>
+        {isEditing
+          ? <EditButtons onCancel={cancel} onSave={save} disabled={isSaving} />
+          : <EditButton onClick={startEdit} />
+        }
+      </div>
+
+      {saveError && (
+        <div className="px-8 pt-3 text-sm text-red-500">{saveError}</div>
+      )}
+
+      <div className="px-4 sm:px-8 py-2">
+        {[
+          [
+            {
+              label: '생년월일',
+              view: user.birthDate || '-',
+              edit: <UnderlineInput value={birthStr} onChange={setBirthStr} placeholder="예: 2000.03.15." />,
+            },
+            {
+              label: '성별',
+              view: genderLabel(user.gender),
+              edit: <SelectField value={data.gender ? GENDER_LABELS[data.gender] : ''} options={ADMIN_GENDER_OPTIONS} onChange={(v) => setDraft({ ...draft, gender: genderFromLabel(v) })} placeholder="성별 선택" />,
+            },
+          ],
+          [
+            { label: '학부 제1전공', view: user.firstMajor || '-', edit: <UnderlineInput value={draft.firstMajor} onChange={(v) => setDraft({ ...draft, firstMajor: v })} /> },
+            { label: '학부 제2전공', view: user.secondMajor || '-', edit: <UnderlineInput value={draft.secondMajor} onChange={(v) => setDraft({ ...draft, secondMajor: v })} /> },
+          ],
+          [
+            {
+              label: '학부 입학년도',
+              view: user.admissionYear?.toString() ?? '-',
+              edit: <UnderlineInput value={admissionStr} onChange={(v) => /^\d*$/.test(v) && setAdmissionStr(v)} placeholder="예: 2021" />,
+            },
+            {
+              label: '학부 졸업년도',
+              view: user.graduationYear?.toString() ?? '-',
+              edit: <UnderlineInput value={graduationStr} onChange={(v) => /^\d*$/.test(v) && setGraduationStr(v)} placeholder="예: 2025" />,
+            },
+          ],
+          [
+            { label: '학적상태', view: academicLabel(user.academicStatus), edit: <span className="text-base text-text-secondary">{academicLabel(user.academicStatus)}</span> },
+            {
+              label: '병역여부',
+              view: militaryLabel(user.militaryStatus),
+              edit: <SelectField value={data.militaryStatus ? MILITARY_LABELS[data.militaryStatus] : ''} options={ADMIN_MILITARY_OPTIONS} onChange={(v) => setDraft({ ...draft, militaryStatus: militaryFromLabel(v) })} placeholder="병역 선택" />,
+            },
+          ],
+          // 어드민 전용 — 멘티 본인 화면에는 없는 식별·연락 정보
+          [
+            { label: '학번', view: user.studentId || '-', edit: <UnderlineInput value={draft.studentId} onChange={(v) => setDraft({ ...draft, studentId: v })} /> },
+            { label: '학부 학교', view: user.schoolName || '-', edit: <UnderlineInput value={draft.schoolName} onChange={(v) => setDraft({ ...draft, schoolName: v })} placeholder="학부 학교명" /> },
+          ],
+          [
+            { label: '이메일', view: user.email, edit: <span className="text-base text-text-secondary">{user.email}</span> },
+            { label: '연락처', view: user.phone || '-', edit: <UnderlineInput value={draft.phone} onChange={(v) => setDraft({ ...draft, phone: v })} placeholder="010-0000-0000" /> },
           ],
         ].map((row, rowIdx, all) => (
           <div

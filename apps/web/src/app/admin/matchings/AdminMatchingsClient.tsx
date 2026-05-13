@@ -211,34 +211,46 @@ export default function AdminMatchingsClient({ initialPool }: { initialPool: Eli
 }
 
 function ApprovedTable({ title, columns, rows }: { title: string; columns: string[]; rows: React.ReactNode[][] }) {
-  // 신청자가 많아져도 페이지 전체가 길어지지 않도록 테이블만 세로 스크롤.
-  // 6~7행 정도가 보이는 높이.
+  // 신청자가 많아져도 페이지가 길어지지 않도록 테이블만 세로 스크롤.
+  // sticky 헤더 + 행 hover + zebra stripe 로 가독성 보강.
   return (
     <div>
-      <h3 className="text-sm font-semibold text-text-primary mb-4">{title}</h3>
-      <div className="overflow-x-auto overflow-y-auto max-h-[320px] border border-border rounded-md">
-      <table className="w-full table-auto min-w-[320px]">
-        <thead>
-          <tr className="border-b border-border">
-            {columns.map((c) => (
-              <th key={c} className="text-left text-xs font-medium text-text-secondary py-2.5 pr-3">{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr><td colSpan={columns.length} className="py-8 text-center text-sm text-text-secondary">승인된 신청자가 없습니다.</td></tr>
-          ) : (
-            rows.map((cells, i) => (
-              <tr key={i} className="border-b border-border last:border-b-0">
-                {cells.map((cell, j) => (
-                  <td key={j} className="py-3 pr-3 text-sm text-text-primary align-middle">{cell}</td>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+        <span className="text-xs text-text-placeholder">{rows.length}건</span>
+      </div>
+      <div className="overflow-hidden border border-border rounded-lg bg-white">
+        <div className="overflow-x-auto overflow-y-auto max-h-[320px]">
+          <table className="w-full table-auto min-w-[320px]">
+            <thead className="sticky top-0 bg-page-bg z-10">
+              <tr className="border-b border-border">
+                {columns.map((c) => (
+                  <th key={c} className="text-left text-xs font-semibold text-text-secondary py-3 px-4 whitespace-nowrap">{c}</th>
                 ))}
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="py-10 text-center text-sm text-text-placeholder">
+                    승인된 신청자가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((cells, i) => (
+                  <tr
+                    key={i}
+                    className={`border-b border-border last:border-b-0 hover:bg-brand-light/40 transition-colors ${i % 2 === 1 ? 'bg-page-bg/30' : ''}`}
+                  >
+                    {cells.map((cell, j) => (
+                      <td key={j} className="py-3 px-4 text-sm text-text-primary align-middle whitespace-nowrap">{cell}</td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

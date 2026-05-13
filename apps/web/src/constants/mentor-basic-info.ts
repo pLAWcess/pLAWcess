@@ -33,7 +33,9 @@ export const emptyMentorPersonalInfo: MentorPersonalInfo = {
 
 export const GENDER_OPTIONS = ['남성', '여성', '기타'];
 
-export const LAW_SCHOOL_NAMES = LAW_SCHOOLS.map((s) => s.name);
+// 멘토 소속 로스쿨 자동완성은 'OO대학교 로스쿨' 표기로 표시.
+// (멘티 지망학교 자동완성은 학교명만 — LAW_SCHOOLS 그대로 사용)
+export const LAW_SCHOOL_NAMES = LAW_SCHOOLS.map((s) => `${s.name} 로스쿨`);
 
 // 로스쿨 기수: 2009학년도 ~ 향후 20년
 export const LAW_SCHOOL_GRADES = Array.from({ length: 17 }, (_, i) => `${17 - i}기`);

@@ -22,6 +22,17 @@ type HistoryData = {
   personalStatement: PersonalStatementData | null;
 };
 
+type HistoryTab = 'target' | 'quantitative' | 'qualitative' | 'statement';
+
+const TAB_LABELS: Record<HistoryTab, string> = {
+  target: '지망 학교',
+  quantitative: '정량 데이터',
+  qualitative: '정성 데이터',
+  statement: '자기소개서',
+};
+
+const HISTORY_TABS: HistoryTab[] = ['target', 'quantitative', 'qualitative', 'statement'];
+
 const EMPTY_QUANTITATIVE: QuantitativeData = {
   leet: {
     verbal: { raw: null, standard: null, percentile: null },
@@ -54,6 +65,7 @@ export default function HistoryClient({ years }: { years: number[] }) {
   const [selectedYear, setSelectedYear] = useState<number | null>(years[0] ?? null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<HistoryData | null>(null);
+  const [tab, setTab] = useState<HistoryTab>('target');
 
   useEffect(() => {
     if (!selectedYear) return;
@@ -84,6 +96,8 @@ export default function HistoryClient({ years }: { years: number[] }) {
     );
   }
 
+  const yearStr = selectedYear ? `${selectedYear}학년도` : '';
+
   return (
     <div className="flex flex-col gap-6">
       {/* 연도 드롭다운 */}
@@ -103,6 +117,21 @@ export default function HistoryClient({ years }: { years: number[] }) {
         </select>
       </div>
 
+      {/* 탭 — 데이터 종류별로 하나씩 본다 */}
+      <div className="flex gap-1 border-b border-border">
+        {HISTORY_TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === t ? 'border-brand text-brand' : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            {TAB_LABELS[t]}
+          </button>
+        ))}
+      </div>
+
       {loading && (
         <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 flex items-center justify-center">
           <div className="w-6 h-6 rounded-full border-2 border-brand border-t-transparent animate-spin" />
@@ -110,33 +139,29 @@ export default function HistoryClient({ years }: { years: number[] }) {
       )}
 
       {!loading && data && (
-        <div className="flex flex-col gap-6">
-          {/* 지망학교 */}
-          <TargetSchoolCard basicInfo={data.basicInfo} />
-
-          {/* 정량 데이터 */}
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold text-text-primary">정량 데이터</h2>
+        <div>
+          {tab === 'target' && <TargetSchoolCard basicInfo={data.basicInfo} />}
+          {tab === 'quantitative' && (
             <QuantitativeClient
               initialData={data.quantitative ?? EMPTY_QUANTITATIVE}
-              year={`${selectedYear}학년도`}
+              year={yearStr}
               readOnly
             />
-          </div>
-
-          {/* 정성 데이터 */}
-          <QualitativeClient
-            initialData={data.qualitative ?? EMPTY_QUALITATIVE}
-            year={`${selectedYear}학년도`}
-            readOnly
-          />
-
-          {/* 자기소개서 */}
-          <PersonalStatementClient
-            initialData={data.personalStatement ?? EMPTY_PERSONAL}
-            year={`${selectedYear}학년도`}
-            readOnly
-          />
+          )}
+          {tab === 'qualitative' && (
+            <QualitativeClient
+              initialData={data.qualitative ?? EMPTY_QUALITATIVE}
+              year={yearStr}
+              readOnly
+            />
+          )}
+          {tab === 'statement' && (
+            <PersonalStatementClient
+              initialData={data.personalStatement ?? EMPTY_PERSONAL}
+              year={yearStr}
+              readOnly
+            />
+          )}
         </div>
       )}
     </div>
