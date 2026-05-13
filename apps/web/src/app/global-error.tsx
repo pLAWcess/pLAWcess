@@ -80,7 +80,7 @@ export default function GlobalError({
 
           <div
             style={{
-              marginTop: 40,
+              marginTop: 28,
               display: 'flex',
               gap: 8,
               justifyContent: 'center',

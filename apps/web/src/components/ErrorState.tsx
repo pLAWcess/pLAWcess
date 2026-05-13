@@ -43,7 +43,7 @@ export default function ErrorState({
           {description}
         </p>
 
-        <div className="mt-10 flex items-center justify-center gap-2">
+        <div className="mt-7 flex items-center justify-center gap-2">
           <Link
             href={homeHref}
             className="px-5 py-2.5 text-sm font-semibold text-text-secondary bg-white border border-border rounded-md hover:bg-page-bg transition-colors text-center"
