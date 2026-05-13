@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
+import { readJson } from '@/lib/http';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -30,7 +31,7 @@ export default function FindIdPage() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readJson<{ error?: string }>(res);
     setLoading(false);
 
     if (!res.ok) {

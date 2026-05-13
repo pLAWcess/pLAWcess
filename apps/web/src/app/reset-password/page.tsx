@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
+import { readJson } from '@/lib/http';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -50,7 +51,7 @@ function ResetPasswordForm() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readJson<{ error?: string }>(res);
     setLoading(false);
 
     if (!res.ok) {

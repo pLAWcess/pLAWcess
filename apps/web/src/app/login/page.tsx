@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Footer from '@/components/layout/Footer';
-import { saveUser } from '@/lib/api';
+import { saveUser, type AuthUser } from '@/lib/api';
+import { readJson } from '@/lib/http';
 
 const API_BASE = '';
+
+type LoginResponse = { error?: string; user?: AuthUser };
 
 const ROLE_REDIRECT: Record<string, string> = {
   mentee: '/mentee/dashboard/basic-info',
@@ -41,10 +44,10 @@ export default function LoginPage() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readJson<LoginResponse>(res);
     setLoading(false);
 
-    if (!res.ok) {
+    if (!res.ok || !data.user) {
       setError(data.error ?? '로그인에 실패했습니다.');
       return;
     }
@@ -75,10 +78,10 @@ export default function LoginPage() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readJson<LoginResponse>(res);
     setLoading(false);
 
-    if (!res.ok) {
+    if (!res.ok || !data.user) {
       setError(`테스트 로그인 실패: ${data.error ?? '알 수 없는 오류'}`);
       return;
     }
@@ -108,10 +111,10 @@ export default function LoginPage() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readJson<LoginResponse>(res);
     setLoading(false);
 
-    if (!res.ok) {
+    if (!res.ok || !data.user) {
       setError(`테스트 로그인 실패: ${data.error ?? '알 수 없는 오류'}`);
       return;
     }

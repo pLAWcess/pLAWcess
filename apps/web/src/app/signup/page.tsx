@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Footer from '@/components/layout/Footer';
+import { readJson } from '@/lib/http';
 
 const API_BASE = '';
 const COOLDOWN_SEC = 60;
@@ -186,21 +187,28 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    const res = await fetch(`${API_BASE}/api/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        name: form.name,
-        loginId: form.loginId,
-        email: form.email,
-        password: form.password,
-        studentId: form.studentId,
-        signupVerificationToken,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: form.name,
+          loginId: form.loginId,
+          email: form.email,
+          password: form.password,
+          studentId: form.studentId,
+          signupVerificationToken,
+        }),
+      });
+    } catch {
+      setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      setLoading(false);
+      return;
+    }
 
-    const data = await res.json();
+    const data = await readJson<{ error?: string }>(res);
     setLoading(false);
 
     if (!res.ok) {

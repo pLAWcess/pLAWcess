@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
+import { readJson } from '@/lib/http';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 const COOLDOWN_SEC = 60;
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readJson<{ error?: string }>(res);
     setSendLoading(false);
 
     if (!res.ok) {
@@ -75,10 +76,10 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readJson<{ error?: string; resetToken?: string }>(res);
     setVerifyLoading(false);
 
-    if (!res.ok) {
+    if (!res.ok || !data.resetToken) {
       setError(data.error ?? '오류가 발생했습니다.');
       return;
     }
