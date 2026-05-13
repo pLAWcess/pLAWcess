@@ -13,11 +13,11 @@ function formatDate(iso: string | null): string {
   return `${y}.${m}.${day}`;
 }
 
-function formatShortDate(iso: string | null): string {
-  if (!iso) return '미정';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '미정';
-  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+// 멘티 ApplicationsClient 와 동일한 한국어 날짜 표기 (YYYY년 M월 D일)
+function formatDateKo(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
 // ------------------- 상태 안내 -------------------
@@ -78,23 +78,8 @@ function StatusMessage({ status }: { status: MentorProcessStatus }) {
     );
   }
 
-  return (
-    <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-      <div className="flex items-center gap-4 px-4 sm:px-8 py-6 bg-brand-light border-b border-border">
-        <div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center shrink-0">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <div>
-          <p className="text-base font-bold text-text-primary">멘토링 운영 중</p>
-          <p className="text-sm text-text-secondary mt-0.5">
-            {status.processYear} pLAWcess에 멘토로 참여해주셔서 감사드립니다.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  // active 상태에서는 별도 안내 카드 없이 상위에서 일정 + 매칭 멘티 카드로 바로 보여준다.
+  return null;
 }
 
 // ------------------- 매칭 멘티 카드 -------------------
@@ -225,77 +210,33 @@ function MatchedMenteeSection({ status }: { status: MentorProcessStatus }) {
 }
 
 // ------------------- 사이클 일정 카드 -------------------
-
-type ScheduleItem = {
-  label: string;
-  start: string | null;
-  end: string | null;
-};
+// 멘티 ApplicationsClient 의 "사업 일정 카드" 와 동일한 스타일.
 
 function CycleScheduleCard({ cycle }: { cycle: CycleSchedule }) {
-  const items: ScheduleItem[] = [
+  const items: { label: string; start: string | null; end: string | null }[] = [
+    { label: '멘토 모집', start: cycle.mentor_recruit_start, end: cycle.mentor_recruit_end },
     { label: '멘티 신청', start: cycle.mentee_apply_start, end: cycle.mentee_apply_end },
-    { label: 'AI 매칭', start: cycle.matching_start, end: cycle.matching_end },
-    { label: '매칭 발표', start: cycle.match_announce_date, end: null },
-    { label: '합격자 결과 입력', start: cycle.admission_result_start, end: cycle.admission_result_end },
+    { label: '멘티-멘토 매칭', start: cycle.matching_start, end: cycle.matching_end },
+    { label: '매칭 공지', start: cycle.match_announce_date, end: null },
+    { label: '입시 결과 수집', start: cycle.admission_result_start, end: cycle.admission_result_end },
   ];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const isPast = (iso: string | null) => {
-    if (!iso) return false;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return false;
-    return d.getTime() < today.getTime();
-  };
-
-  const formatRange = (item: ScheduleItem) => {
-    if (!item.start && !item.end) return '일정 미정';
-    if (item.start && !item.end) return formatDate(item.start);
-    return `${formatShortDate(item.start)} ~ ${formatShortDate(item.end)}`;
-  };
-
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-bold text-text-primary">{cycle.process_year} 사이클 일정</h2>
-      <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-        <ol className="divide-y divide-border">
-          {items.map((item) => {
-            const past = isPast(item.end ?? item.start);
-            return (
-              <li key={item.label} className="flex items-center gap-4 px-5 sm:px-6 py-4">
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                    past
-                      ? 'bg-brand-muted text-brand'
-                      : 'bg-gray-100 text-text-secondary'
-                  }`}
-                >
-                  {past ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                    </svg>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${past ? 'text-text-secondary' : 'text-text-primary'}`}>
-                    {item.label}
-                  </p>
-                </div>
-                <p className={`text-sm tabular-nums ${past ? 'text-text-secondary' : 'text-text-primary'}`}>
-                  {formatRange(item)}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
+      <h2 className="text-base font-semibold text-text-primary mb-4">
+        {cycle.process_year}학년도 pLAWcess 일정
+      </h2>
+      <div className="space-y-3">
+        {items.map(({ label, start, end }) => (
+          <div key={label} className="flex items-center gap-4 text-sm">
+            <span className="w-28 shrink-0 text-text-secondary">{label}</span>
+            <span className="text-text-primary">
+              {start ? (end ? `${formatDateKo(start)} ~ ${formatDateKo(end)}` : formatDateKo(start)) : '-'}
+            </span>
+          </div>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -308,7 +249,7 @@ type Props = {
 
 export default function MentorDashboardClient({ status, cycle }: Props) {
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">멘토 대시보드</h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -322,9 +263,9 @@ export default function MentorDashboardClient({ status, cycle }: Props) {
         </div>
       ) : (
         <>
+          {status.status !== 'inactive' && cycle && <CycleScheduleCard cycle={cycle} />}
           <StatusMessage status={status} />
           <MatchedMenteeSection status={status} />
-          {status.status !== 'inactive' && cycle && <CycleScheduleCard cycle={cycle} />}
         </>
       )}
     </div>
