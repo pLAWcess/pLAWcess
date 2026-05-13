@@ -81,10 +81,10 @@ export default function AdminMatchingsClient({ initialPool }: { initialPool: Eli
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">매칭관리</h1>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p className="text-sm text-text-secondary mt-1">
           멘토-멘티 매칭 프로세스를 관리합니다
         </p>
       </div>
@@ -220,7 +220,7 @@ function ApprovedTable({ title, columns, rows }: { title: string; columns: strin
         <span className="text-xs text-text-placeholder">{rows.length}건</span>
       </div>
       <div className="overflow-hidden border border-border rounded-lg bg-white">
-        <div className="overflow-x-auto overflow-y-auto max-h-[320px]">
+        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: '320px' }}>
           <table className="w-full table-auto min-w-[320px]">
             <thead className="sticky top-0 bg-page-bg z-10">
               <tr className="border-b border-border">

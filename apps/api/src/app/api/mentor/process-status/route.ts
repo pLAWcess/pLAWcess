@@ -5,6 +5,8 @@ import { getTokenFromCookie } from "@/lib/auth";
 
 type ProcessStatus = "inactive" | "waiting" | "active";
 
+type PersonalStatementStatus = "not_submitted" | "submitted" | "hidden";
+
 type MatchedMentee = {
   matchId: string;
   name: string;
@@ -12,7 +14,7 @@ type MatchedMentee = {
   admissionTypeGa: string | null;
   targetSchoolNa: string | null;
   admissionTypeNa: string | null;
-  personalStatementStatus: "not_submitted";
+  personalStatementStatus: PersonalStatementStatus;
 };
 
 type ResponseBody = {
@@ -99,6 +101,11 @@ export async function GET(req: NextRequest) {
                 is_special_ga: true,
                 target_school_na: true,
                 is_special_na: true,
+                share_statement: true,
+                personal_statement_hwp_ga: true,
+                personal_statement_hwp_na: true,
+                personal_statement_text_ga: true,
+                personal_statement_text_na: true,
               },
             },
           },
@@ -108,6 +115,16 @@ export async function GET(req: NextRequest) {
 
     matchedMentees = matches.map((m) => {
       const record = m.mentee_application.mentee_record;
+      const hasStatement =
+        !!record?.personal_statement_hwp_ga ||
+        !!record?.personal_statement_hwp_na ||
+        !!record?.personal_statement_text_ga ||
+        !!record?.personal_statement_text_na;
+      let psStatus: PersonalStatementStatus;
+      if (record && !record.share_statement) psStatus = "hidden";
+      else if (hasStatement) psStatus = "submitted";
+      else psStatus = "not_submitted";
+
       return {
         matchId: m.match_id,
         name: m.mentee_application.user.name,
@@ -115,7 +132,7 @@ export async function GET(req: NextRequest) {
         admissionTypeGa: admissionTypeLabel(record?.target_school_ga ?? null, record?.is_special_ga ?? false),
         targetSchoolNa: record?.target_school_na ?? null,
         admissionTypeNa: admissionTypeLabel(record?.target_school_na ?? null, record?.is_special_na ?? false),
-        personalStatementStatus: "not_submitted",
+        personalStatementStatus: psStatus,
       };
     });
   }

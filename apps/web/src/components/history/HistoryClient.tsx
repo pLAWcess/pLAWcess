@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import QuantitativeClient from '@/app/mentee/dashboard/quantitative/QuantitativeClient';
 import QualitativeClient from '@/app/mentee/dashboard/qualitative/QualitativeClient';
 import PersonalStatementClient from '@/app/mentee/dashboard/personal-statement/PersonalStatementClient';
+import Dropdown from '@/components/ui/Dropdown';
 import {
   getBasicInfo,
   getQuantitative,
@@ -88,81 +89,80 @@ export default function HistoryClient({ years }: { years: number[] }) {
     return () => { cancelled = true; };
   }, [selectedYear]);
 
-  if (years.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 flex items-center justify-center">
-        <p className="text-text-secondary text-sm">이전 연도의 기록이 없습니다.</p>
-      </div>
-    );
-  }
-
   const yearStr = selectedYear ? `${selectedYear}학년도` : '';
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 연도 드롭다운 */}
-      <div className="flex items-center gap-3">
-        <label htmlFor="history-year" className="text-sm font-medium text-text-secondary">
-          연도 선택
-        </label>
-        <select
-          id="history-year"
-          value={selectedYear ?? ''}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="px-3 py-2 text-sm border border-border rounded-lg bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>{y}학년도</option>
-          ))}
-        </select>
-      </div>
-
-      {/* 탭 — 데이터 종류별로 하나씩 본다 */}
-      <div className="flex gap-1 border-b border-border">
-        {HISTORY_TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              tab === t ? 'border-brand text-brand' : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </div>
-
-      {loading && (
-        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 flex items-center justify-center">
-          <div className="w-6 h-6 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-        </div>
-      )}
-
-      {!loading && data && (
+      {/* 헤더: 제목 + 부제 (좌) + 연도 셀렉트 (우) */}
+      <div className="flex items-center justify-between gap-3">
         <div>
-          {tab === 'target' && <TargetSchoolCard basicInfo={data.basicInfo} />}
-          {tab === 'quantitative' && (
-            <QuantitativeClient
-              initialData={data.quantitative ?? EMPTY_QUANTITATIVE}
-              year={yearStr}
-              readOnly
-            />
-          )}
-          {tab === 'qualitative' && (
-            <QualitativeClient
-              initialData={data.qualitative ?? EMPTY_QUALITATIVE}
-              year={yearStr}
-              readOnly
-            />
-          )}
-          {tab === 'statement' && (
-            <PersonalStatementClient
-              initialData={data.personalStatement ?? EMPTY_PERSONAL}
-              year={yearStr}
-              readOnly
-            />
-          )}
+          <h1 className="text-2xl font-bold text-text-primary">지난 기록</h1>
+          <p className="text-sm text-text-secondary mt-1">이전 연도에 작성한 나의 데이터를 확인할 수 있습니다.</p>
         </div>
+        {years.length > 0 && selectedYear !== null && (
+          <Dropdown
+            value={selectedYear}
+            onChange={(v) => setSelectedYear(v)}
+            options={years.map((y) => ({ value: y, label: `${y}학년도` }))}
+            className="shrink-0"
+          />
+        )}
+      </div>
+
+      {years.length === 0 ? (
+        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 flex items-center justify-center">
+          <p className="text-text-secondary text-sm">이전 연도의 기록이 없습니다.</p>
+        </div>
+      ) : (
+        <>
+          {/* 탭 — 데이터 종류별로 하나씩 본다 */}
+          <div className="flex gap-1 border-b border-border">
+            {HISTORY_TABS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  tab === t ? 'border-brand text-brand' : 'border-transparent text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {TAB_LABELS[t]}
+              </button>
+            ))}
+          </div>
+
+          {loading && (
+            <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+            </div>
+          )}
+
+          {!loading && data && (
+            <div className="flex flex-col gap-6">
+              {tab === 'target' && <TargetSchoolCard basicInfo={data.basicInfo} />}
+              {tab === 'quantitative' && (
+                <QuantitativeClient
+                  initialData={data.quantitative ?? EMPTY_QUANTITATIVE}
+                  year={yearStr}
+                  readOnly
+                />
+              )}
+              {tab === 'qualitative' && (
+                <QualitativeClient
+                  initialData={data.qualitative ?? EMPTY_QUALITATIVE}
+                  year={yearStr}
+                  readOnly
+                />
+              )}
+              {tab === 'statement' && (
+                <PersonalStatementClient
+                  initialData={data.personalStatement ?? EMPTY_PERSONAL}
+                  year={yearStr}
+                  readOnly
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

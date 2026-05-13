@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import ConcernCard from '@/components/concerns/ConcernCard';
-import { submitMenteeApplication, patchConcern, type CycleSchedule, type BasicInfoAdmission, type ConcernData } from '@/lib/api';
+import { submitMenteeApplicationWithShare, patchConcern, type CycleSchedule, type BasicInfoAdmission, type ConcernData, type ShareSettings } from '@/lib/api';
+import ShareSettingsModal from './ShareSettingsModal';
 import { useToast } from '@/components/ui/Toast';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 
@@ -39,6 +40,14 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [extraRequest, setExtraRequest] = useState(initialConcerns?.extraRequest ?? '');
   const [editingCards, setEditingCards] = useState<Set<string>>(new Set());
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const DEFAULT_SHARE: ShareSettings = {
+    basicInfo: true,
+    quantitative: true,
+    qualitative: true,
+    statement: true,
+    requests: true,
+  };
   const toast = useToast();
 
   function makeEditingHandler(key: string) {
@@ -67,7 +76,8 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   const isClosed = isDeadlinePassed(activeSchedule?.mentee_apply_end ?? null);
   const isNotRegistered = !activeSchedule || !activeSchedule.mentee_apply_end;
 
-  async function handleSubmit() {
+  // 1단계: 사전 검증 후 공개 설정 모달 오픈. 실제 제출은 모달의 onConfirm 에서.
+  function handleSubmit() {
     if (isClosed || isNotRegistered) return;
     if (hasUnsavedCard) {
       toast.error('저장하지 않은 내용이 있습니다.\n완료 버튼을 누른 후 다시 시도해주세요.');
@@ -78,11 +88,17 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
       return;
     }
     setShowConsentError(false);
+    setShareModalOpen(true);
+  }
+
+  // 2단계: 공개 설정 확정 → 실제 제출
+  async function handleConfirmSubmit(share: ShareSettings) {
     setIsSubmitting(true);
     try {
       await patchConcern(year, { extraRequest });
-      await submitMenteeApplication(year);
+      await submitMenteeApplicationWithShare(year, share);
       toast.success('신청서가 제출되었습니다.');
+      setShareModalOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '신청서 제출에 실패했습니다.');
     } finally {
@@ -319,6 +335,15 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
           </div>
         )}
       </div>
+
+      {shareModalOpen && (
+        <ShareSettingsModal
+          initial={DEFAULT_SHARE}
+          submitting={isSubmitting}
+          onClose={() => !isSubmitting && setShareModalOpen(false)}
+          onConfirm={handleConfirmSubmit}
+        />
+      )}
     </div>
   );
 }

@@ -309,7 +309,7 @@ export default function AdminAnnouncementsManageClient({
         }}
       />
     )}
-    <div className="flex flex-col gap-8 w-full">
+    <div className="flex flex-col gap-6 w-full">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">공지사항 관리</h1>

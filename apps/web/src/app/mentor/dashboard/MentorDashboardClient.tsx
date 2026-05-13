@@ -171,10 +171,20 @@ function MenteeCard({ m }: { m: MatchedMentee }) {
 
         <div className="pt-3 border-t border-border flex items-center justify-between">
           <span className="text-xs text-text-secondary">자기소개서</span>
-          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded bg-gray-100 text-text-secondary">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-            미제출
-          </span>
+          {(() => {
+            const map = {
+              submitted: { label: '제출', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50' },
+              not_submitted: { label: '미제출', dot: 'bg-gray-400', text: 'text-text-secondary', bg: 'bg-gray-100' },
+              hidden: { label: '비공개', dot: 'bg-gray-400', text: 'text-text-secondary', bg: 'bg-gray-100' },
+            } as const;
+            const s = map[m.personalStatementStatus];
+            return (
+              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${s.bg} ${s.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                {s.label}
+              </span>
+            );
+          })()}
         </div>
       </div>
     </Link>

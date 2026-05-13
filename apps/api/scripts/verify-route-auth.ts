@@ -36,6 +36,8 @@ const PUBLIC_PATHS = new Set<string>([
   "/api/auth/check-login-id",
   "/api/auth/email/send-verification",
   "/api/auth/email/verify-code",
+  "/api/announcements",
+  "/api/announcements/view",
 ]);
 
 const HTTP_METHODS = ["GET", "POST", "PATCH", "PUT", "DELETE"] as const;

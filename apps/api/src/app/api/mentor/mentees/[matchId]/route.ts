@@ -75,6 +75,11 @@ export async function GET(
               desired_mentor: true,
               special_notes: true,
               extra_request: true,
+              share_basic_info: true,
+              share_quantitative: true,
+              share_qualitative: true,
+              share_statement: true,
+              share_requests: true,
             },
           },
         },
@@ -96,22 +101,34 @@ export async function GET(
   const num = (d: unknown): number | null =>
     d === null || d === undefined ? null : Number(d);
 
+  // 멘티의 공개 설정 (#233). 비공개 영역은 응답에서 null/마스킹 처리한다.
+  // 단 이름·이메일·연락처는 매칭 후 멘토와의 통신을 위해 항상 공유한다(기획 결정).
+  const share = {
+    basicInfo: record?.share_basic_info ?? true,
+    quantitative: record?.share_quantitative ?? true,
+    qualitative: record?.share_qualitative ?? true,
+    statement: record?.share_statement ?? true,
+    requests: record?.share_requests ?? true,
+  };
+
+  // 희망 로스쿨(가/나군)은 매칭 자체에 핵심 정보라 share_basic_info 영향을 받지 않음
   return NextResponse.json({
     matchId: match.match_id,
+    share,
     user: {
       name: user.name,
       email: user.email,
       phone: user.phone,
-      birthDate: user.birth_date?.toISOString() ?? null,
-      gender: user.gender,
-      militaryStatus: user.military_status,
-      studentId: user.student_id,
-      undergradSchool: user.undergrad_school_name,
-      firstMajor: user.undergrad_first_major,
-      secondMajor: user.undergrad_second_major,
-      entryYear: user.undergrad_entry_year,
-      graduationYear: user.undergrad_graduation_year,
-      academicStatus: record?.academic_status ?? null,
+      birthDate: share.basicInfo ? (user.birth_date?.toISOString() ?? null) : null,
+      gender: share.basicInfo ? user.gender : null,
+      militaryStatus: share.basicInfo ? user.military_status : null,
+      studentId: share.basicInfo ? user.student_id : null,
+      undergradSchool: share.basicInfo ? user.undergrad_school_name : null,
+      firstMajor: share.basicInfo ? user.undergrad_first_major : null,
+      secondMajor: share.basicInfo ? user.undergrad_second_major : null,
+      entryYear: share.basicInfo ? user.undergrad_entry_year : null,
+      graduationYear: share.basicInfo ? user.undergrad_graduation_year : null,
+      academicStatus: share.basicInfo ? (record?.academic_status ?? null) : null,
     },
     admission: {
       targetSchoolGa: record?.target_school_ga ?? null,
@@ -120,51 +137,59 @@ export async function GET(
       isSpecialNa: record?.is_special_na ?? false,
       preferredGroup: record?.preferred_group ?? null,
     },
-    quantitative: {
-      leet: {
-        total: num(record?.leet_score),
-        verbal: {
-          raw: record?.leet_verbal_raw ?? null,
-          standard: record?.leet_verbal_standard ?? null,
-          percentile: num(record?.leet_verbal_percentile),
-        },
-        reasoning: {
-          raw: record?.leet_reasoning_raw ?? null,
-          standard: record?.leet_reasoning_standard ?? null,
-          percentile: num(record?.leet_reasoning_percentile),
-        },
-      },
-      gpa: {
-        overall: num(record?.gpa),
-        major: num(record?.gpa_major),
-        converted: num(record?.gpa_converted),
-      },
-      language: {
-        toeic: record?.toeic_score ?? null,
-        toefl: record?.toefl_score ?? null,
-        teps: record?.teps_score ?? null,
-      },
-    },
-    qualitative: {
-      careerGoal: record?.career_goal ?? null,
-      coreKeywords: record?.core_keywords ?? null,
-      activities: record?.qualitative_activities ?? null,
-    },
-    personalStatement: {
-      ga: {
-        hasHwp: !!record?.personal_statement_hwp_ga,
-        textAnswers: record?.personal_statement_text_ga ?? null,
-      },
-      na: {
-        hasHwp: !!record?.personal_statement_hwp_na,
-        textAnswers: record?.personal_statement_text_na ?? null,
-      },
-    },
-    requests: {
-      strengthsWeaknesses: record?.strengths_weaknesses ?? null,
-      desiredMentor: record?.desired_mentor ?? null,
-      specialNotes: record?.special_notes ?? null,
-      extraRequest: record?.extra_request ?? null,
-    },
+    quantitative: share.quantitative
+      ? {
+          leet: {
+            total: num(record?.leet_score),
+            verbal: {
+              raw: record?.leet_verbal_raw ?? null,
+              standard: record?.leet_verbal_standard ?? null,
+              percentile: num(record?.leet_verbal_percentile),
+            },
+            reasoning: {
+              raw: record?.leet_reasoning_raw ?? null,
+              standard: record?.leet_reasoning_standard ?? null,
+              percentile: num(record?.leet_reasoning_percentile),
+            },
+          },
+          gpa: {
+            overall: num(record?.gpa),
+            major: num(record?.gpa_major),
+            converted: num(record?.gpa_converted),
+          },
+          language: {
+            toeic: record?.toeic_score ?? null,
+            toefl: record?.toefl_score ?? null,
+            teps: record?.teps_score ?? null,
+          },
+        }
+      : null,
+    qualitative: share.qualitative
+      ? {
+          careerGoal: record?.career_goal ?? null,
+          coreKeywords: record?.core_keywords ?? null,
+          activities: record?.qualitative_activities ?? null,
+        }
+      : null,
+    personalStatement: share.statement
+      ? {
+          ga: {
+            hasHwp: !!record?.personal_statement_hwp_ga,
+            textAnswers: record?.personal_statement_text_ga ?? null,
+          },
+          na: {
+            hasHwp: !!record?.personal_statement_hwp_na,
+            textAnswers: record?.personal_statement_text_na ?? null,
+          },
+        }
+      : null,
+    requests: share.requests
+      ? {
+          strengthsWeaknesses: record?.strengths_weaknesses ?? null,
+          desiredMentor: record?.desired_mentor ?? null,
+          specialNotes: record?.special_notes ?? null,
+          extraRequest: record?.extra_request ?? null,
+        }
+      : null,
   });
 }

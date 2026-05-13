@@ -979,7 +979,7 @@ export type MatchedMentee = {
   admissionTypeGa: string | null;
   targetSchoolNa: string | null;
   admissionTypeNa: string | null;
-  personalStatementStatus: "not_submitted";
+  personalStatementStatus: "not_submitted" | "submitted" | "hidden";
 };
 
 export type MentorProcessStatus = {
@@ -1046,6 +1046,14 @@ export type MenteeDetailResponse = {
     isSpecialNa: boolean;
     preferredGroup: string | null;
   };
+  // #233 공개 설정 — 비공개 영역은 아래 객체들이 null 로 떨어진다.
+  share: {
+    basicInfo: boolean;
+    quantitative: boolean;
+    qualitative: boolean;
+    statement: boolean;
+    requests: boolean;
+  };
   quantitative: {
     leet: {
       total: number | null;
@@ -1054,22 +1062,22 @@ export type MenteeDetailResponse = {
     };
     gpa: { overall: number | null; major: number | null; converted: number | null };
     language: { toeic: number | null; toefl: number | null; teps: number | null };
-  };
+  } | null;
   qualitative: {
     careerGoal: string | null;
     coreKeywords: string | null;
     activities: unknown;
-  };
+  } | null;
   personalStatement: {
     ga: { hasHwp: boolean; textAnswers: unknown };
     na: { hasHwp: boolean; textAnswers: unknown };
-  };
+  } | null;
   requests: {
     strengthsWeaknesses: string | null;
     desiredMentor: string | null;
     specialNotes: string | null;
     extraRequest: string | null;
-  };
+  } | null;
 };
 
 export async function getMatchedMenteeDetail(matchId: string): Promise<MenteeDetailResponse> {
@@ -1078,4 +1086,65 @@ export async function getMatchedMenteeDetail(matchId: string): Promise<MenteeDet
     credentials: "include",
   });
   return jsonOrError(res, "멘티 정보 조회 실패");
+}
+
+// ----------------------------------------------------------------
+// Mentee Share Settings (#233)
+// ----------------------------------------------------------------
+
+export type ShareSettings = {
+  basicInfo: boolean;
+  quantitative: boolean;
+  qualitative: boolean;
+  statement: boolean;
+  requests: boolean;
+};
+
+export type ShareSettingsResponse = {
+  settings: ShareSettings;
+  locked: boolean;
+};
+
+export async function getShareSettings(year: string): Promise<ShareSettingsResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/share-settings?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "공개 설정 조회 실패");
+}
+
+export async function patchShareSettings(
+  year: string,
+  settings: Partial<ShareSettings>,
+): Promise<{ settings: ShareSettings }> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/share-settings?year=${encodeURIComponent(year)}`,
+    {
+      method: "PATCH",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify({ settings }),
+    },
+  );
+  return jsonOrError(res, "공개 설정 저장 실패");
+}
+
+export async function submitMenteeApplicationWithShare(
+  year: string,
+  share: ShareSettings,
+): Promise<SubmitApplicationResult> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/applications/submit?year=${encodeURIComponent(year)}`,
+    {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify({ share }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "신청서 제출 실패");
+  }
+  return res.json();
 }

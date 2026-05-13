@@ -34,6 +34,23 @@ function formatDate(iso: string | null): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}.`;
 }
 
+// ------------------- 비공개 안내 -------------------
+
+function PrivateNotice({ label }: { label: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-12 flex flex-col items-center gap-3 text-center">
+      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-text-secondary">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </div>
+      <p className="text-sm font-medium text-text-primary">{label}</p>
+      <p className="text-xs text-text-secondary">멘티가 비공개로 설정한 정보입니다.</p>
+    </div>
+  );
+}
+
 // ------------------- 기본정보 탭 -------------------
 
 function FieldRow({
@@ -74,7 +91,7 @@ function FieldRow({
 }
 
 function BasicTab({ data }: { data: MenteeDetailResponse }) {
-  const { user, admission } = data;
+  const { user, admission, share } = data;
 
   const personalRows = [
     [
@@ -136,7 +153,7 @@ function BasicTab({ data }: { data: MenteeDetailResponse }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 프로필 카드 */}
+      {/* 프로필 카드 — share.basicInfo=false 면 상세 필드 마스킹 */}
       <div className="bg-white rounded-xl border border-border shadow-sm">
         <div className="flex items-center justify-between px-4 sm:px-8 py-6 bg-brand-light border-b border-border rounded-t-xl">
           <div className="flex items-center gap-4">
@@ -148,14 +165,32 @@ function BasicTab({ data }: { data: MenteeDetailResponse }) {
             </div>
             <div>
               <p className="text-xl font-bold text-text-primary">{user.name}</p>
-              <p className="text-sm text-text-secondary mt-0.5">{user.undergradSchool || '-'}</p>
+              <p className="text-sm text-text-secondary mt-0.5">
+                {share.basicInfo ? (user.undergradSchool || '-') : '비공개'}
+              </p>
             </div>
           </div>
         </div>
-        <FieldRow rows={personalRows} />
+        {share.basicInfo ? (
+          <FieldRow rows={personalRows} />
+        ) : (
+          <div className="px-4 sm:px-8 py-10 text-center text-sm text-text-secondary">
+            멘티가 기본정보를 비공개로 설정했습니다. (이름·이메일·연락처는 항상 공유됩니다)
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-left max-w-md mx-auto">
+              <div>
+                <p className="text-xs text-text-secondary">이메일</p>
+                <p className="text-sm text-text-primary">{user.email}</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-secondary">연락처</p>
+                <p className="text-sm text-text-primary">{user.phone ?? '-'}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 희망 학교 카드 */}
+      {/* 희망 학교 카드 — share 와 무관하게 항상 공유 (매칭 핵심 정보) */}
       <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <h2 className="text-base font-semibold text-text-primary mb-6">희망 로스쿨</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-y-4 sm:gap-y-0">
@@ -171,6 +206,7 @@ function BasicTab({ data }: { data: MenteeDetailResponse }) {
 
 function QuantitativeTab({ data }: { data: MenteeDetailResponse }) {
   const { quantitative } = data;
+  if (!quantitative) return <PrivateNotice label="정량 데이터" />;
   return (
     <div className="flex flex-col gap-6">
       <LeetCard
@@ -205,6 +241,7 @@ function parseActivities(raw: unknown): Activity[] {
 
 function QualitativeTab({ data }: { data: MenteeDetailResponse }) {
   const { qualitative } = data;
+  if (!qualitative) return <PrivateNotice label="정성 데이터" />;
   const activities = parseActivities(qualitative.activities);
 
   return (
@@ -281,6 +318,7 @@ function parseTextAnswers(raw: unknown): TextAnswer[] {
 
 function StatementTab({ data }: { data: MenteeDetailResponse }) {
   const [group, setGroup] = useState<'ga' | 'na'>('ga');
+  if (!data.personalStatement) return <PrivateNotice label="자기소개서" />;
   const ps = data.personalStatement[group];
   const school =
     group === 'ga' ? data.admission.targetSchoolGa : data.admission.targetSchoolNa;
@@ -360,6 +398,7 @@ function StatementTab({ data }: { data: MenteeDetailResponse }) {
 
 function RequestsTab({ data }: { data: MenteeDetailResponse }) {
   const { requests } = data;
+  if (!requests) return <PrivateNotice label="요청사항" />;
   const items = [
     { label: '강점·약점', value: requests.strengthsWeaknesses },
     { label: '원하는 멘토상', value: requests.desiredMentor },

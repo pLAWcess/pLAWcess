@@ -18,9 +18,9 @@ const menteeNavItems: NavItem[] = [
   { label: '정성 데이터', href: '/mentee/dashboard/qualitative' },
   { label: '자기소개서', href: '/mentee/dashboard/personal-statement' },
   { label: '프로세스 신청', href: '/mentee/applications' },
+  { label: '공지사항', href: '/mentee/announcements', dividerBefore: true },
   { label: '합격 아카이브', href: '/mentee/archive' },
   { label: '지난 기록', href: '/mentee/history' },
-  { label: '공지사항', href: '/mentee/announcements', dividerBefore: true },
   { label: '설정', href: '/settings', exact: true },
 ];
 
@@ -29,9 +29,9 @@ const mentorNavItems: NavItem[] = [
   { label: '기본정보', href: '/mentor/dashboard/basic-info' },
   { label: '정량 데이터', href: '/mentor/dashboard/quantitative' },
   { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
+  { label: '공지사항', href: '/mentor/announcements', dividerBefore: true },
   { label: '합격 아카이브', href: '/mentor/archive' },
   { label: '지난 기록', href: '/mentor/history' },
-  { label: '공지사항', href: '/mentor/announcements', dividerBefore: true },
   { label: '설정', href: '/settings', exact: true },
 ];
 
@@ -50,7 +50,7 @@ const adminNavSections: NavSection[] = [
   {
     section: '공지사항',
     items: [
-      { label: '공지 목록', href: '/admin/announcements', exact: true },
+      { label: '공지사항 관리', href: '/admin/announcements', exact: true },
     ],
   },
   {
@@ -109,10 +109,11 @@ export default function Sidebar({ mobileOpen, onClose, initialRole, initialUser,
   const isMentor = pathname.startsWith('/mentor') || initialRole === 'mentor';
   const rawConfig: NavConfig = isAdmin ? adminNavSections : isMentor ? mentorNavItems : menteeNavItems;
 
-  // admin 계정이 본인 영역(/admin/*) 이외의 페이지를 볼 때 '설정' 항목을 숨긴다.
-  // /settings 진입 시 settings/layout 이 role=admin 으로 사이드바를 강제 전환해 UI가 깨지기 때문.
+  // admin 계정이 멘티/멘토 페이지를 볼 때만 '설정' 항목을 숨긴다.
+  // (해당 경로에서 /settings 진입 시 settings/layout 이 role=admin 으로 사이드바를 강제 전환해 UI가 깨짐)
+  // admin 본인 영역(/admin/*) 과 /settings 페이지에서는 그대로 노출.
   const userIsAdmin = initialUser?.current_role === 'admin' || initialRole === 'admin';
-  const hideSettings = userIsAdmin && !pathname.startsWith('/admin');
+  const hideSettings = userIsAdmin && (pathname.startsWith('/mentor') || pathname.startsWith('/mentee'));
   const shouldKeep = (item: NavItem) => !(hideSettings && item.href === '/settings');
   const config: NavConfig = isSections(rawConfig)
     ? rawConfig.map((s) => ({ ...s, items: s.items.filter(shouldKeep) }))

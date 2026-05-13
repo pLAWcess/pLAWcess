@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Dropdown from '@/components/ui/Dropdown';
 
 interface ArchiveCase {
   id: string;
@@ -101,24 +102,20 @@ export default function ArchivePage() {
           ].map(({ label, value, options, onChange }) => (
             <div key={label} className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-text-primary">{label}</label>
-              <select
+              <Dropdown
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="text-sm border border-border-input rounded-md px-3 py-2 focus:outline-none focus:border-brand bg-white transition-colors"
-              >
-                {options.map((o) => <option key={o}>{o}</option>)}
-              </select>
+                onChange={onChange}
+                options={options.map((o) => ({ value: o, label: o }))}
+              />
             </div>
           ))}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text-primary">LEET 구간</label>
-            <select
+            <Dropdown
               value={leetRange}
-              onChange={(e) => setLeetRange(Number(e.target.value))}
-              className="text-sm border border-border-input rounded-md px-3 py-2 focus:outline-none focus:border-brand bg-white transition-colors"
-            >
-              {LEET_OPTIONS.map((o, i) => <option key={o.label} value={i}>{o.label}</option>)}
-            </select>
+              onChange={setLeetRange}
+              options={LEET_OPTIONS.map((o, i) => ({ value: i, label: o.label }))}
+            />
           </div>
         </div>
       </div>
