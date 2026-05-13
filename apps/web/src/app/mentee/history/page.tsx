@@ -11,7 +11,7 @@ export default async function MenteeHistoryPage() {
   const historyYears = (response?.years ?? []).filter((y) => y !== activeYearNum);
 
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">지난 기록</h1>
         <p className="text-sm text-text-secondary mt-1">이전 연도에 작성한 나의 데이터를 확인할 수 있습니다.</p>

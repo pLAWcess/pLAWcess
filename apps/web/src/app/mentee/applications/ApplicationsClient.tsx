@@ -91,7 +91,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   }
 
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
+    <div className="flex flex-col gap-6">
       {/* 페이지 타이틀 */}
       <div>
         <h1 className="text-2xl font-bold text-text-primary">프로세스 신청</h1>

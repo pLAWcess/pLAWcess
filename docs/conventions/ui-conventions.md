@@ -7,32 +7,33 @@
 
 ## 1. 페이지 wrapper
 
-### Admin (`/admin/*`)
+**원칙: 페이지는 `flex flex-col gap-N` 만, `page-container` 직접 적용 금지.**
+
+모든 sub-layout 이 children 을 `<div className="page-container w-full">` 로 감싼다 (max-width 64rem + mx-auto). 페이지 컴포넌트는 가로폭에 신경 쓰지 않고 콘텐츠 구조만 책임.
+
+| 영역 | 페이지 wrapper |
+|------|---------------|
+| `/admin/*` | `flex flex-col gap-8` |
+| `/mentee/*`, `/mentor/*` | `flex flex-col gap-6` |
 
 ```tsx
+// 좋음
 <div className="flex flex-col gap-8">
   <PageHeader />
   <Section1 />
-  <Section2 />
 </div>
+
+// 나쁨 — page-container 이중 적용 + 좌측 정렬 어긋남
+<div className="flex flex-col gap-8 page-container w-full">
 ```
 
-- **`page-container` / `w-full` 직접 적용 금지.** `app/admin/layout.tsx` 가 이미 children 에 `page-container w-full` 을 씌운다. 자체로 또 적용하면 이중 적용 + 다른 어드민 페이지와 좌측 정렬 어긋남.
-- **간격은 `gap-8`.** (`gap-6` 또는 다른 값 쓰지 않기 — 어드민 페이지 간 일관성)
+**page-container 를 책임지는 layout (총 11개):**
 
-### Mentee / Mentor (`/mentee/*`, `/mentor/*`)
+- `app/admin/layout.tsx`
+- `app/mentee/{announcements,applications,archive,dashboard,history}/layout.tsx` (5)
+- `app/mentor/{announcements,archive,dashboard,history,mentees}/layout.tsx` (5)
 
-```tsx
-<div className="flex flex-col gap-6 page-container w-full">
-  <PageHeader />
-  <Section1 />
-</div>
-```
-
-- layout 이 page-container 를 씌우지 않으므로 페이지에서 직접 적용.
-- 간격은 `gap-6`.
-
-> ❓ **왜 어드민·멘티가 다른가**: admin layout 은 모든 페이지에 page-container 를 자동 적용하지만, mentee/mentor layout 은 안 하기 때문 (기존 코드 결정). 통일하려면 layout 양쪽 모두 page-container 를 씌우고 페이지에서 빼는 게 깔끔. 후속 정리 대상.
+> ⚠️ **미정리 영역**: `app/mentee/results/` 는 sub-layout 이 없어서 page-container 도 `DashboardShell` 도 적용 안 됨. 페이지 자체가 placeholder(`<h1>` 만) 라 우선순위 낮지만, 본 구현 시 sub-layout 부터 추가할 것.
 
 ---
 
@@ -269,7 +270,7 @@
 
 ## 14. 안티 패턴
 
-- ❌ `page-container w-full` 을 admin 페이지에서 직접 사용 (layout 이중)
+- ❌ `page-container w-full` 을 페이지 컴포넌트에서 직접 사용 (모든 sub-layout 이 이미 적용)
 - ❌ `gap-6`을 admin 페이지에서 사용 (어드민은 `gap-8`)
 - ❌ inline hex 색상 (`#0066CC` 등) — 토큰 사용
 - ❌ 카드 헤더에 `(괄호 안 안내)` hint — 인라인이라도 컨텍스트 없는 안내는 노이즈
@@ -282,3 +283,4 @@
 ## 변경 이력
 
 - 2026-05-13: 초안 — 어드민 페이지 wrapper 통일 시점 (커밋 `c9e37b7`).
+- 2026-05-13: 페이지 wrapper 통일 — 모든 sub-layout 에서 page-container 적용, 페이지 컴포넌트에서 일괄 제거.

@@ -238,7 +238,7 @@ export default function PersonalStatementClient({
 
   if (tabs.length === 0) {
     return (
-      <div className="flex flex-col gap-6 page-container w-full">
+      <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">자기소개서</h1>
           <p className="text-sm text-text-secondary mt-1">지망 로스쿨 자기소개서를 편집하고 저장하세요</p>
@@ -257,7 +257,7 @@ export default function PersonalStatementClient({
   const statusText = getSaveStatus();
 
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
+    <div className="flex flex-col gap-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>

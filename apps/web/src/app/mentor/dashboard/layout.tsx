@@ -18,7 +18,7 @@ export default async function MentorDashboardLayout({ children }: { children: Re
 
   return (
     <DashboardShell initialUser={initialUser} showPasswordReminder={reminderStatus?.showReminder ?? false}>
-      {children}
+      <div className="page-container w-full">{children}</div>
     </DashboardShell>
   );
 }

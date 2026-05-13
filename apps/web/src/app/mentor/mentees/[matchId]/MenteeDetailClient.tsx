@@ -394,7 +394,7 @@ export default function MenteeDetailClient({ data }: Props) {
 
   if (!data) {
     return (
-      <div className="flex flex-col gap-8 page-container w-full">
+      <div className="flex flex-col gap-8">
         <Link href="/mentor/dashboard" className="text-sm text-brand hover:underline">
           ← 멘토 대시보드
         </Link>
@@ -416,7 +416,7 @@ export default function MenteeDetailClient({ data }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
+    <div className="flex flex-col gap-6">
       <Link href="/mentor/dashboard" className="text-sm text-brand hover:underline">
         ← 멘토 대시보드
       </Link>

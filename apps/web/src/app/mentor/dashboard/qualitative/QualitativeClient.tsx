@@ -1192,7 +1192,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   function renderDashboard() {
     if (serverActivities.length === 0) {
       return (
-        <div className="flex flex-col gap-6 page-container">
+        <div className="flex flex-col gap-6">
           <CareerGoalCard value={careerGoal} onSave={handleCareerGoalSave} readOnly={readOnly} />
           {readOnly ? (
             <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 flex items-center justify-center">
@@ -1296,7 +1296,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   }
 
   return (
-    <div className="flex flex-col gap-6 page-container w-full">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">정성 데이터</h1>
         <p className="text-sm text-text-secondary mt-1">경험과 활동 정보를 입력하고 AI 분석을 받아보세요</p>

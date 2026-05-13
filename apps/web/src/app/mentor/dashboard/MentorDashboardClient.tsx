@@ -298,7 +298,7 @@ type Props = {
 
 export default function MentorDashboardClient({ status, cycle }: Props) {
   return (
-    <div className="flex flex-col gap-8 page-container w-full">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">멘토 대시보드</h1>
         <p className="text-sm text-text-secondary mt-1">
