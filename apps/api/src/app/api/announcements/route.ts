@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
-import { requireAuth } from "@/lib/auth-guard";
 import { parsePagination } from "@/lib/pagination";
 
+// 공개 라우트 — 비로그인 사용자도 /announcements 랜딩 페이지에서 조회한다.
+// PUBLIC_PATHS 에 등록되어 있어야 한다.
 export async function GET(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (auth.error) return auth.error;
-
   const pg = parsePagination(req);
   if (pg.error) return pg.error;
   const { page, limit } = pg;

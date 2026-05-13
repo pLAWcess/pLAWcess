@@ -6,6 +6,7 @@ import { saveUser, clearUser, type AuthUser } from '@/lib/api';
 import { validatePassword } from '@/lib/password';
 import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import DeleteAccountModal from './DeleteAccountModal';
+import MenteeShareSettingsCard from './MenteeShareSettingsCard';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -120,6 +121,8 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
         <h1 className="text-2xl font-bold text-text-primary">계정</h1>
         <p className="text-sm text-text-secondary mt-1">계정 정보를 확인하고 관리하세요</p>
       </div>
+
+      {user?.current_role === 'mentee' && <MenteeShareSettingsCard />}
 
       {/* 계정 정보 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-2">

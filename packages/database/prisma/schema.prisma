@@ -205,6 +205,15 @@ model MenteeRecord {
   // 신청 시점 학적 스냅샷
   academic_status AcademicStatus?
 
+  // 멘토에게 공개 여부 (#233) — 영역별 boolean. default = true(전부 공개).
+  //   매칭 발표(CycleSchedule.match_announce_date) 전까지 멘티가 수정 가능.
+  //   멘토 측 조회 API 가 비공개 영역을 null/마스킹 처리한다.
+  share_basic_info   Boolean @default(true)
+  share_quantitative Boolean @default(true)
+  share_qualitative  Boolean @default(true)
+  share_statement    Boolean @default(true)
+  share_requests     Boolean @default(true)
+
   // 작성 상태 (draft ↔ submitted 만 사용)
   record_status ApplicationStatus @default(draft)
   current_step  Int               @default(1) @db.SmallInt // 1~4

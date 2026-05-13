@@ -51,11 +51,16 @@ export default function AdminUsersPage() {
   ] as const;
 
   return (
-    <div className="flex flex-col gap-10 w-full">
+    <div className="flex flex-col gap-6 w-full">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">멘토 계정 생성</h1>
+        <p className="text-sm text-text-secondary mt-1">신규 멘토 계정을 만들고 목록을 관리합니다</p>
+      </div>
+
       {/* 생성 폼 */}
-      <section>
-        <h1 className="text-xl font-bold text-text-primary mb-6">멘토 계정 생성</h1>
-        <form onSubmit={handleCreate} className="bg-white border border-border rounded-xl p-6 space-y-4 max-w-md">
+      <section className="bg-white border border-border rounded-xl shadow-sm px-4 sm:px-8 py-6">
+        <h2 className="text-base font-semibold text-text-primary mb-6">신규 계정</h2>
+        <form onSubmit={handleCreate} className="space-y-4 max-w-md">
           {fields.map(({ key, label, type, placeholder, required }) => (
             <div key={key} className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-text-primary">
@@ -83,11 +88,11 @@ export default function AdminUsersPage() {
       </section>
 
       {/* 멘토 목록 */}
-      <section>
-        <h2 className="text-lg font-bold text-text-primary mb-4">멘토 목록</h2>
-        <div className="bg-white border border-border rounded-xl overflow-hidden">
+      <section className="bg-white border border-border rounded-xl shadow-sm px-4 sm:px-8 py-6">
+        <h2 className="text-base font-semibold text-text-primary mb-6">멘토 목록</h2>
+        <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-page-bg border-b border-border">
+            <thead className="bg-table-bg border-b border-border">
               <tr>
                 {['이름', '아이디', '소속 로스쿨', '생성일'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-text-secondary font-medium">{h}</th>

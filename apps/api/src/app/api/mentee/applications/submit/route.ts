@@ -30,6 +30,31 @@ export async function POST(req: NextRequest) {
 
   const processYear = getProcessYear(req);
 
+  // 공개 설정 (#233) — 모달에서 받아온 토글 값. 누락된 키는 default true.
+  type ShareInput = Partial<{
+    basicInfo: boolean;
+    quantitative: boolean;
+    qualitative: boolean;
+    statement: boolean;
+    requests: boolean;
+  }>;
+  let shareInput: ShareInput = {};
+  try {
+    const body = await req.json();
+    if (body && typeof body === "object" && "share" in body) {
+      shareInput = (body as { share?: ShareInput }).share ?? {};
+    }
+  } catch {
+    // body 없거나 비어있어도 OK — default 사용
+  }
+  const shareData = {
+    share_basic_info: shareInput.basicInfo ?? true,
+    share_quantitative: shareInput.quantitative ?? true,
+    share_qualitative: shareInput.qualitative ?? true,
+    share_statement: shareInput.statement ?? true,
+    share_requests: shareInput.requests ?? true,
+  };
+
   // 사용자 + 멘티 record 조회
   const record = await prisma.menteeRecord.findUnique({
     where: { user_id_process_year: { user_id: userId, process_year: processYear } },
@@ -47,13 +72,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "이미 제출된 신청서입니다." }, { status: 409 });
   }
 
-  // 트랜잭션: record_status 전환 + Application 생성
+  // 트랜잭션: record_status 전환 + 공개 설정 저장 + Application 생성
   const submittedAt = new Date();
   try {
     const application = await prisma.$transaction(async (tx) => {
       await tx.menteeRecord.update({
         where: { record_id: record.record_id },
-        data: { record_status: "submitted" },
+        data: { record_status: "submitted", ...shareData },
       });
 
       return tx.application.create({

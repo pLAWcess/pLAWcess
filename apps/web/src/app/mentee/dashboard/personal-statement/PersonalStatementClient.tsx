@@ -7,12 +7,15 @@ import {
   uploadPersonalStatement,
   saveTextAnswers,
   resetPersonalStatementHwp,
+  getQualitative,
   type PersonalStatementData,
   type TextAnswer,
+  type StoryOutline,
 } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
+import AIFlowPanel from './AIFlowPanel';
 
 const AUTO_SAVE_MS = 60_000;
 
@@ -62,6 +65,32 @@ export default function PersonalStatementClient({
   const [, setTick] = useState(0);
   const toast = useToast();
   const confirm = useConfirm();
+
+  // AI 추천 자소서 흐름 — 정성 분석 결과에서 가져옴
+  const [aiOutline, setAiOutline] = useState<StoryOutline | null>(null);
+  const [aiOutdated, setAiOutdated] = useState(false);
+  const [aiLoading, setAiLoading] = useState(true);
+
+  useEffect(() => {
+    if (readOnly) {
+      setAiLoading(false);
+      return;
+    }
+    let cancelled = false;
+    getQualitative('mentee', year)
+      .then((q) => {
+        if (cancelled) return;
+        setAiOutline(q.analysis.storyOutline);
+        setAiOutdated(q.analysis.summaryOutdated);
+      })
+      .catch(() => { /* ignore — 분석 미완 상태로 표시 */ })
+      .finally(() => {
+        if (!cancelled) setAiLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [year, readOnly]);
 
   // 새로고침/탭 닫기 시 저장 안 한 변경사항 경고 (탭 전환은 handleTabChange 에서 별도 처리)
   useBeforeUnloadGuard(() => !readOnly && (dirtyRef.current.ga || dirtyRef.current.na));
@@ -257,7 +286,8 @@ export default function PersonalStatementClient({
   const statusText = getSaveStatus();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+      <div className="flex flex-col gap-6 flex-1 min-w-0 w-full">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
@@ -415,6 +445,13 @@ export default function PersonalStatementClient({
             )}
           </div>
         ),
+      )}
+      </div>
+
+      {!readOnly && (
+        <aside className="hidden lg:block lg:w-80 shrink-0 lg:sticky lg:top-6 self-start">
+          <AIFlowPanel outline={aiOutline} outdated={aiOutdated} loading={aiLoading} />
+        </aside>
       )}
     </div>
   );

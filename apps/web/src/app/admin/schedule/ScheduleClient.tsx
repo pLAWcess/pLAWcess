@@ -104,7 +104,7 @@ export default function ScheduleClient({ initialSchedules }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">스케줄 관리</h1>
         <p className="mt-1 text-sm text-text-secondary">연도별 사업 일정을 관리하고 멘티·멘토에게 공개합니다</p>
@@ -195,7 +195,7 @@ export default function ScheduleClient({ initialSchedules }: Props) {
 
               <ul className="divide-y divide-border">
                 {SCHEDULE_ROWS.map(({ label, start, end }) => (
-                  <li key={label} className="flex flex-col sm:grid sm:grid-cols-[180px_1fr] sm:items-center py-4 gap-2 sm:gap-4">
+                  <li key={label} className="flex flex-col sm:grid sm:grid-cols-[180px_1fr] sm:items-center py-4 gap-2 sm:gap-4 min-h-[4.5rem]">
                     <span className="text-sm font-medium text-text-primary">{label}</span>
                     {isEditing && draft ? (
                       <div className="flex flex-wrap items-center gap-2">
