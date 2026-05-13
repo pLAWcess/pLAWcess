@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
@@ -127,9 +127,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-type SortDir = 'asc' | 'desc';
-type SortState<T> = { key: keyof T; dir: SortDir } | null;
-type ColumnDef<T> = { key: keyof T; label: string; sortable?: boolean; render?: (row: T) => React.ReactNode };
+type ColumnDef<T> = { key: keyof T; label: string; render?: (row: T) => React.ReactNode };
 
 function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMenteeRow> | null; statusFilter: 'all' | AdminAccountStatus }) {
   return (
@@ -138,10 +136,10 @@ function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMe
       initialData={initialData}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
-        { key: 'studentId', label: '학번', sortable: true },
-        { key: 'firstMajor', label: '전공', sortable: true, render: (m) => m.firstMajor ?? '-' },
-        { key: 'accountStatus', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.accountStatus} /> },
+        { key: 'name', label: '이름', render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
+        { key: 'studentId', label: '학번' },
+        { key: 'firstMajor', label: '전공', render: (m) => m.firstMajor ?? '-' },
+        { key: 'accountStatus', label: '계정 상태', render: (m) => <StatusBadge status={m.accountStatus} /> },
       ]}
     />
   );
@@ -154,11 +152,11 @@ function MentorPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatu
       initialData={null}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', sortable: true, render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
-        { key: 'studentId', label: '학번', sortable: true },
-        { key: 'lawSchool', label: '소속 로스쿨', sortable: true, render: (m) => m.lawSchool ?? '-' },
-        { key: 'cohort', label: '기수', sortable: true, render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
-        { key: 'accountStatus', label: '계정 상태', sortable: true, render: (m) => <StatusBadge status={m.accountStatus} /> },
+        { key: 'name', label: '이름', render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
+        { key: 'studentId', label: '학번' },
+        { key: 'lawSchool', label: '소속 로스쿨', render: (m) => m.lawSchool ?? '-' },
+        { key: 'cohort', label: '기수', render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
+        { key: 'accountStatus', label: '계정 상태', render: (m) => <StatusBadge status={m.accountStatus} /> },
       ]}
     />
   );
@@ -184,7 +182,6 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [sort, setSort] = useState<SortState<T>>(null);
 
   // 검색어 debounce — 입력 도중 매번 API를 때리지 않도록.
   useEffect(() => {
@@ -248,26 +245,6 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
-  // 정렬은 현재 페이지(최대 5개) 내에서만 적용 — 시각적 안정성을 위해.
-  // 전체 정렬이 필요하면 추후 서버 정렬로 확장.
-  const processed = useMemo(() => {
-    if (!sort) return rows;
-    return [...rows].sort((a, b) => {
-      const av = String(a[sort.key] ?? '');
-      const bv = String(b[sort.key] ?? '');
-      const cmp = av.localeCompare(bv, 'ko');
-      return sort.dir === 'asc' ? cmp : -cmp;
-    });
-  }, [rows, sort]);
-
-  const onSort = (key: keyof T) => {
-    setSort((prev) => {
-      if (!prev || prev.key !== key) return { key, dir: 'asc' };
-      if (prev.dir === 'asc') return { key, dir: 'desc' };
-      return null;
-    });
-  };
-
   return (
     <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
       <div className="flex items-center mb-4 gap-4">
@@ -283,12 +260,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
           <tr className="border-b border-border">
             {columns.map((col) => (
               <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap">
-                {col.sortable ? (
-                  <button onClick={() => onSort(col.key)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
-                    {col.label}
-                    <SortIndicator active={sort?.key === col.key} dir={sort?.key === col.key ? sort.dir : null} />
-                  </button>
-                ) : <span>{col.label}</span>}
+                {col.label}
               </th>
             ))}
           </tr>
@@ -298,10 +270,10 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
             <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
           ) : error ? (
             <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-red-500">{error}</td></tr>
-          ) : processed.length === 0 ? (
+          ) : rows.length === 0 ? (
             <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td></tr>
           ) : (
-            processed.map((row) => (
+            rows.map((row) => (
               <tr key={row.userId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
                   <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
@@ -320,14 +292,6 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
         {totalPages > 1 && <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />}
       </div>
     </section>
-  );
-}
-
-function SortIndicator({ active, dir }: { active: boolean; dir: SortDir | null }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? 'text-brand' : 'text-text-placeholder'}>
-      {active && dir === 'asc' ? <polyline points="18 15 12 9 6 15" /> : <polyline points="6 9 12 15 18 9" />}
-    </svg>
   );
 }
 
