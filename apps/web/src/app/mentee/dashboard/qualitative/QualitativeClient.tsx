@@ -1140,7 +1140,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       setExpandedSet((p) => new Set([...p, idx]));
     } catch (err) {
       console.error(err);
-      toast.error('AI 분석에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error('AI 분석에 실패했어요.\n잠시 후 다시 시도해주세요.');
     } finally {
       setAnalyzingIdx(null);
     }
@@ -1260,7 +1260,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       clearDraftFilesAt(category, index);
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : '저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error(err instanceof Error ? err.message : '저장에 실패했어요.\n잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
       setAnalyzingIdx(null);
@@ -1295,7 +1295,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       setEditFiles([]);
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : '수정에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error(err instanceof Error ? err.message : '수정에 실패했어요.\n잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
       setAnalyzingIdx(null);
@@ -1330,7 +1330,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       else if (editingIdx !== null && editingIdx > idx) { setEditingIdx(editingIdx - 1); }
     } catch (err) {
       console.error(err);
-      toast.error('활동 삭제에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error('활동 삭제에 실패했어요.\n잠시 후 다시 시도해주세요.');
     } finally {
       setDeletingIdx(null);
     }
@@ -1375,7 +1375,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
     } catch (err) {
       console.error(err);
       setServerActivities(prevActivities);
-      toast.error('순서 저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+      toast.error('순서 저장에 실패했어요.\n잠시 후 다시 시도해주세요.');
     }
   }
 

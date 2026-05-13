@@ -222,7 +222,7 @@ export default function AdminApplicationDetailPage({ params }: { params: Promise
           className="px-5 py-2.5 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
           onClick={() => {
             // TODO: API 연결 - 상태 저장 + 메모 저장
-            toast.info('이 화면은 아직 mock 데이터예요. 저장 기능은 API 연결 후 동작합니다.');
+            toast.info('이 화면은 아직 mock 데이터예요.\n저장 기능은 API 연결 후 동작합니다.');
           }}
         >
           저장

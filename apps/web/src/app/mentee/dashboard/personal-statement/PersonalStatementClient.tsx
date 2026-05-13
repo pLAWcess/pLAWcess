@@ -156,7 +156,7 @@ export default function PersonalStatementClient({
     if (isSavingRef.current || resetting) return;
     const ok = await confirm({
       title: '양식으로 초기화',
-      message: '편집한 내용을 모두 버리고 학교 양식으로 되돌립니다. 계속하시겠습니까?',
+      message: '편집한 내용을 모두 버리고 학교 양식으로 되돌립니다.\n계속하시겠습니까?',
       confirmText: '초기화',
       danger: true,
     });

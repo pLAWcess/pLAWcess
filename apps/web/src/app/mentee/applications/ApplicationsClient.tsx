@@ -66,7 +66,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   async function handleSubmit() {
     if (isClosed || isNotRegistered) return;
     if (hasUnsavedCard) {
-      toast.error('저장하지 않은 내용이 있습니다. 완료 버튼을 누른 후 다시 시도해주세요.');
+      toast.error('저장하지 않은 내용이 있습니다.\n완료 버튼을 누른 후 다시 시도해주세요.');
       return;
     }
     if (!agreed) {

@@ -425,7 +425,7 @@ export async function patchQualitativeMultipart(
   );
   if (!res.ok) {
     if (res.status === 413) {
-      throw new Error("업로드 용량이 너무 큽니다. 첨부 파일 합계를 4MB 이하로 줄여주세요.");
+      throw new Error("업로드 용량이 너무 큽니다.\n첨부 파일 합계를 4MB 이하로 줄여주세요.");
     }
     const errBody = await res.json().catch(() => null);
     throw new Error(errBody?.error ?? `정성 데이터 저장 실패 (HTTP ${res.status})`);
