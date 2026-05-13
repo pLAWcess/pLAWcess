@@ -16,6 +16,26 @@
 
 새 라우트를 추가할 때: 인증이 필요하면 핸들러 첫머리에서 `requireAuth`/`requireAdmin`(또는 멘티·멘토 역할 가드)를 호출하고, 무인증 공개라면 `verify-route-auth.ts` 의 `PUBLIC_PATHS` 에 경로를 추가한다.
 
+## 비밀번호 정책 (#243)
+
+비밀번호를 *설정*하는 모든 라우트 — `/api/auth/signup`, `/api/auth/change-password`, `/api/auth/reset-password` — 는 동일한 복잡도 규칙을 강제한다. 단일 진실 출처: `apps/api/src/lib/password.ts` 의 `validatePassword`.
+
+**규칙:**
+- 8자 이상 64자 이하 (bcrypt 의 72바이트 한계 안쪽)
+- ASCII printable 만 (`\x20`–`\x7E`) — 한글·이모지 거부
+- 영문(대소 무관) / 숫자 / 특수문자 중 **2종 이상** 조합
+
+**위반 시 응답:** `400 { error: "<구체 메시지>" }`
+- `"비밀번호는 8자 이상이어야 합니다."`
+- `"비밀번호는 64자 이하여야 합니다."`
+- `"비밀번호는 영문/숫자/특수문자만 사용할 수 있습니다."`
+- `"비밀번호는 영문/숫자/특수문자 중 2종 이상을 조합해야 합니다."`
+- `"비밀번호 형식이 올바르지 않습니다."` (string 이 아닐 때)
+
+FE 의 `apps/web/src/lib/password.ts` 는 동일 규칙의 복제본 + 실시간 체크리스트용 `getPasswordHints` — BE 변경 시 양쪽 동기화 필수. 검증 스크립트: `node --experimental-strip-types apps/api/scripts/verify-password.ts` (14 케이스).
+
+기존 회원의 약한 비번은 강제 변경하지 않는다 (새 비번 설정 시점부터만 적용).
+
 ## 라벨 변환 컨벤션
 
 응답에서 enum 필드는 한국어 라벨로 변환되어 전달된다 (FE 표시용 직접 사용 가능).
@@ -140,7 +160,8 @@
 
 - `signupVerificationToken` JWT 검증: audience `email-verification:signup`, `payload.email === body.email` 일치, 만료 미경과
 - `studentId` 검증: 영문/숫자 4~20자
-- 기존 검증(loginId 형식, password 길이, email/loginId 중복)은 그대로
+- `password` 검증: 위 "비밀번호 정책" 섹션 (#243)
+- 기존 검증(loginId 형식, email/loginId 중복)은 그대로
 
 **Response 201:** `{ user: { user_id, name, login_id, email, student_id, current_role, military_status } }` + 세션 쿠키.
 
@@ -185,13 +206,13 @@
 - JWT 검증 → `token_id` 추출
 - `password_reset_tokens` 조회: 미consumed, 미만료
 - `bcrypt.compare(raw, token_hash)`
-- `newPassword.length ≥ 8`
+- `newPassword` 검증: 위 "비밀번호 정책" 섹션 (#243)
 - 트랜잭션: `User.password_hash` 갱신 + 이 token consumed + 같은 user 의 다른 미사용 reset token 일괄 무효화
 
 **Response 200:** `{ success: true }`
 
 **Errors:**
-- 400: 형식/비밀번호 길이
+- 400: 형식/비밀번호 정책 위반
 - 401: 토큰 만료/사용됨/위조
 
 ---

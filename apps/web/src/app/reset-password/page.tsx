@@ -4,7 +4,9 @@ import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
+import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import { readJson } from '@/lib/http';
+import { validatePassword } from '@/lib/password';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -27,12 +29,13 @@ function ResetPasswordForm() {
     e.preventDefault();
     setError('');
 
-    if (password !== confirm) {
-      setError('비밀번호가 일치하지 않습니다.');
+    const pwValid = validatePassword(password);
+    if (!pwValid.ok) {
+      setError(pwValid.reason);
       return;
     }
-    if (password.length < 8) {
-      setError('비밀번호는 8자 이상이어야 합니다.');
+    if (password !== confirm) {
+      setError('비밀번호가 일치하지 않습니다.');
       return;
     }
 
@@ -85,7 +88,7 @@ function ResetPasswordForm() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="8자 이상 입력"
+              placeholder="새 비밀번호 입력"
               required
               disabled={!resetToken}
               className={`${inputClass} disabled:opacity-50`}
@@ -104,6 +107,7 @@ function ResetPasswordForm() {
               disabled={!resetToken}
               className={`${inputClass} disabled:opacity-50`}
             />
+            <PasswordChecklist password={password} confirm={confirm} className="mt-1" />
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}

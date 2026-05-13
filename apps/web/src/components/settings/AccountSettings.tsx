@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveUser, clearUser, type AuthUser } from '@/lib/api';
+import { validatePassword } from '@/lib/password';
+import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import DeleteAccountModal from './DeleteAccountModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
@@ -65,7 +67,8 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
     e.preventDefault();
     setPwError('');
     setPwSuccess(false);
-    if (newPassword.length < 8) { setPwError('새 비밀번호는 8자 이상이어야 합니다.'); return; }
+    const pwValid = validatePassword(newPassword);
+    if (!pwValid.ok) { setPwError(pwValid.reason); return; }
     if (newPassword !== confirmPassword) { setPwError('새 비밀번호가 일치하지 않습니다.'); return; }
     setPwLoading(true);
     try {
@@ -218,11 +221,12 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="newPassword" className="text-sm font-medium text-text-primary">새 비밀번호</label>
-                <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="8자 이상" required className={inputClass} />
+                <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="새 비밀번호 입력" required className={inputClass} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="confirmPassword" className="text-sm font-medium text-text-primary">새 비밀번호 확인</label>
                 <input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={inputClass} />
+                <PasswordChecklist password={newPassword} confirm={confirmPassword} className="mt-1" />
               </div>
               {pwError && <p className="text-sm text-red-500">{pwError}</p>}
               <button type="submit" disabled={pwLoading} className="w-fit px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium disabled:opacity-50">

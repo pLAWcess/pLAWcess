@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@plawcess/database";
 import { verifyResetToken } from "@/lib/auth-tokens";
+import { validatePassword } from "@/lib/password";
 
 export async function POST(req: NextRequest) {
   let body: { resetToken?: string; newPassword?: string };
@@ -15,8 +16,9 @@ export async function POST(req: NextRequest) {
   if (!resetToken || !newPassword) {
     return NextResponse.json({ error: "resetToken·newPassword 가 필요합니다." }, { status: 400 });
   }
-  if (newPassword.length < 8) {
-    return NextResponse.json({ error: "비밀번호는 8자 이상이어야 합니다." }, { status: 400 });
+  const pwResult = validatePassword(newPassword);
+  if (!pwResult.ok) {
+    return NextResponse.json({ error: pwResult.reason }, { status: 400 });
   }
 
   const payload = verifyResetToken(resetToken);

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@plawcess/database";
 import { signToken, makeAuthCookie } from "@/lib/auth";
 import { verifySignupVerificationToken } from "@/lib/auth-tokens";
+import { validatePassword } from "@/lib/password";
 
 const LOGIN_ID_REGEX = /^[a-zA-Z0-9_]{4,30}$/;
 const STUDENT_ID_REGEX = /^[a-zA-Z0-9]{4,20}$/;
@@ -35,8 +36,9 @@ export async function POST(req: NextRequest) {
   if (!STUDENT_ID_REGEX.test(studentId)) {
     return NextResponse.json({ error: "학번은 영문/숫자 4~20자여야 합니다." }, { status: 400 });
   }
-  if (password.length < 8) {
-    return NextResponse.json({ error: "비밀번호는 8자 이상이어야 합니다." }, { status: 400 });
+  const pwResult = validatePassword(password);
+  if (!pwResult.ok) {
+    return NextResponse.json({ error: pwResult.reason }, { status: 400 });
   }
 
   // 이메일 인증 토큰 검증
