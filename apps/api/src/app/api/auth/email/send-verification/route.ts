@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { prisma } from "@plawcess/database";
 import {
   generateSixDigitCode, hashCode, assertSendRateLimit, RateLimitError,
   CODE_EXPIRES_MINUTES, getClientIp,
 } from "@/lib/email/code";
 import { getEmailSender, EmailDeliveryError } from "@/lib/email/sender";
-import { signupCodeMail, resetPasswordCodeMail } from "@/lib/email/templates";
+import { signupCodeMail, resetPasswordCodeMail, changeEmailCodeMail } from "@/lib/email/templates";
+import { requireAuth } from "@/lib/auth-guard";
 
 type Body =
   | { purpose: "signup"; email: string }
-  | { purpose: "reset_password"; name: string; loginId: string; email: string };
+  | { purpose: "reset_password"; name: string; loginId: string; email: string }
+  | { purpose: "change_email"; email: string; password: string };
 
 export async function POST(req: NextRequest) {
   let body: Body;
@@ -52,6 +55,47 @@ export async function POST(req: NextRequest) {
         expiresAt: new Date(Date.now() + CODE_EXPIRES_MINUTES * 60 * 1000).toISOString(),
       });
     }
+  } else if (body.purpose === "change_email") {
+    const auth = requireAuth(req);
+    if (auth.error) return auth.error;
+    const tokenPayload = auth.payload;
+
+    const { password } = body;
+    if (!password || typeof password !== "string") {
+      return NextResponse.json({ error: "현재 비밀번호가 필요합니다." }, { status: 400 });
+    }
+
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(email)) {
+      return NextResponse.json({ error: "올바른 이메일 형식이 아닙니다." }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { user_id: tokenPayload.user_id },
+      select: { email: true, password_hash: true, is_deleted: true },
+    });
+    if (!user || user.is_deleted) {
+      return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
+    }
+    if (!user.password_hash) {
+      return NextResponse.json({ error: "비밀번호가 설정되지 않은 계정입니다." }, { status: 400 });
+    }
+    if (user.email === email) {
+      return NextResponse.json({ error: "현재 이메일과 동일합니다." }, { status: 400 });
+    }
+
+    const dup = await prisma.user.findFirst({
+      where: { email, is_deleted: false },
+      select: { user_id: true },
+    });
+    if (dup) {
+      return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
+    }
+
+    const pwValid = await bcrypt.compare(password, user.password_hash);
+    if (!pwValid) {
+      return NextResponse.json({ error: "비밀번호가 올바르지 않습니다." }, { status: 401 });
+    }
   } else {
     return NextResponse.json({ error: "지원하지 않는 purpose 입니다." }, { status: 400 });
   }
@@ -68,7 +112,10 @@ export async function POST(req: NextRequest) {
 
   // 코드 생성 + Resend 발송
   const code = generateSixDigitCode();
-  const mail = body.purpose === "signup" ? signupCodeMail(code) : resetPasswordCodeMail(code);
+  const mail =
+    body.purpose === "signup" ? signupCodeMail(code)
+    : body.purpose === "reset_password" ? resetPasswordCodeMail(code)
+    : changeEmailCodeMail(code);
   try {
     await getEmailSender().send({ to: email, ...mail });
   } catch (e) {

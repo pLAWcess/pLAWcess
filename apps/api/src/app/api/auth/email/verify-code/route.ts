@@ -6,11 +6,12 @@ import {
   compareCode, findLatestActiveVerification,
   VERIFY_MAX_ATTEMPTS, RESET_TOKEN_EXPIRES_MINUTES, SIGNUP_TOKEN_EXPIRES_MINUTES,
 } from "@/lib/email/code";
-import { signSignupVerificationToken, signResetToken } from "@/lib/auth-tokens";
+import { signSignupVerificationToken, signResetToken, signChangeEmailVerificationToken } from "@/lib/auth-tokens";
+import { requireAuth } from "@/lib/auth-guard";
 
 type Body = {
   email: string;
-  purpose: "signup" | "reset_password";
+  purpose: "signup" | "reset_password" | "change_email";
   code: string;
 };
 
@@ -26,8 +27,15 @@ export async function POST(req: NextRequest) {
   if (!email || !purpose || !code) {
     return NextResponse.json({ error: "email·purpose·code 가 모두 필요합니다." }, { status: 400 });
   }
-  if (purpose !== "signup" && purpose !== "reset_password") {
+  if (purpose !== "signup" && purpose !== "reset_password" && purpose !== "change_email") {
     return NextResponse.json({ error: "지원하지 않는 purpose 입니다." }, { status: 400 });
+  }
+
+  let changeEmailUserId: string | null = null;
+  if (purpose === "change_email") {
+    const auth = requireAuth(req);
+    if (auth.error) return auth.error;
+    changeEmailUserId = auth.payload.user_id;
   }
 
   const row = await findLatestActiveVerification(email, purpose);
@@ -64,6 +72,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       signupVerificationToken: token,
+      expiresAt: new Date(Date.now() + SIGNUP_TOKEN_EXPIRES_MINUTES * 60 * 1000).toISOString(),
+    });
+  }
+
+  if (purpose === "change_email") {
+    if (!changeEmailUserId) {
+      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    }
+    const token = signChangeEmailVerificationToken(changeEmailUserId, email);
+    return NextResponse.json({
+      ok: true,
+      changeEmailVerificationToken: token,
       expiresAt: new Date(Date.now() + SIGNUP_TOKEN_EXPIRES_MINUTES * 60 * 1000).toISOString(),
     });
   }

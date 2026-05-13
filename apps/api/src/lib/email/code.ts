@@ -9,7 +9,7 @@ export const SEND_COOLDOWN_SECONDS = 60;
 export const SEND_HOURLY_LIMIT = 5;
 export const VERIFY_MAX_ATTEMPTS = 5;
 
-type Purpose = "signup" | "reset_password";
+type Purpose = "signup" | "reset_password" | "change_email";
 
 export function generateSixDigitCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, "0");

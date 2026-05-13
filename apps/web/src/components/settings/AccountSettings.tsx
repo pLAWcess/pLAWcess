@@ -19,8 +19,11 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailStep, setEmailStep] = useState<'form' | 'code'>('form');
   const [newEmail, setNewEmail] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
+  const [emailCode, setEmailCode] = useState('');
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const [emailError, setEmailError] = useState('');
   const [emailSuccess, setEmailSuccess] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
@@ -37,26 +40,74 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
     if (initialUser) saveUser(initialUser);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleChangeEmail(e: React.FormEvent) {
+  useEffect(() => {
+    if (emailCooldown <= 0) return;
+    const t = setTimeout(() => setEmailCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [emailCooldown]);
+
+  function resetEmailForm() {
+    setEmailStep('form');
+    setNewEmail('');
+    setEmailPassword('');
+    setEmailCode('');
+    setEmailCooldown(0);
+    setEmailError('');
+    setEmailLoading(false);
+  }
+
+  async function handleSendEmailCode(e: React.FormEvent) {
     e.preventDefault();
     setEmailError('');
-    setEmailSuccess(false);
     setEmailLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/change-email`, {
+      const res = await fetch(`${API_BASE}/api/auth/email/send-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ newEmail, password: emailPassword }),
+        body: JSON.stringify({ purpose: 'change_email', email: newEmail, password: emailPassword }),
       });
       const data = await res.json();
       if (!res.ok) { setEmailError(data.error ?? '오류가 발생했습니다.'); return; }
-      const updated = user ? { ...user, email: newEmail } : null;
+      setEmailStep('code');
+      setEmailCooldown(60);
+      setEmailCode('');
+    } catch {
+      setEmailError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  async function handleVerifyAndChangeEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailError('');
+    setEmailLoading(true);
+    try {
+      const verifyRes = await fetch(`${API_BASE}/api/auth/email/verify-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ purpose: 'change_email', email: newEmail, code: emailCode }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) { setEmailError(verifyData.error ?? '코드 검증에 실패했습니다.'); return; }
+
+      const token: string = verifyData.changeEmailVerificationToken;
+      const changeRes = await fetch(`${API_BASE}/api/auth/change-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ changeEmailVerificationToken: token }),
+      });
+      const changeData = await changeRes.json();
+      if (!changeRes.ok) { setEmailError(changeData.error ?? '이메일 변경에 실패했습니다.'); return; }
+
+      const updated = user ? { ...user, email: changeData.email ?? newEmail } : null;
       if (updated) { saveUser(updated); setUser(updated); }
       setEmailSuccess(true);
-      setNewEmail('');
-      setEmailPassword('');
       setShowEmailForm(false);
+      resetEmailForm();
     } catch {
       setEmailError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
     } finally {
@@ -150,7 +201,10 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
             </div>
             <button
               type="button"
-              onClick={() => { setShowEmailForm((v) => !v); setEmailError(''); setEmailSuccess(false); }}
+              onClick={() => {
+                if (showEmailForm) { resetEmailForm(); setShowEmailForm(false); }
+                else { setShowEmailForm(true); setEmailError(''); setEmailSuccess(false); }
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary border border-border rounded-lg hover:bg-gray-50 transition-colors shrink-0"
             >
               {showEmailForm ? (
@@ -168,20 +222,53 @@ export default function AccountSettings({ initialUser }: { initialUser: AuthUser
           </div>
 
           {showEmailForm && (
-            <form onSubmit={handleChangeEmail} className="flex flex-col gap-4 max-w-sm mt-5">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="newEmail" className="text-sm font-medium text-text-primary">새 이메일</label>
-                <input id="newEmail" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className={inputClass} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="emailPassword" className="text-sm font-medium text-text-primary">비밀번호 확인</label>
-                <input id="emailPassword" type="password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className={inputClass} />
-              </div>
-              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
-              <button type="submit" disabled={emailLoading} className="w-fit px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium disabled:opacity-50">
-                {emailLoading ? '변경 중...' : '변경'}
-              </button>
-            </form>
+            emailStep === 'form' ? (
+              <form onSubmit={handleSendEmailCode} className="flex flex-col gap-4 max-w-sm mt-5">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="newEmail" className="text-sm font-medium text-text-primary">새 이메일</label>
+                  <input id="newEmail" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className={inputClass} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="emailPassword" className="text-sm font-medium text-text-primary">현재 비밀번호</label>
+                  <input id="emailPassword" type="password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required className={inputClass} />
+                </div>
+                {emailError && <p className="text-sm text-red-500">{emailError}</p>}
+                <button type="submit" disabled={emailLoading} className="w-fit px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium disabled:opacity-50">
+                  {emailLoading ? '발송 중...' : '인증코드 발송'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyAndChangeEmail} className="flex flex-col gap-4 max-w-sm mt-5">
+                <p className="text-sm text-text-secondary">
+                  <span className="text-text-primary font-medium">{newEmail}</span> 으로 6자리 코드를 보냈습니다. 메일을 확인해주세요.
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="emailCode" className="text-sm font-medium text-text-primary">인증 코드</label>
+                  <input id="emailCode" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={emailCode} onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ''))} required className={inputClass} />
+                </div>
+                {emailError && <p className="text-sm text-red-500">{emailError}</p>}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button type="submit" disabled={emailLoading || emailCode.length !== 6} className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-sm font-medium disabled:opacity-50">
+                    {emailLoading ? '변경 중...' : '변경 완료'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={emailCooldown > 0 || emailLoading}
+                    onClick={() => handleSendEmailCode({ preventDefault() {} } as React.FormEvent)}
+                    className="px-3 py-2 text-sm text-text-secondary border border-border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    {emailCooldown > 0 ? `재발송 (${emailCooldown}s)` : '재발송'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmailStep('form'); setEmailCode(''); setEmailError(''); }}
+                    className="px-3 py-2 text-sm text-text-secondary hover:underline"
+                  >
+                    ← 이전
+                  </button>
+                </div>
+              </form>
+            )
           )}
         </div>
       </div>
