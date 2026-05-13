@@ -1,7 +1,13 @@
 import jwt from "jsonwebtoken";
 import type { NextRequest } from "next/server";
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+// JWT_SECRET 미설정 시 모듈 로드 시점(서버 부팅 / next build)에 즉시·명확하게 죽는다(fail fast) —
+// non-null assertion(!) 만 쓰면 요청 처리 중 jsonwebtoken 이 맥락 없는 에러를 던져 디버깅이 길어진다.
+// (가드 통과 값으로 재대입 → JWT_SECRET 의 타입이 string 으로 확정돼 아래 hoisted 함수들에서도 안전.)
+const rawJwtSecret = process.env.JWT_SECRET;
+if (!rawJwtSecret) throw new Error("JWT_SECRET 환경변수가 설정되지 않았습니다.");
+const JWT_SECRET = rawJwtSecret;
+
 const COOKIE_NAME = "plawcess_token";
 const EXPIRES_IN = "7d";
 const ISSUER = "pLAWcess";

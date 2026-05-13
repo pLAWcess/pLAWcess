@@ -39,6 +39,9 @@ jobs:
         run: pnpm build:web
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001
+          # apps/web/src/lib/jwt.ts (decodeSessionToken) 가 모듈 로드 시점에
+          # JWT_SECRET 존재를 검증 → 빌드 통과용 더미. apps/api 빌드와 동일 패턴(#183).
+          JWT_SECRET: ci-secret-for-build
 
       - name: Build (api)
         run: pnpm build:api
