@@ -462,7 +462,10 @@ export async function summarizeQualitative(
 }
 
 // ----------------------------------------------------------------
-// 정성 이전 연도 캐리오버 (멘티 전용)
+// 정성 이전 연도 캐리오버 (멘티·멘토 공용)
+// 출처(source) 는 항상 MenteeRecord. 도착(target) 만 role 에 따라 분기:
+//   - mentee 페이지 → MenteeRecord
+//   - mentor 페이지 → MentorRecord (멘토가 과거 멘티 시절 활동을 끌어옴)
 // spec: docs/superpowers/specs/2026-05-14-mentee-qualitative-carryover-design.md
 // ----------------------------------------------------------------
 export type PreviousYearSummary = {
@@ -504,12 +507,13 @@ export async function getPreviousQualitativeActivities(
 }
 
 export async function importPreviousQualitativeActivities(params: {
+  role: QualRole;
   currentYear: string;
   fromYear: number;
   activityIndices: number[];
 }): Promise<{ importedCount: number; currentActivityCount: number }> {
   const res = await fetch(
-    `${API_BASE}/api/mentee/qualitative/import-activities?year=${encodeURIComponent(params.currentYear)}`,
+    `${API_BASE}/api/${params.role}/qualitative/import-activities?year=${encodeURIComponent(params.currentYear)}`,
     {
       method: "POST",
       headers: headers(),

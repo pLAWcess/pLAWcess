@@ -8,19 +8,24 @@ import {
   importPreviousQualitativeActivities,
   type PreviousYearSummary,
   type QualitativeActivity,
+  type QualRole,
 } from '@/lib/api';
 
 interface Props {
   open: boolean;
+  // 도착 record. 'mentor' 면 멘토가 과거 멘티 시절 활동을 본인 멘토 record 로 끌어오는 경로.
+  // 출처 조회(이전 연도/활동 목록) 는 role 과 무관하게 항상 MenteeRecord 에서 가져온다.
+  role: QualRole;
   currentYear: string;
   onClose: () => void;
   onImported: () => void;
 }
 
-export default function ImportActivitiesModal({ open, currentYear, onClose, onImported }: Props) {
+export default function ImportActivitiesModal({ open, role, currentYear, onClose, onImported }: Props) {
   if (!open) return null;
   return (
     <ImportActivitiesModalInner
+      role={role}
       currentYear={currentYear}
       onClose={onClose}
       onImported={onImported}
@@ -29,6 +34,7 @@ export default function ImportActivitiesModal({ open, currentYear, onClose, onIm
 }
 
 function ImportActivitiesModalInner({
+  role,
   currentYear,
   onClose,
   onImported,
@@ -107,6 +113,7 @@ function ImportActivitiesModalInner({
     setSubmitting(true);
     try {
       const result = await importPreviousQualitativeActivities({
+        role,
         currentYear,
         fromYear: selectedYear,
         activityIndices: Array.from(checked).sort((a, b) => a - b),
@@ -147,7 +154,7 @@ function ImportActivitiesModalInner({
         {/* 안내 */}
         <div className="px-6 pt-4 pb-2">
           <p className="text-xs text-text-secondary leading-relaxed">
-            선택한 활동과 함께 작년의 AI 분석 결과가 함께 가져와집니다. 가져온 뒤 활동을 수정하면 통합 분석은 다시 실행해야 합니다.
+            선택한 활동과 함께 이전 연도의 AI 분석 결과가 함께 가져와집니다. 가져온 뒤 활동을 수정하면 통합 분석은 다시 실행해야 합니다.
           </p>
         </div>
 

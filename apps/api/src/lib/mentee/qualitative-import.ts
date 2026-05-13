@@ -23,7 +23,8 @@ export type ImportActivitiesResult =
   | { ok: false; status: number; error: string };
 
 // 작년(fromYear) MenteeRecord 의 활동 + 관련 AI 분석 결과를
-// 올해(toYear) MenteeRecord 에 append/덮어쓰기 한다.
+// 올해(toYear) 의 본인 record (mentee 또는 mentor) 에 append/덮어쓰기 한다.
+// 출처는 항상 MenteeRecord — 멘토는 과거 멘티 시절 활동을 끌어오는 용도.
 //
 // 정책 (spec: docs/superpowers/specs/2026-05-14-mentee-qualitative-carryover-design.md):
 //   - qualitative_activities: 선택된 활동만 끝에 append (인덱스 재할당)
@@ -31,15 +32,19 @@ export type ImportActivitiesResult =
 //   - star_input_hashes: 작년 hash 를 새 인덱스 키로 머지 (같은 내용이면 재분석 스킵)
 //   - 통합 분석 5개 필드(ai_keywords, ai_story_outline, ai_summary_hash,
 //     is_ai_analyzed, ai_analyzed_at) 는 작년 값으로 덮어씀.
-//     멘티가 import 후 활동을 추가/수정하면 기존 invalidation 로직이
+//     사용자가 import 후 활동을 추가/수정하면 기존 invalidation 로직이
 //     ai_summary_hash 변경을 감지해서 is_ai_analyzed=false 로 떨어뜨린다.
 export async function importQualitativeActivities(params: {
   userId: string;
   toYear: number;
   fromYear: number;
   activityIndices: number[];
+  // 도착 레코드 종류. mentee 면 MenteeRecord, mentor 면 MentorRecord 에 쓴다.
+  // 출처(fromYear) 는 항상 MenteeRecord.
+  targetRole?: "mentee" | "mentor";
 }): Promise<ImportActivitiesResult> {
   const { userId, toYear, fromYear } = params;
+  const targetRole = params.targetRole ?? "mentee";
 
   if (fromYear === toYear) {
     return { ok: false, status: 400, error: "같은 연도에서는 가져올 수 없습니다." };
@@ -81,19 +86,40 @@ export async function importQualitativeActivities(params: {
       return {
         ok: false,
         status: 400,
-        error: "선택한 활동 인덱스가 작년 기록 범위를 벗어났습니다.",
+        error: "선택한 활동 인덱스가 해당 연도 기록 범위를 벗어났습니다.",
       } as const;
     }
 
-    let target = await tx.menteeRecord.findUnique({
-      where: { user_id_process_year: { user_id: userId, process_year: toYear } },
-      select: {
-        record_status: true,
-        qualitative_activities: true,
-        star_analysis: true,
-        star_input_hashes: true,
-      },
-    });
+    // 도착 레코드: targetRole 에 따라 mentee/mentor 테이블 분기.
+    // Prisma 의 생성된 delegate 타입이 generic 시그니처라 alias 로 합치면 호출이 안 되므로,
+    // 두 경로를 명시적으로 분기한다.
+    const targetSelect = {
+      record_status: true,
+      qualitative_activities: true,
+      star_analysis: true,
+      star_input_hashes: true,
+    } as const;
+
+    let target:
+      | {
+          record_status: string;
+          qualitative_activities: Prisma.JsonValue | null;
+          star_analysis: Prisma.JsonValue | null;
+          star_input_hashes: Prisma.JsonValue | null;
+        }
+      | null;
+
+    if (targetRole === "mentor") {
+      target = await tx.mentorRecord.findUnique({
+        where: { user_id_process_year: { user_id: userId, process_year: toYear } },
+        select: targetSelect,
+      });
+    } else {
+      target = await tx.menteeRecord.findUnique({
+        where: { user_id_process_year: { user_id: userId, process_year: toYear } },
+        select: targetSelect,
+      });
+    }
 
     if (target?.record_status === "submitted") {
       return {
@@ -104,18 +130,23 @@ export async function importQualitativeActivities(params: {
     }
 
     if (!target) {
-      await tx.menteeRecord.create({
-        data: { user_id: userId, process_year: toYear },
-      });
-      target = await tx.menteeRecord.findUnique({
-        where: { user_id_process_year: { user_id: userId, process_year: toYear } },
-        select: {
-          record_status: true,
-          qualitative_activities: true,
-          star_analysis: true,
-          star_input_hashes: true,
-        },
-      });
+      if (targetRole === "mentor") {
+        await tx.mentorRecord.create({
+          data: { user_id: userId, process_year: toYear },
+        });
+        target = await tx.mentorRecord.findUnique({
+          where: { user_id_process_year: { user_id: userId, process_year: toYear } },
+          select: targetSelect,
+        });
+      } else {
+        await tx.menteeRecord.create({
+          data: { user_id: userId, process_year: toYear },
+        });
+        target = await tx.menteeRecord.findUnique({
+          where: { user_id_process_year: { user_id: userId, process_year: toYear } },
+          select: targetSelect,
+        });
+      }
     }
 
     const targetActivitiesRaw = target?.qualitative_activities ?? [];
@@ -159,19 +190,28 @@ export async function importQualitativeActivities(params: {
       mergedHashes[String(newIdx)] = hash;
     }
 
-    await tx.menteeRecord.update({
-      where: { user_id_process_year: { user_id: userId, process_year: toYear } },
-      data: {
-        qualitative_activities: newActivities as unknown as Prisma.InputJsonValue,
-        star_analysis: mergedStarAnalysis as unknown as Prisma.InputJsonValue,
-        star_input_hashes: mergedHashes as unknown as Prisma.InputJsonValue,
-        ai_keywords: (source.ai_keywords ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-        ai_story_outline: (source.ai_story_outline ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-        ai_summary_hash: source.ai_summary_hash,
-        is_ai_analyzed: source.is_ai_analyzed,
-        ai_analyzed_at: source.ai_analyzed_at,
-      },
-    });
+    const updateData = {
+      qualitative_activities: newActivities as unknown as Prisma.InputJsonValue,
+      star_analysis: mergedStarAnalysis as unknown as Prisma.InputJsonValue,
+      star_input_hashes: mergedHashes as unknown as Prisma.InputJsonValue,
+      ai_keywords: (source.ai_keywords ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+      ai_story_outline: (source.ai_story_outline ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+      ai_summary_hash: source.ai_summary_hash,
+      is_ai_analyzed: source.is_ai_analyzed,
+      ai_analyzed_at: source.ai_analyzed_at,
+    };
+
+    if (targetRole === "mentor") {
+      await tx.mentorRecord.update({
+        where: { user_id_process_year: { user_id: userId, process_year: toYear } },
+        data: updateData,
+      });
+    } else {
+      await tx.menteeRecord.update({
+        where: { user_id_process_year: { user_id: userId, process_year: toYear } },
+        data: updateData,
+      });
+    }
 
     return {
       ok: true,

@@ -1651,6 +1651,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
 
       <ImportActivitiesModal
         open={importModalOpen}
+        role="mentee"
         currentYear={year}
         onClose={() => setImportModalOpen(false)}
         onImported={() => {
