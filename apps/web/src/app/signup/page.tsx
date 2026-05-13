@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Footer from '@/components/layout/Footer';
+import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import { readJson } from '@/lib/http';
+import { validatePassword } from '@/lib/password';
 
 const API_BASE = '';
 const COOLDOWN_SEC = 60;
@@ -179,6 +181,8 @@ export default function SignupPage() {
 
     if (!checkResult?.ok) { setError('아이디 중복확인을 해주세요.'); return; }
     if (emailVerifyState !== 'verified') { setError('이메일 인증을 완료해주세요.'); return; }
+    const pwValid = validatePassword(form.password);
+    if (!pwValid.ok) { setError(pwValid.reason); return; }
     if (form.password !== form.passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return; }
     if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(form.birthDate)) {
       setError('생년월일은 YYYY.MM.DD. 형식으로 입력해주세요.');
@@ -373,7 +377,6 @@ export default function SignupPage() {
                   onChange={(e) => update('password', e.target.value)}
                   placeholder="비밀번호를 입력하세요"
                   required
-                  minLength={8}
                   className={inputClass}
                 />
               </Field>
@@ -389,6 +392,7 @@ export default function SignupPage() {
                   required
                   className={inputClass}
                 />
+                <PasswordChecklist password={form.password} confirm={form.passwordConfirm} className="mt-1" />
               </Field>
 
               {/* 생년월일 */}
