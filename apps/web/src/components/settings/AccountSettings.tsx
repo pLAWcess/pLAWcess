@@ -8,7 +8,7 @@ import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import DeleteAccountModal from './DeleteAccountModal';
 import MenteeShareSettingsCard from './MenteeShareSettingsCard';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const API_BASE = '';
 
 const ROLE_LABEL: Record<string, string> = { mentee: '멘티', mentor: '멘토', admin: '관리자' };
 

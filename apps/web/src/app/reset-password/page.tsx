@@ -8,7 +8,7 @@ import PasswordChecklist from '@/components/auth/PasswordChecklist';
 import { readJson } from '@/lib/http';
 import { validatePassword } from '@/lib/password';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const API_BASE = '';
 
 function ResetPasswordForm() {
   const router = useRouter();

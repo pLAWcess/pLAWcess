@@ -9,7 +9,7 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const API_BASE = '';
 
 export default function AnnouncementCard({ a }: { a: AnnouncementRow }) {
   const [expanded, setExpanded] = useState(false);
