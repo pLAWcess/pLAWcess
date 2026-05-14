@@ -463,6 +463,7 @@ model CycleSchedule {
 enum EmailVerificationPurpose {
   signup
   reset_password
+  change_email
 }
 
 model EmailVerification {

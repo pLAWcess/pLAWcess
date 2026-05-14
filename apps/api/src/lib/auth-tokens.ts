@@ -9,6 +9,7 @@ const ISSUER = "pLAWcess";
 
 const SIGNUP_VERIFICATION_AUDIENCE = "email-verification:signup";
 const PASSWORD_RESET_AUDIENCE = "password-reset";
+const CHANGE_EMAIL_VERIFICATION_AUDIENCE = "email-verification:change-email";
 
 export type SignupVerificationPayload = {
   email: string;
@@ -17,6 +18,11 @@ export type SignupVerificationPayload = {
 export type ResetTokenPayload = {
   token_id: string;
   raw: string;
+};
+
+export type ChangeEmailVerificationPayload = {
+  user_id: string;
+  newEmail: string;
 };
 
 export function signSignupVerificationToken(email: string): string {
@@ -52,6 +58,25 @@ export function verifyResetToken(token: string): ResetTokenPayload | null {
       issuer: ISSUER,
       audience: PASSWORD_RESET_AUDIENCE,
     }) as ResetTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function signChangeEmailVerificationToken(user_id: string, newEmail: string): string {
+  return jwt.sign({ user_id, newEmail } satisfies ChangeEmailVerificationPayload, JWT_SECRET, {
+    expiresIn: "10m",
+    issuer: ISSUER,
+    audience: CHANGE_EMAIL_VERIFICATION_AUDIENCE,
+  });
+}
+
+export function verifyChangeEmailVerificationToken(token: string): ChangeEmailVerificationPayload | null {
+  try {
+    return jwt.verify(token, JWT_SECRET, {
+      issuer: ISSUER,
+      audience: CHANGE_EMAIL_VERIFICATION_AUDIENCE,
+    }) as ChangeEmailVerificationPayload;
   } catch {
     return null;
   }

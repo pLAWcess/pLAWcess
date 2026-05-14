@@ -9,7 +9,7 @@
 **기본 막힘(deny by default)** — `/api` 아래 모든 라우트는 인증이 필요하다. 무인증 공개 라우트는 명시적으로 허용 목록에 등록되며, 그 목록은 `apps/api/scripts/verify-route-auth.ts` 의 `PUBLIC_PATHS` 가 단일 출처다 (이 스크립트가 "비공개 라우트는 쿠키 없이 호출 시 401" 을 검증한다).
 
 - **무인증 공개**: `/api/health`, `/api/auth/login`, `/api/auth/signup`, `/api/auth/logout`, `/api/auth/find-id`, `/api/auth/reset-password`, `/api/auth/check-login-id`, `/api/auth/email/send-verification`, `/api/auth/email/verify-code`
-- **인증 필요·역할 무관** (예: `/api/auth/me`, `/api/auth/change-password`, `/api/announcements*`, `/api/cycle-schedules/active` 등): 핸들러가 `requireAuth(req)` 호출
+- **인증 필요·역할 무관** (예: `/api/auth/me`, `/api/auth/change-password`, `/api/auth/change-email`, `/api/announcements*`, `/api/cycle-schedules/active` 등): 핸들러가 `requireAuth(req)` 호출
 - `/api/mentee/*`: `mentee` 또는 `admin`
 - `/api/mentor/*`: `mentor` 또는 `admin`
 - `/api/admin/*`: `admin` — 핸들러가 `requireAdmin(req)` 호출
@@ -104,39 +104,44 @@ FE 의 `apps/web/src/lib/password.ts` 는 동일 규칙의 복제본 + 실시간
 
 ---
 
-## `/api/auth/email/send-verification` — POST (#83·#84)
+## `/api/auth/email/send-verification` — POST (#83·#84·#248)
 
-회원가입·비밀번호재설정용 6자리 코드 메일 발송.
+회원가입·비밀번호재설정·이메일변경용 6자리 코드 메일 발송.
 
 **Body (purpose 별 분기):**
 ```ts
 | { purpose: "signup"; email: string }
 | { purpose: "reset_password"; name: string; loginId: string; email: string }   // #84
+| { purpose: "change_email"; email: string; password: string }                  // #248 — email 은 "새 이메일"
 ```
 
 **처리:**
 - `signup`: User.email 중복 시 409 (가입 시점 enumeration 허용)
 - `reset_password`: 이름·아이디·이메일 셋 다 일치 시 발송. 불일치도 200 동일 응답(enumeration 방어), 메일 미발송
+- `change_email` (#248): `requireAuth` 필요. 새 이메일 형식·중복·현재 이메일 동일 여부 검사 → 현재 비밀번호 `bcrypt.compare` 검증 → rate limit → 새 이메일로 발송
 - Rate limit: 동일 (email, purpose) 60초 쿨다운, 시간당 5회 → 위반 시 429
 - Resend 발송 후 `EmailVerification` INSERT (`expires_at = now+5분`)
 
 **Response 200:** `{ sent: true, expiresAt: ISO_string }`
 
 **Errors:**
-- 400: 요청 형식 오류 / purpose 미지원
-- 409: 이미 사용 중인 이메일 (signup 만)
+- 400: 요청 형식 오류 / purpose 미지원 / 현재 이메일과 동일 (change_email) / 비밀번호 미설정 계정 (change_email)
+- 401: 미인증 (change_email) / 현재 비밀번호 불일치 (change_email)
+- 404: 사용자 부재 (change_email)
+- 409: 이미 사용 중인 이메일 (signup, change_email)
 - 429: 쿨다운/한도 초과
 - 502: 메일 발송 실패
 
 ---
 
-## `/api/auth/email/verify-code` — POST (#83·#84)
+## `/api/auth/email/verify-code` — POST (#83·#84·#248)
 
 코드 검증 + 후속 토큰 발급.
 
-**Body:** `{ email, purpose: "signup" | "reset_password", code }`
+**Body:** `{ email, purpose: "signup" | "reset_password" | "change_email", code }`
 
 **처리:**
+- `change_email` 분기는 `requireAuth` 필요 (signup/reset_password 는 익명 호출 허용)
 - (email, purpose) 가장 최근 미consumed·미만료 행 조회
 - `attempts++` → 5회 초과 시 잠금
 - `bcrypt.compare` 실패 시 400
@@ -145,9 +150,11 @@ FE 의 `apps/web/src/lib/password.ts` 는 동일 규칙의 복제본 + 실시간
 **Response 200:**
 - `signup` → `{ ok: true, signupVerificationToken: <JWT>, expiresAt }` — payload `{ email }`, audience `email-verification:signup`, 10분
 - `reset_password` → `{ ok: true, resetToken: <JWT>, expiresAt }` + `password_reset_tokens` INSERT(user_id 매핑). JWT payload `{ token_id, raw }`, audience `password-reset`, 10분
+- `change_email` (#248) → `{ ok: true, changeEmailVerificationToken: <JWT>, expiresAt }` — payload `{ user_id, newEmail }`, audience `email-verification:change-email`, 10분
 
 **Errors:**
 - 400: 코드 만료 / 시도 초과 / 코드 불일치 / purpose 미지원
+- 401: 미인증 (change_email)
 - 404: 사용자 부재 (reset_password 도중 user 삭제 등)
 
 ---
@@ -214,6 +221,40 @@ FE 의 `apps/web/src/lib/password.ts` 는 동일 규칙의 복제본 + 실시간
 **Errors:**
 - 400: 형식/비밀번호 정책 위반
 - 401: 토큰 만료/사용됨/위조
+
+---
+
+## `/api/auth/change-email` — POST (#248)
+
+세션 사용자의 이메일을 변경. 회원가입과 동일하게 새 이메일 소유 증명(코드 인증) + 1단계에서 현재 비밀번호 재확인을 요구한다.
+
+**플로우 (3 단계)**:
+1. `POST /api/auth/email/send-verification` `{ purpose:"change_email", email:newEmail, password }` — 인증·비번 검증·새 이메일 검증 후 새 이메일로 코드 발송
+2. `POST /api/auth/email/verify-code` `{ purpose:"change_email", email:newEmail, code }` — 코드 검증 후 `changeEmailVerificationToken` 발급 (10분, audience `email-verification:change-email`, payload `{ user_id, newEmail }`)
+3. `POST /api/auth/change-email` `{ changeEmailVerificationToken }` — 토큰 검증 → 세션 user_id 일치 확인 → 중복 재검 → 변경 + 세션 토큰 재발급(`Set-Cookie`)
+
+**Body:** `{ changeEmailVerificationToken }`
+
+**처리:**
+- `requireAuth` 필요
+- JWT 검증 (audience `email-verification:change-email`)
+- `payload.user_id === 세션 user_id` 일치 확인 → 불일치 시 403
+- race 재검: `User where { email: payload.newEmail, is_deleted: false, user_id ≠ self }` → 있으면 409
+- `User.email` 갱신
+- 세션 토큰 재발급 (`signToken({ user_id, current_role, name, email: payload.newEmail })`) + `Set-Cookie: plawcess_token`
+
+**Response 200:** `{ ok: true, email: newEmail }` + `Set-Cookie`
+
+**Errors:**
+- 400: 토큰 누락 / 요청 형식
+- 401: 미인증 / 토큰 만료·위조
+- 403: 토큰 사용자가 세션 사용자와 불일치
+- 404: 사용자 부재
+- 409: 토큰 발급 후 다른 유저가 같은 이메일 점유
+
+**보안 노트**:
+- 변경 토큰은 1회용은 아니지만, 직전 단계의 verify-code 가 `consumed_at` 으로 동일 코드 재검증을 차단하므로 새 토큰 발급 불가. 따라서 유효 10분 내 멱등 변경만 가능.
+- 옛 이메일로 변경 완료 통지 메일 / 변경 이력 감사 로그 / 다중 기기 강제 로그아웃은 follow-up.
 
 ---
 
