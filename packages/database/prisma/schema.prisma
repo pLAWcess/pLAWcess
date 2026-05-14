@@ -122,13 +122,14 @@ model User {
   updated_at DateTime @updatedAt
 
   // relations
-  mentee_records        MenteeRecord[]
-  mentor_records        MentorRecord[]
-  applications          Application[]
-  created_match_results MatchResult[]  @relation("MatchCreatedBy")
-  admin_memos           AdminMemo[]
-  password_reset_tokens PasswordResetToken[]
-  created_announcements Announcement[] @relation("AnnouncementCreatedBy")
+  mentee_records            MenteeRecord[]
+  mentor_records            MentorRecord[]
+  applications              Application[]
+  created_match_results     MatchResult[]        @relation("MatchCreatedBy")
+  created_match_suggestions MatchSuggestion[]    @relation("SuggestionCreatedBy")
+  admin_memos               AdminMemo[]
+  password_reset_tokens     PasswordResetToken[]
+  created_announcements     Announcement[]       @relation("AnnouncementCreatedBy")
 
   @@map("users")
 }
@@ -366,12 +367,14 @@ model Application {
   updated_at DateTime @updatedAt
 
   // relations
-  user                 User          @relation(fields: [user_id], references: [user_id])
-  mentee_record        MenteeRecord? @relation(fields: [mentee_record_id], references: [record_id])
-  mentor_record        MentorRecord? @relation(fields: [mentor_record_id], references: [record_id])
-  admin_memos          AdminMemo[]
-  mentee_match_results MatchResult[] @relation("MenteeApplication")
-  mentor_match_results MatchResult[] @relation("MentorApplication")
+  user                     User              @relation(fields: [user_id], references: [user_id])
+  mentee_record            MenteeRecord?     @relation(fields: [mentee_record_id], references: [record_id])
+  mentor_record            MentorRecord?     @relation(fields: [mentor_record_id], references: [record_id])
+  admin_memos              AdminMemo[]
+  mentee_match_results     MatchResult[]     @relation("MenteeApplication")
+  mentor_match_results     MatchResult[]     @relation("MentorApplication")
+  mentee_match_suggestions MatchSuggestion[] @relation("MenteeSuggestion")
+  mentor_match_suggestions MatchSuggestion[] @relation("MentorSuggestion")
 
   // 같은 사람이 같은 연도에 같은 역할로 하나의 신청만 가능
   @@unique([user_id, process_year, role])
@@ -404,6 +407,40 @@ model MatchResult {
   creator            User?       @relation("MatchCreatedBy", fields: [created_by], references: [user_id])
 
   @@map("match_results")
+}
+
+// ----------------------------------------------------------------
+// 5-1. match_suggestions
+//      - AI 매칭이 멘티별로 추천한 후보 3명 (rank=1,2,3) 저장 테이블
+//      - MatchResult 는 admin 이 최종 확정한 1건 전용. 후보 리스트는 여기에 분리해
+//        재실행 시 해당 process_year row 를 통째로 갈아끼울 수 있도록 한다.
+//      - pool_mode: 어떤 풀에서 뽑혔는지 audit
+//          'shortlist'                              — (1·2지망 OR) AND 전공 일치 풀
+//          'fullpool'                               — shortlist <3 이라 전체 풀로 호출
+//          'fullpool_after_extra_request_miss'      — shortlist 결과 3명이 모두 extra_request 위반
+// ----------------------------------------------------------------
+model MatchSuggestion {
+  suggestion_id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  process_year            Int
+  mentee_application_id   String   @db.Uuid
+  mentor_application_id   String   @db.Uuid
+  rank                    Int      @db.SmallInt // 1, 2, 3
+  ai_score                Decimal  @db.Decimal(5, 2) // 0~100
+  ai_reason               String   @db.Text
+  satisfies_extra_request Boolean? // null = extra_request 비어있음
+  pool_mode               String   @db.VarChar(40)
+  created_by              String?  @db.Uuid
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  // relations
+  mentee_application Application @relation("MenteeSuggestion", fields: [mentee_application_id], references: [application_id], onDelete: Cascade)
+  mentor_application Application @relation("MentorSuggestion", fields: [mentor_application_id], references: [application_id], onDelete: Cascade)
+  creator            User?       @relation("SuggestionCreatedBy", fields: [created_by], references: [user_id], onDelete: SetNull)
+
+  @@unique([mentee_application_id, rank])
+  @@index([process_year])
+  @@map("match_suggestions")
 }
 
 // ----------------------------------------------------------------

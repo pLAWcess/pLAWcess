@@ -807,6 +807,132 @@ export async function getEligibleMatchingPool(year?: number): Promise<EligiblePo
   return jsonOrError(res, "매칭 적격 풀 조회 실패");
 }
 
+// AI 매칭 ----------------------------------------------------------
+
+export type MatchPoolMode = "shortlist" | "fullpool" | "fullpool_after_extra_request_miss";
+
+export type MatchSuggestionCandidate = {
+  rank: number;
+  mentorApplicationId: string;
+  mentorUserId: string;
+  mentorName: string;
+  mentorLawSchool: string | null;
+  mentorMajor: string | null;
+  score: number;
+  reason: string;
+  satisfiesExtraRequest: boolean | null;
+  poolMode: MatchPoolMode;
+};
+
+export type MenteeSuggestionGroup = {
+  menteeApplicationId: string;
+  menteeUserId: string;
+  menteeName: string;
+  menteeMajor: string | null;
+  firstPreferenceSchool: string | null;
+  secondPreferenceSchool: string | null;
+  poolMode: MatchPoolMode;
+  candidates: MatchSuggestionCandidate[];
+};
+
+export type GetSuggestionsResponse = {
+  year: number;
+  items: MenteeSuggestionGroup[];
+};
+
+export type RunMatchingResponse = {
+  year: number;
+  processed: number;
+  skipped: { menteeApplicationId: string; reason: string }[];
+};
+
+// NDJSON streaming 응답의 라인 타입.
+export type MatchingStreamEvent =
+  | { type: "start"; year: number; total: number; mentorCount: number; concurrency: number }
+  | {
+      type: "progress";
+      status: "ok" | "skipped";
+      menteeApplicationId: string;
+      menteeName: string;
+      completed: number;
+      total: number;
+      reason?: string;
+    }
+  | { type: "done"; year: number; processed: number; skipped: { menteeApplicationId: string; reason: string }[] }
+  | { type: "error"; message: string };
+
+/**
+ * AI 매칭 실행 — 백엔드가 NDJSON streaming 으로 응답. 멘티가 많아 응답 시간이 길어도
+ * 첫 라인이 즉시 와서 proxy 헤더 timeout 을 회피한다.
+ *
+ * onEvent 콜백으로 매 라인을 받을 수 있고, 최종 done 라인의 내용을 RunMatchingResponse 로 resolve.
+ */
+export async function runMatching(
+  year?: number,
+  onEvent?: (e: MatchingStreamEvent) => void,
+): Promise<RunMatchingResponse> {
+  const qs = year !== undefined ? `?year=${year}` : "";
+  const res = await fetch(`${API_BASE}/api/admin/matchings/run${qs}`, {
+    method: "POST",
+    headers: headers(),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    // 인증 실패 등은 JSON 응답으로 떨어짐 — 기존 패턴 그대로.
+    return jsonOrError(res, "AI 매칭 실행 실패");
+  }
+  if (!res.body) throw new Error("AI 매칭 응답 본문이 비어있어요.");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let done: RunMatchingResponse | undefined;
+  let lastError: string | undefined;
+
+  const handleLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let event: MatchingStreamEvent;
+    try {
+      event = JSON.parse(trimmed) as MatchingStreamEvent;
+    } catch {
+      // 라인 파싱 실패는 무시 (부분 chunk 가 잘릴 일은 없지만 안전 가드)
+      return;
+    }
+    onEvent?.(event);
+    if (event.type === "done") {
+      done = { year: event.year, processed: event.processed, skipped: event.skipped };
+    } else if (event.type === "error") {
+      lastError = event.message;
+    }
+  };
+
+  while (true) {
+    const { done: streamDone, value } = await reader.read();
+    if (streamDone) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) handleLine(line);
+  }
+  // flush trailing buffer
+  if (buffer.length > 0) handleLine(buffer);
+
+  if (lastError) throw new Error(lastError);
+  if (!done) throw new Error("AI 매칭 완료 응답을 받지 못했어요.");
+  return done;
+}
+
+export async function getMatchingSuggestions(year?: number): Promise<GetSuggestionsResponse> {
+  const qs = year !== undefined ? `?year=${year}` : "";
+  const res = await fetch(`${API_BASE}/api/admin/matchings/suggestions${qs}`, {
+    headers: headers(),
+    credentials: "include",
+  });
+  return jsonOrError(res, "매칭 결과 조회 실패");
+}
+
 // 공지사항 (admin) -------------------------------------------------
 
 export async function listAdminAnnouncements(
