@@ -34,6 +34,37 @@ type CheckResult = {
   message: string;
 };
 
+// 필드별 인라인 에러 (#266). 아이디·이메일은 기존 checkResult/emailVerifyError 가
+// 같은 자리에 메시지를 띄우고 있으므로 여기서 다루지 않는다.
+type FieldErrors = {
+  studentId?: string;
+  password?: string;
+  passwordConfirm?: string;
+  birthDate?: string;
+  phone?: string;
+  file?: string;
+  consent?: string;
+};
+
+// 자리별 prefix 형식 (#266 실시간 검증). null = 그 자리에 숫자 1개 와야 함.
+const STUDENT_ID_EXPECTED: Array<string | null> = ['2', '0', '2', null, '1', '0', '0', null, null, null];
+const BIRTH_DATE_EXPECTED: Array<string | null> = [null, null, null, null, '.', null, null, '.', null, null, '.'];
+const PHONE_EXPECTED: Array<string | null> = ['0', '1', '0', '-', null, null, null, null, '-', null, null, null, null];
+
+function checkPrefix(v: string, expected: Array<string | null>): boolean {
+  // 형식보다 길어도 에러로 본다 (e.g. "2026.05.14.11")
+  if (v.length > expected.length) return false;
+  for (let i = 0; i < v.length; i++) {
+    const want = expected[i];
+    if (want === null) {
+      if (!/\d/.test(v[i])) return false;
+    } else if (v[i] !== want) {
+      return false;
+    }
+  }
+  return true;
+}
+
 const EMPTY_FORM: FormState = {
   role: 'mentee',
   name: '',
@@ -47,21 +78,14 @@ const EMPTY_FORM: FormState = {
   enrollmentFile: null,
 };
 
-function todayDots() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}.${m}.${d}.`;
-}
-
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState<FormState>({ ...EMPTY_FORM, birthDate: todayDots() });
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
   const [checkLoading, setCheckLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 동의 (#159) — 필수 1개 + 선택 1개. 필수 미체크 시 가입 불가.
@@ -95,11 +119,39 @@ export default function SignupPage() {
       setSignupVerificationToken('');
       setCooldown(0);
     }
+    // 사용자가 해당 필드를 수정하면 인라인 에러 자동 제거 (#266)
+    // password 변경 시 passwordConfirm 도 함께 클리어 (둘 다 비밀번호 검증에 묶임)
+    if (key === 'password') {
+      setFieldErrors((prev) => ({ ...prev, password: undefined, passwordConfirm: undefined }));
+    } else if (key === 'passwordConfirm') {
+      setFieldErrors((prev) => ({ ...prev, passwordConfirm: undefined }));
+    } else if (key === 'birthDate') {
+      const v = value as string;
+      const err = v.length > 0 && !checkPrefix(v, BIRTH_DATE_EXPECTED)
+        ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)'
+        : undefined;
+      setFieldErrors((prev) => ({ ...prev, birthDate: err }));
+    } else if (key === 'studentId') {
+      const v = value as string;
+      const err = v.length > 0 && !checkPrefix(v, STUDENT_ID_EXPECTED)
+        ? '202X100XXX 형식으로 입력해주세요 (예: 2023100123)'
+        : undefined;
+      setFieldErrors((prev) => ({ ...prev, studentId: err }));
+    } else if (key === 'phone') {
+      const v = value as string;
+      const err = v.length > 0 && !checkPrefix(v, PHONE_EXPECTED)
+        ? '010-XXXX-XXXX 형식으로 입력해주세요'
+        : undefined;
+      setFieldErrors((prev) => ({ ...prev, phone: err }));
+    }
   }
 
   async function handleCheckLoginId() {
     const { loginId } = form;
-    if (!loginId) { setError('아이디를 입력해주세요.'); return; }
+    if (!loginId) {
+      setCheckResult({ ok: false, message: '아이디를 입력해주세요.' });
+      return;
+    }
     setCheckLoading(true);
     setError('');
     try {
@@ -175,10 +227,10 @@ export default function SignupPage() {
 
   function handleFile(file: File | null) {
     if (file && file.size > 10 * 1024 * 1024) {
-      setError('파일 크기는 10MB 이하여야 합니다.');
+      setFieldErrors((prev) => ({ ...prev, file: '파일 크기는 10MB 이하여야 합니다.' }));
       return;
     }
-    setError('');
+    setFieldErrors((prev) => ({ ...prev, file: undefined }));
     update('enrollmentFile', file);
   }
 
@@ -186,15 +238,65 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
 
-    if (!consent.privacyRequired) { setError('개인정보 수집·이용에 동의해주세요.'); return; }
-    if (!consent.thirdParty) { setError('개인정보 제3자 제공에 동의해주세요.'); return; }
-    if (!checkResult?.ok) { setError('아이디 중복확인을 해주세요.'); return; }
-    if (emailVerifyState !== 'verified') { setError('이메일 인증을 완료해주세요.'); return; }
+    // 폼 위→아래 순서로 검증. 모든 필드 에러를 한 번에 모으되, 첫 에러 필드로 scroll/focus.
+    const next: FieldErrors = {};
+    let firstErrorId: string | null = null;
+    const mark = (id: string) => {
+      if (firstErrorId === null) firstErrorId = id;
+    };
+
+    // 학부 학번 형식: 202X (2020년대) + "100" (자유전공학부) + 3자리 학생번호 (예: 2023100123)
+    if (!/^202\d100\d{3}$/.test(form.studentId)) {
+      next.studentId = '202X100XXX 형식으로 입력해주세요 (예: 2023100123)';
+      mark('studentId');
+    }
+    if (!checkResult?.ok) {
+      setCheckResult({ ok: false, message: '아이디 중복확인을 해주세요.' });
+      mark('loginId');
+    }
+    if (emailVerifyState !== 'verified') {
+      setEmailVerifyError('이메일 인증을 완료해주세요.');
+      mark('email');
+    }
     const pwValid = validatePassword(form.password);
-    if (!pwValid.ok) { setError(pwValid.reason); return; }
-    if (form.password !== form.passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return; }
+    if (!pwValid.ok) {
+      next.password = pwValid.reason;
+      mark('password');
+    }
+    if (form.password !== form.passwordConfirm) {
+      next.passwordConfirm = '비밀번호가 일치하지 않습니다.';
+      mark('passwordConfirm');
+    }
     if (!/^\d{4}\.\d{2}\.\d{2}\.$/.test(form.birthDate)) {
-      setError('생년월일은 YYYY.MM.DD. 형식으로 입력해주세요.');
+      next.birthDate = 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)';
+      mark('birthDate');
+    }
+    // 전화번호 — optional 이므로 빈 값은 통과, 입력했다면 형식 검증
+    if (form.phone.length > 0 && !/^010-\d{4}-\d{4}$/.test(form.phone)) {
+      next.phone = '010-XXXX-XXXX 형식으로 입력해주세요';
+      mark('phone');
+    }
+    if (!consent.privacyRequired) {
+      next.consent = '개인정보 수집·이용에 동의해주세요.';
+      mark('consent');
+    } else if (!consent.thirdParty) {
+      next.consent = '개인정보 제3자 제공에 동의해주세요.';
+      mark('consent');
+    }
+
+    setFieldErrors(next);
+
+    if (firstErrorId !== null) {
+      const el = document.getElementById(firstErrorId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // input/button 등 focusable 이면 focus (스크롤 끝난 뒤). div 컨테이너는 무시.
+        const focusable = el as HTMLElement & { focus?: (opts?: FocusOptions) => void };
+        if (typeof focusable.focus === 'function' &&
+            (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) {
+          setTimeout(() => focusable.focus?.({ preventScroll: true }), 300);
+        }
+      }
       return;
     }
 
@@ -278,15 +380,17 @@ export default function SignupPage() {
               </Field>
 
               {/* 학부 학번 */}
-              <Field label="학부 학번" htmlFor="studentId">
+              <Field label="학부 학번" htmlFor="studentId" error={fieldErrors.studentId}>
                 <input
                   id="studentId"
                   type="text"
+                  inputMode="numeric"
+                  maxLength={10}
                   value={form.studentId}
-                  onChange={(e) => update('studentId', e.target.value)}
-                  placeholder="학번을 입력하세요"
+                  onChange={(e) => update('studentId', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="202X100XXX"
                   required
-                  className={inputClass}
+                  className={`${inputClass} scroll-mt-20`}
                 />
               </Field>
 
@@ -300,7 +404,7 @@ export default function SignupPage() {
                     onChange={(e) => update('loginId', e.target.value)}
                     placeholder="영문, 숫자 조합"
                     required
-                    className={`${inputClass} flex-1`}
+                    className={`${inputClass} flex-1 scroll-mt-20`}
                   />
                   <button
                     type="button"
@@ -329,7 +433,7 @@ export default function SignupPage() {
                     placeholder="your.email@example.com"
                     required
                     disabled={emailVerifyState === 'verified'}
-                    className={`${inputClass} flex-1 disabled:opacity-60`}
+                    className={`${inputClass} flex-1 disabled:opacity-60 scroll-mt-20`}
                   />
                   <button
                     type="button"
@@ -378,7 +482,7 @@ export default function SignupPage() {
               </Field>
 
               {/* 비밀번호 */}
-              <Field label="비밀번호" htmlFor="password">
+              <Field label="비밀번호" htmlFor="password" error={fieldErrors.password}>
                 <input
                   id="password"
                   type="password"
@@ -386,12 +490,12 @@ export default function SignupPage() {
                   onChange={(e) => update('password', e.target.value)}
                   placeholder="비밀번호를 입력하세요"
                   required
-                  className={inputClass}
+                  className={`${inputClass} scroll-mt-20`}
                 />
               </Field>
 
               {/* 비밀번호 확인 */}
-              <Field label="비밀번호 확인" htmlFor="passwordConfirm">
+              <Field label="비밀번호 확인" htmlFor="passwordConfirm" error={fieldErrors.passwordConfirm}>
                 <input
                   id="passwordConfirm"
                   type="password"
@@ -399,38 +503,42 @@ export default function SignupPage() {
                   onChange={(e) => update('passwordConfirm', e.target.value)}
                   placeholder="비밀번호를 다시 입력하세요"
                   required
-                  className={inputClass}
+                  className={`${inputClass} scroll-mt-20`}
                 />
                 <PasswordChecklist password={form.password} confirm={form.passwordConfirm} className="mt-1" />
               </Field>
 
               {/* 생년월일 */}
-              <Field label="생년월일" htmlFor="birthDate">
+              <Field label="생년월일" htmlFor="birthDate" error={fieldErrors.birthDate}>
                 <input
                   id="birthDate"
                   type="text"
+                  inputMode="numeric"
+                  maxLength={11}
                   value={form.birthDate}
                   onChange={(e) => update('birthDate', e.target.value)}
-                  placeholder="2000.01.01."
+                  placeholder="2000.03.15."
                   required
-                  className={inputClass}
+                  className={`${inputClass} scroll-mt-20`}
                 />
               </Field>
 
               {/* 전화번호 */}
-              <Field label="전화번호" htmlFor="phone">
+              <Field label="전화번호" htmlFor="phone" error={fieldErrors.phone}>
                 <input
                   id="phone"
                   type="tel"
+                  inputMode="numeric"
+                  maxLength={13}
                   value={form.phone}
                   onChange={(e) => update('phone', e.target.value)}
                   placeholder="010-0000-0000"
-                  className={inputClass}
+                  className={`${inputClass} scroll-mt-20`}
                 />
               </Field>
 
               {/* 학부 재학증명서 업로드 */}
-              <Field label="학부 재학증명서 업로드">
+              <Field label="학부 재학증명서 업로드" error={fieldErrors.file}>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -439,8 +547,9 @@ export default function SignupPage() {
                   onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
                 />
                 <div
+                  id="file"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-md cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-md cursor-pointer hover:bg-gray-50 transition-colors scroll-mt-20"
                 >
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-placeholder mb-2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -459,7 +568,19 @@ export default function SignupPage() {
               </Field>
 
               {/* 동의 (#159) */}
-              <ConsentSection value={consent} onChange={setConsent} />
+              <div id="consent" className="scroll-mt-20">
+                <ConsentSection
+                  value={consent}
+                  onChange={(next) => {
+                    setConsent(next);
+                    // 동의 토글 시 인라인 에러 자동 제거 (#266)
+                    setFieldErrors((prev) => ({ ...prev, consent: undefined }));
+                  }}
+                />
+                {fieldErrors.consent && (
+                  <p className="text-xs text-red-500 mt-1.5">{fieldErrors.consent}</p>
+                )}
+              </div>
 
               {error && <p className="text-sm text-red-500">{error}</p>}
 
@@ -492,17 +613,22 @@ const inputClass =
 function Field({
   label,
   htmlFor,
+  error,
   children,
 }: {
   label: string;
   htmlFor?: string;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-sm font-medium text-text-primary">
-        {label}
-      </label>
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <label htmlFor={htmlFor} className="text-sm font-medium text-text-primary">
+          {label}
+        </label>
+        {error && <span className="text-xs text-red-500">{error}</span>}
+      </div>
       {children}
     </div>
   );
