@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 
 export type ConsentState = {
   privacyRequired: boolean; // [필수] 개인정보 수집·이용 동의
@@ -9,6 +8,8 @@ export type ConsentState = {
 };
 
 const CONSENT_PDF = '/privacy-consent.pdf';
+const PRIVACY_URL = 'https://quixotic-cacao-ecd.notion.site/pLAWcess-360786213f238051bfc5f7b21c3a27f6';
+const TERMS_URL = 'https://quixotic-cacao-ecd.notion.site/pLAWcess-360786213f23808487a8da5880f48227';
 
 type Props = {
   value: ConsentState;
@@ -176,13 +177,23 @@ export default function ConsentSection({ value, onChange }: Props) {
 
       <p className="px-4 py-2 text-[11px] text-text-secondary border-t border-border bg-page-bg">
         가입 시{' '}
-        <Link href="/terms" target="_blank" className="text-brand hover:underline">
+        <a
+          href={TERMS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand hover:underline"
+        >
           이용약관
-        </Link>
+        </a>
         {' '}및{' '}
-        <Link href="/privacy" target="_blank" className="text-brand hover:underline">
+        <a
+          href={PRIVACY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand hover:underline"
+        >
           개인정보처리방침
-        </Link>
+        </a>
         에 동의한 것으로 간주됩니다.
       </p>
     </div>
