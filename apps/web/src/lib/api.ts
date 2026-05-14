@@ -706,14 +706,6 @@ export type AdminMentorCreateInput = {
   currentLawschool?: string | null;
 };
 
-export async function getAdminMentors(): Promise<{ mentors: AdminMentorAccount[] }> {
-  const res = await fetch(`${API_BASE}/api/admin/mentors`, {
-    headers: headers(),
-    credentials: "include",
-  });
-  return jsonOrError(res, "멘토 목록 조회 실패");
-}
-
 export async function createAdminMentor(
   input: AdminMentorCreateInput,
 ): Promise<{ mentor: AdminMentorAccount }> {

@@ -13,11 +13,15 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
-import { validatePassword } from "@/lib/password";
 
 const LOGIN_ID_REGEX = /^[a-zA-Z0-9_]{4,30}$/;
 const NAME_MAX = 50;
 const SCHOOL_NAME_MAX = 100;
+// 어드민이 발급하는 임시 비밀번호는 일반 회원가입의 복잡도 규칙을 적용하지 않는다.
+// (멘토가 첫 로그인 시 본인 규칙에 맞게 재설정하는 흐름) bcrypt 의 72바이트 한계와
+// ASCII printable 만 가드.
+const TEMP_PASSWORD_MAX = 72;
+const ASCII_PRINTABLE = /^[\x20-\x7E]+$/;
 
 function placeholderEmail(loginId: string): string {
   // 어드민이 만든 멘토 계정은 실제 이메일이 없으므로 충돌 안 나는 도메인을 사용한다.
@@ -99,9 +103,17 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const pw = validatePassword(password);
-  if (!pw.ok) {
-    return NextResponse.json({ error: pw.reason }, { status: 400 });
+  if (password.length === 0 || password.length > TEMP_PASSWORD_MAX) {
+    return NextResponse.json(
+      { error: `임시 비밀번호는 1~${TEMP_PASSWORD_MAX}자여야 합니다.` },
+      { status: 400 },
+    );
+  }
+  if (!ASCII_PRINTABLE.test(password)) {
+    return NextResponse.json(
+      { error: "임시 비밀번호는 ASCII 인쇄 가능 문자만 사용할 수 있습니다." },
+      { status: 400 },
+    );
   }
 
   const email = placeholderEmail(loginId);
