@@ -172,86 +172,102 @@ export default function AdminArchiveClient({ initial }: { initial: AdminArchiveL
         </div>
       </div>
 
-      <p className="text-sm text-text-secondary -mt-2">
-        {loading ? '불러오는 중...' : `${cases.length}개의 케이스`}
-      </p>
+      <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-text-primary">
+            합격 케이스 <span className="text-text-secondary font-normal">({cases.length})</span>
+          </h2>
+          {loading && <span className="text-xs text-text-placeholder">불러오는 중...</span>}
+        </div>
 
-      {error ? (
-        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-10 text-center text-sm text-red-500">
-          {error}
-        </div>
-      ) : cases.length === 0 && !loading ? (
-        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-12 text-center text-sm text-text-secondary">
-          조건에 해당하는 케이스가 없습니다.
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-page-bg text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
-                  <th className="px-4 py-3">멘토</th>
-                  <th className="px-4 py-3">연도</th>
-                  <th className="px-4 py-3">합격학교</th>
-                  <th className="px-4 py-3">전공</th>
-                  <th className="px-4 py-3">LEET</th>
-                  <th className="px-4 py-3">GPA</th>
-                  <th className="px-4 py-3">공개</th>
-                  <th className="px-4 py-3 text-right">작업</th>
+        <div className="overflow-x-auto">
+          <table className="w-full table-auto min-w-[760px]">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">멘토</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">연도</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">합격학교</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">전공</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">LEET</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">GPA</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">공개</th>
+                <th className="w-20"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {error ? (
+                <tr>
+                  <td colSpan={8} className="py-10 text-center text-sm text-red-500">{error}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {cases.map((c) => (
-                  <tr key={c.id} className="border-t border-border align-top">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-text-primary">{c.mentorName ?? '-'}</div>
+              ) : cases.length === 0 && !loading ? (
+                <tr>
+                  <td colSpan={8} className="py-10 text-center text-sm text-text-secondary">
+                    조건에 해당하는 케이스가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                cases.map((c) => (
+                  <tr key={c.id} className="border-b border-border last:border-b-0">
+                    <td className="py-4 pr-4 align-middle whitespace-nowrap">
+                      <div className="text-sm font-medium text-text-primary">{c.mentorName ?? '-'}</div>
                       <div className="text-xs text-text-placeholder">{c.mentorEmail ?? '-'}</div>
                     </td>
-                    <td className="px-4 py-3 text-text-primary whitespace-nowrap">{c.processYear}년</td>
-                    <td className="px-4 py-3 text-text-primary">{c.admittedSchool}</td>
-                    <td className="px-4 py-3 text-text-primary">
-                      <div>{c.major ?? '-'}</div>
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
+                      {c.processYear}년
+                    </td>
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
+                      {c.admittedSchool}
+                    </td>
+                    <td className="py-4 pr-4 align-middle whitespace-nowrap">
+                      <div className="text-sm text-text-primary">{c.major ?? '-'}</div>
                       {c.secondMajor && (
                         <div className="text-xs text-text-placeholder">{c.secondMajor}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-text-primary whitespace-nowrap">
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap tabular-nums">
                       {c.leetScore !== null ? c.leetScore.toFixed(2) : '-'}
                     </td>
-                    <td className="px-4 py-3 text-text-primary whitespace-nowrap">
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap tabular-nums">
                       {c.gpa !== null ? c.gpa.toFixed(2) : '-'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="py-4 pr-4 align-middle whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => togglePublished(c)}
                         disabled={busyId === c.id}
-                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-50 ${
+                        aria-label={c.isPublished ? '공개 중 — 클릭하여 비공개로' : '비공개 중 — 클릭하여 공개로'}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors disabled:opacity-50 ${
                           c.isPublished
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                            ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                            : 'border-border bg-white text-text-secondary hover:bg-gray-50'
                         }`}
                       >
+                        <span className={`w-1.5 h-1.5 rounded-full ${c.isPublished ? 'bg-green-500' : 'bg-text-placeholder'}`} />
                         {c.isPublished ? '공개' : '비공개'}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="py-4 pr-2 text-right align-middle whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => handleDelete(c)}
                         disabled={busyId === c.id}
-                        className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-xs text-red-600 border border-red-200 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50"
                       >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
                         삭제
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </section>
     </div>
   );
 }
