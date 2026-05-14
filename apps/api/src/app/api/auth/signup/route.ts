@@ -57,16 +57,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "이메일 인증이 만료되었거나 유효하지 않습니다." }, { status: 401 });
   }
 
-  // 중복 재검 (race 방어)
-  const [emailDup, loginIdDup] = await Promise.all([
+  // 중복 재검 (race 방어). 학번은 동일인 중복가입 방지용 (#270).
+  // 소프트 삭제된 계정은 새 user_id 로 가입 허용 (옛 데이터는 격리 상태로 남음).
+  const [emailDup, loginIdDup, studentIdDup] = await Promise.all([
     prisma.user.findUnique({ where: { email } }),
     prisma.user.findUnique({ where: { login_id: loginId } }),
+    prisma.user.findFirst({
+      where: { student_id: studentId, is_deleted: false },
+      select: { user_id: true },
+    }),
   ]);
   if (emailDup) {
     return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
   }
   if (loginIdDup) {
     return NextResponse.json({ error: "이미 사용 중인 아이디입니다." }, { status: 409 });
+  }
+  if (studentIdDup) {
+    return NextResponse.json({ error: "이미 가입된 학번입니다." }, { status: 409 });
   }
 
   const password_hash = await bcrypt.hash(password, 12);

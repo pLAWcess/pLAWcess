@@ -328,7 +328,14 @@ export default function SignupPage() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error ?? '회원가입에 실패했습니다.');
+      const msg = data.error ?? '회원가입에 실패했습니다.';
+      // 학번 중복(#270)은 학번 필드 옆 인라인으로 표시
+      if (res.status === 409 && msg.includes('학번')) {
+        setFieldErrors((prev) => ({ ...prev, studentId: msg }));
+        document.getElementById('studentId')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        setError(msg);
+      }
       return;
     }
 
