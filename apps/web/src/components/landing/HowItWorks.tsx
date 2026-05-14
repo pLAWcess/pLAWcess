@@ -18,8 +18,8 @@ const STEPS: Step[] = [
   },
   {
     number: '02',
-    title: 'AI 멘토 매칭',
-    description: 'AI가 내 데이터와 가장 잘 맞는 합격 선배를 찾아줍니다.',
+    title: 'AI 자소서 분석',
+    description: 'AI와 함께 나만의 특장점을 담은 자소서를 작성할 수 있습니다.',
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -45,10 +45,12 @@ export default function HowItWorks() {
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-base font-bold uppercase tracking-wider text-brand">How it works</h2>
           <p className="mt-2 text-3xl font-extrabold tracking-tight text-text-primary sm:text-4xl">
-            간편한 3단계 프로세스
+            로스쿨 입시,
+            <br />
+            혼자 고민하지 마세요
           </p>
           <p className="mt-4 text-lg text-text-secondary">
-            pLAWcess는 복잡한 입시 준비를 체계적으로 돕습니다.
+            pLAWcess가 복잡한 입시 준비를 체계적으로 도와드립니다
           </p>
         </div>
 
