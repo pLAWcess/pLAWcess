@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getUser, saveUser, clearUser, type AuthUser } from '@/lib/api';
 import UserMenu from '@/components/layout/UserMenu';
-import NotificationBell from '@/components/layout/NotificationBell';
 
 type Props = { initialUser: AuthUser | null };
 
@@ -52,10 +51,7 @@ export default function LandingNavbarAuth({ initialUser }: Props) {
   }
 
   return user ? (
-    <>
-      <NotificationBell />
-      <UserMenu user={user} onLogout={handleLogout} />
-    </>
+    <UserMenu user={user} onLogout={handleLogout} />
   ) : (
     <div className="flex items-center gap-3">
       <Link

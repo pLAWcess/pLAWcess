@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { getUser, saveUser, type AuthUser } from '@/lib/api';
 import UserMenu from '@/components/layout/UserMenu';
-import NotificationBell from '@/components/layout/NotificationBell';
 
 const NAV_ITEMS = [
   { href: '/about', label: '서비스 소개' },
@@ -99,10 +98,7 @@ export default function LandingNavbar({ initialUser }: Props) {
           {!authChecked ? (
             <div className="h-9" />
           ) : user ? (
-            <>
-              <NotificationBell />
-              <UserMenu user={user} onLogout={handleLogout} />
-            </>
+            <UserMenu user={user} onLogout={handleLogout} />
           ) : (
             <div className="hidden sm:flex items-center gap-3">
               <Link href="/login" className="px-4 py-2 text-sm font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors">

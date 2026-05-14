@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { saveUser, getUser, clearUser, type AuthUser } from '@/lib/api';
 import UserMenu from './UserMenu';
-import NotificationBell from './NotificationBell';
 
 const API_BASE = '';
 
@@ -60,7 +59,6 @@ export default function Navbar({ onMenuToggle, mobileOpen, initialUser }: Navbar
         </Link>
       </div>
       <div className="flex items-center gap-2">
-        <NotificationBell />
         {user && !onMenuToggle ? <UserMenu user={user} onLogout={handleLogout} /> : null}
         {onMenuToggle && (
           <button
