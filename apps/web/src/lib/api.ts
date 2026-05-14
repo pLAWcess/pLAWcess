@@ -1017,6 +1017,64 @@ export async function getMatchingSuggestions(year?: number): Promise<GetSuggesti
   return jsonOrError(res, "매칭 결과 조회 실패");
 }
 
+// 매칭 저장/확정 ---------------------------------------------------
+
+export type MatchClientStatus = "editing" | "confirmed" | "rejected";
+
+export type SaveMatchingRow = {
+  menteeApplicationId: string;
+  mentorApplicationId: string;
+  aiScore: number;
+  aiReason: string;
+  status: MatchClientStatus;
+};
+
+export type SaveMatchingMode = "draft" | "confirm";
+
+export type SaveMatchingResponse = {
+  mode: SaveMatchingMode;
+  year: number;
+  saved: number;
+  finalized: number;
+};
+
+export async function saveMatchings(
+  mode: SaveMatchingMode,
+  rows: SaveMatchingRow[],
+  year?: number,
+): Promise<SaveMatchingResponse> {
+  const qs = year !== undefined ? `?year=${year}` : "";
+  const res = await fetch(`${API_BASE}/api/admin/matchings/save${qs}`, {
+    method: "POST",
+    headers: headers(),
+    credentials: "include",
+    body: JSON.stringify({ mode, rows }),
+  });
+  return jsonOrError(res, mode === "confirm" ? "매칭 확정 실패" : "임시저장 실패");
+}
+
+export type MatchingResultRow = {
+  menteeApplicationId: string;
+  mentorApplicationId: string;
+  status: MatchClientStatus;
+  isFinalized: boolean;
+};
+
+export type GetMatchingResultsResponse = {
+  year: number;
+  items: MatchingResultRow[];
+  anyFinalized: boolean;
+};
+
+export async function getMatchingResults(year?: number): Promise<GetMatchingResultsResponse> {
+  const qs = year !== undefined ? `?year=${year}` : "";
+  const res = await fetch(`${API_BASE}/api/admin/matchings/results${qs}`, {
+    headers: headers(),
+    credentials: "include",
+  });
+  return jsonOrError(res, "매칭 저장 상태 조회 실패");
+}
+
 // 공지사항 (admin) -------------------------------------------------
 
 export async function listAdminAnnouncements(

@@ -6,13 +6,21 @@ import { useToast } from '@/components/ui/Toast';
 import {
   getMatchingSuggestions,
   runMatching,
+  saveMatchings,
   type EligibleMentee,
   type EligibleMentor,
   type EligiblePool,
+  type GetMatchingResultsResponse,
   type GetSuggestionsResponse,
   type MatchSuggestionCandidate,
   type MenteeSuggestionGroup,
+  type SaveMatchingRow,
 } from '@/lib/api';
+import { computeDefaultRanks } from '@/lib/matchingDefaults';
+
+// 멘토 한 명이 담당할 수 있는 최대 멘티 수. 기본 선택 계산 시 이 제약을 지킨다.
+// 관리자가 화면에서 수동으로 바꾸면 cap 위반이 생길 수 있지만 제약하지 않는다 (운영자 재량).
+const MENTOR_CAP = 2;
 
 type MatchStatus = 'editing' | 'confirmed' | 'rejected';
 
@@ -51,24 +59,50 @@ function findCandidate(group: MenteeSuggestionGroup, rank: number): MatchSuggest
   return group.candidates.find((c) => c.rank === rank) ?? null;
 }
 
-function buildRowsFromSuggestions(items: MenteeSuggestionGroup[]): RowState[] {
-  return items
-    .filter((g) => g.candidates.length > 0)
-    .map((group) => ({ group, selectedRank: 1, status: 'editing' as MatchStatus }));
+// 매칭 저장 결과(initialResults) 가 있으면 그 선택으로 selectedRank/status 를 복원.
+// 없으면 AI 계산 기본값(computeDefaultRanks) 사용.
+function buildRowsFromSuggestions(
+  items: MenteeSuggestionGroup[],
+  results: GetMatchingResultsResponse | null,
+): RowState[] {
+  const usable = items.filter((g) => g.candidates.length > 0);
+  const defaults = computeDefaultRanks(usable, MENTOR_CAP);
+  const savedByMentee = new Map(
+    (results?.items ?? []).map((r) => [r.menteeApplicationId, r]),
+  );
+  return usable.map((group) => {
+    const saved = savedByMentee.get(group.menteeApplicationId);
+    if (saved) {
+      // 저장된 멘토 id 가 후보 목록에 있을 때만 그 rank 로 복원. 없으면(예: AI 재실행으로
+      // 후보가 바뀐 경우) AI 기본값으로 fallback.
+      const match = group.candidates.find((c) => c.mentorApplicationId === saved.mentorApplicationId);
+      if (match) {
+        return { group, selectedRank: match.rank, status: saved.status };
+      }
+    }
+    return {
+      group,
+      selectedRank: defaults.get(group.menteeApplicationId) ?? 1,
+      status: 'editing' as MatchStatus,
+    };
+  });
 }
 
 export default function AdminMatchingsClient({
   initialPool,
   initialSuggestions,
+  initialResults,
 }: {
   initialPool: EligiblePool | null;
   initialSuggestions: GetSuggestionsResponse | null;
+  initialResults: GetMatchingResultsResponse | null;
 }) {
   const pool = initialPool ?? { mentees: [] as EligibleMentee[], mentors: [] as EligibleMentor[], year: new Date().getFullYear() };
 
   const [rows, setRows] = useState<RowState[] | null>(() =>
-    initialSuggestions ? buildRowsFromSuggestions(initialSuggestions.items) : null,
+    initialSuggestions ? buildRowsFromSuggestions(initialSuggestions.items, initialResults) : null,
   );
+  const [finalized, setFinalized] = useState<boolean>(initialResults?.anyFinalized ?? false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
@@ -96,7 +130,10 @@ export default function AdminMatchingsClient({
         }
       });
       const fresh = await getMatchingSuggestions(pool.year);
-      setRows(buildRowsFromSuggestions(fresh.items));
+      // AI 매칭을 새로 돌리면 후보가 바뀌므로 기존 저장 결과(initialResults) 와 매칭이 안 될
+      // 수 있다. 새 후보 기준으로 다시 기본 선택을 계산 (저장 결과 무시).
+      setRows(buildRowsFromSuggestions(fresh.items, null));
+      setFinalized(false);
       setExpanded(new Set());
       setPage(1);
 
@@ -146,14 +183,59 @@ export default function AdminMatchingsClient({
     );
   };
 
+  const [saving, setSaving] = useState<null | 'draft' | 'confirm'>(null);
+
+  // 현재 화면 상태 → 저장 payload. 행마다 selectedRank 의 후보가 mentor/score/reason 의 소스.
+  const buildSavePayload = (): SaveMatchingRow[] => {
+    if (!rows) return [];
+    const out: SaveMatchingRow[] = [];
+    for (const r of rows) {
+      const selected = findCandidate(r.group, r.selectedRank) ?? findCandidate(r.group, 1);
+      if (!selected) continue;
+      out.push({
+        menteeApplicationId: r.group.menteeApplicationId,
+        mentorApplicationId: selected.mentorApplicationId,
+        aiScore: selected.score,
+        aiReason: selected.reason,
+        status: r.status,
+      });
+    }
+    return out;
+  };
+
   const handleSaveDraft = async () => {
-    // TODO: POST /api/admin/matchings/draft — 별도 이슈
-    toast.info('임시저장 기능은 BE 매칭 확정 API 구현 후 동작합니다.');
+    if (!rows || rows.length === 0 || saving) return;
+    setSaving('draft');
+    try {
+      const payload = buildSavePayload();
+      const res = await saveMatchings('draft', payload, pool.year);
+      setFinalized(false);
+      toast.success(`임시저장 완료 (${res.saved}건).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '임시저장 실패');
+    } finally {
+      setSaving(null);
+    }
   };
 
   const handleConfirmAll = async () => {
-    // TODO: POST /api/admin/matchings/confirm — 별도 이슈
-    toast.info('매칭 확정 기능은 BE 매칭 확정 API 구현 후 동작합니다.');
+    if (!rows || rows.length === 0 || saving) return;
+    const editingCount = rows.filter((r) => r.status === 'editing').length;
+    if (editingCount > 0) {
+      toast.error(`${editingCount}명이 '수정중' 상태입니다. 모든 행을 '확정' 또는 '거절' 로 표시한 뒤 다시 시도해 주세요.`);
+      return;
+    }
+    setSaving('confirm');
+    try {
+      const payload = buildSavePayload();
+      const res = await saveMatchings('confirm', payload, pool.year);
+      setFinalized(true);
+      toast.success(`매칭 확정 완료 (${res.finalized}건 확정 / ${res.saved - res.finalized}건 제외).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '매칭 확정 실패');
+    } finally {
+      setSaving(null);
+    }
   };
 
   return (
@@ -221,32 +303,20 @@ export default function AdminMatchingsClient({
       </section>
 
       <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
-        <h2 className="text-base font-semibold text-text-primary mb-5">AI 매칭 결과 조회</h2>
+        <h2 className="text-base font-semibold text-text-primary mb-1">AI 매칭 결과 및 확정</h2>
+        <p className="text-xs text-text-placeholder mb-5">
+          기본 선택은 멘토 한 명당 멘티 {MENTOR_CAP}명 제약 하에 점수 합이 최대가 되도록 자동 계산됩니다. 행을 클릭하면 다른 후보 멘토를 확인하고 변경할 수 있어요.
+        </p>
         {rows === null ? (
           <p className="py-6 text-sm text-text-secondary">아직 매칭이 실행되지 않았습니다. 위에서 AI 매칭을 실행해주세요.</p>
         ) : totalRows === 0 ? (
           <p className="py-6 text-sm text-text-secondary">매칭 결과가 비어 있습니다.</p>
         ) : (
           <>
-            <ResultTable rows={pagedRows ?? []} expanded={expanded} onToggle={toggleExpand} />
-            <PaginationFooter
-              totalCount={totalRows}
-              page={safePage}
-              totalPages={totalPages}
-              onPage={setPage}
-            />
-          </>
-        )}
-      </section>
-
-      <section className="bg-white border border-border rounded-xl px-4 sm:px-8 py-6">
-        <h2 className="text-base font-semibold text-text-primary mb-5">매칭 결과 수정 및 확정</h2>
-        {rows === null || totalRows === 0 ? (
-          <p className="py-6 text-sm text-text-secondary">매칭 결과가 있어야 수정할 수 있습니다.</p>
-        ) : (
-          <>
-            <EditTable
+            <MergedTable
               rows={pagedRows ?? []}
+              expanded={expanded}
+              onToggle={toggleExpand}
               onSelectRank={updateSelectedRank}
               onSelectStatus={updateStatus}
             />
@@ -257,12 +327,25 @@ export default function AdminMatchingsClient({
               onPage={setPage}
             />
             <div className="flex items-center gap-2 mt-6">
-              <button onClick={handleSaveDraft} className="flex items-center gap-1.5 px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors">
-                임시저장
+              <button
+                onClick={handleSaveDraft}
+                disabled={saving !== null}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm text-text-secondary border border-border rounded-md hover:bg-gray-50 transition-colors disabled:opacity-60"
+              >
+                {saving === 'draft' ? '저장 중...' : '임시저장'}
               </button>
-              <button onClick={handleConfirmAll} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors">
-                매칭 확정
+              <button
+                onClick={handleConfirmAll}
+                disabled={saving !== null}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-60"
+              >
+                {saving === 'confirm' ? '확정 중...' : finalized ? '매칭 다시 확정' : '매칭 확정'}
               </button>
+              {finalized && (
+                <span className="text-xs text-text-placeholder ml-2">
+                  현재 사이클은 확정 상태입니다. 다시 저장하면 새 확정으로 덮어씁니다.
+                </span>
+              )}
             </div>
           </>
         )}
@@ -271,88 +354,125 @@ export default function AdminMatchingsClient({
   );
 }
 
-// ---------------- AI 매칭 결과 조회: 행 펼침 ----------------
+// ---------------- 매칭 결과 통합 테이블 (조회 + 멘토 선택 + 상태 변경) ----------------
+//
+// 메인 행: 현재 selectedRank 멘토의 정보 + 멘토 선택 dropdown + 상태 dropdown.
+// 펼침 행: 같은 멘티의 나머지 후보 멘토 (선택 가능한 다른 옵션을 한눈에).
+//   - chevron 클릭 / 멘티 이름 셀 클릭으로 toggle.
+//   - dropdown 영역 클릭은 toggle 막아야 함 (stopPropagation).
 
-function ResultTable({
+function MergedTable({
   rows,
   expanded,
   onToggle,
+  onSelectRank,
+  onSelectStatus,
 }: {
   rows: RowState[];
   expanded: Set<string>;
   onToggle: (menteeApplicationId: string) => void;
+  onSelectRank: (menteeApplicationId: string, rank: number) => void;
+  onSelectStatus: (menteeApplicationId: string, status: MatchStatus) => void;
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full table-auto min-w-[640px]">
+      <table className="w-full table-auto min-w-[720px]">
         <thead>
           <tr className="border-b border-border">
             <th className="w-10" />
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">멘티 이름</th>
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">멘토 이름</th>
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">매칭 점수</th>
+            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[14%]">멘티 이름</th>
+            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[22%]">멘토 선택</th>
+            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[10%]">매칭 점수</th>
             <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">추천 사유</th>
+            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[12%]">매칭 상태</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
-            const menteeId = r.group.menteeApplicationId;
-            const top = findCandidate(r.group, 1);
-            const isOpen = expanded.has(menteeId);
-            if (!top) return null;
-            return (
-              <ResultRowGroup
-                key={menteeId}
-                row={r}
-                top={top}
-                isOpen={isOpen}
-                onToggle={() => onToggle(menteeId)}
-              />
-            );
-          })}
+          {rows.map((r) => (
+            <MergedRowGroup
+              key={r.group.menteeApplicationId}
+              row={r}
+              isOpen={expanded.has(r.group.menteeApplicationId)}
+              onToggle={() => onToggle(r.group.menteeApplicationId)}
+              onSelectRank={(rank) => onSelectRank(r.group.menteeApplicationId, rank)}
+              onSelectStatus={(s) => onSelectStatus(r.group.menteeApplicationId, s)}
+            />
+          ))}
         </tbody>
       </table>
     </div>
   );
 }
 
-function ResultRowGroup({
+function MergedRowGroup({
   row,
-  top,
   isOpen,
   onToggle,
+  onSelectRank,
+  onSelectStatus,
 }: {
   row: RowState;
-  top: MatchSuggestionCandidate;
   isOpen: boolean;
   onToggle: () => void;
+  onSelectRank: (rank: number) => void;
+  onSelectStatus: (status: MatchStatus) => void;
 }) {
+  const selected = findCandidate(row.group, row.selectedRank) ?? findCandidate(row.group, 1);
   const others = useMemo(
-    () => row.group.candidates.filter((c) => c.rank !== 1).sort((a, b) => a.rank - b.rank),
-    [row.group.candidates],
+    () =>
+      row.group.candidates
+        .filter((c) => c.rank !== (selected?.rank ?? -1))
+        .sort((a, b) => a.rank - b.rank),
+    [row.group.candidates, selected?.rank],
   );
+  if (!selected) return null;
+
+  const dropdownOptions = row.group.candidates
+    .slice()
+    .sort((a, b) => a.rank - b.rank)
+    .map((c) => `${c.rank}순위 — ${c.mentorName} (${c.score}점)`);
+  const selectedLabel = `${selected.rank}순위 — ${selected.mentorName} (${selected.score}점)`;
 
   return (
     <>
-      <tr
-        className="border-b border-border last:border-b-0 hover:bg-brand-light/30 cursor-pointer"
-        onClick={onToggle}
-      >
-        <td className="py-3 pl-3 pr-1 align-middle text-text-secondary">
+      <tr className="border-b border-border last:border-b-0 hover:bg-brand-light/30">
+        <td className="py-3 pl-3 pr-1 align-middle text-text-secondary cursor-pointer" onClick={onToggle}>
           <Chevron open={isOpen} />
         </td>
-        <td className="py-3 pr-4 text-sm font-medium text-text-primary whitespace-nowrap">{row.group.menteeName}</td>
-        <td className="py-3 pr-4 text-sm text-text-primary whitespace-nowrap">{top.mentorName}</td>
-        <td className="py-3 pr-4"><ScoreBadge score={top.score} /></td>
-        <td className="py-3 pr-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed">{top.reason}</td>
+        <td
+          className="py-3 pr-4 text-sm font-medium text-text-primary whitespace-nowrap cursor-pointer"
+          onClick={onToggle}
+        >
+          {row.group.menteeName}
+        </td>
+        <td className="py-3 pr-4 text-sm text-text-primary" onClick={(e) => e.stopPropagation()}>
+          <SelectField
+            value={selectedLabel}
+            options={dropdownOptions}
+            onChange={(v) => {
+              const m = v.match(/^(\d+)순위/);
+              onSelectRank(m ? parseInt(m[1], 10) : 1);
+            }}
+          />
+        </td>
+        <td className="py-3 pr-4"><ScoreBadge score={selected.score} /></td>
+        <td className="py-3 pr-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed">{selected.reason}</td>
+        <td className="py-3 pr-4 text-sm text-text-primary" onClick={(e) => e.stopPropagation()}>
+          <SelectField
+            value={MATCH_STATUS_LABELS[row.status]}
+            options={MATCH_STATUS_OPTIONS}
+            onChange={(v) => onSelectStatus(matchStatusFromLabel(v))}
+          />
+        </td>
       </tr>
       {isOpen && others.map((c) => (
         <tr key={c.rank} className="border-b border-border last:border-b-0 bg-page-bg/40">
           <td className="py-3 pl-3 pr-1 align-middle text-xs text-text-placeholder">{c.rank}순위</td>
-          <td className="py-3 pr-4 text-sm text-text-placeholder"></td>
+          <td />
           <td className="py-3 pr-4 text-sm text-text-primary whitespace-nowrap">{c.mentorName}</td>
           <td className="py-3 pr-4"><ScoreBadge score={c.score} /></td>
           <td className="py-3 pr-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed">{c.reason}</td>
+          <td />
         </tr>
       ))}
     </>
@@ -368,71 +488,6 @@ function Chevron({ open }: { open: boolean }) {
     >
       <polyline points="9 18 15 12 9 6" />
     </svg>
-  );
-}
-
-// ---------------- 매칭 결과 수정 및 확정 ----------------
-
-function EditTable({
-  rows,
-  onSelectRank,
-  onSelectStatus,
-}: {
-  rows: RowState[];
-  onSelectRank: (menteeApplicationId: string, rank: number) => void;
-  onSelectStatus: (menteeApplicationId: string, status: MatchStatus) => void;
-}) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full table-auto min-w-[640px]">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[16%]">멘티 이름</th>
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[22%]">멘토 선택</th>
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[12%]">매칭 점수</th>
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">추천 사유</th>
-            <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-[14%]">매칭 상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const selected = findCandidate(r.group, r.selectedRank) ?? findCandidate(r.group, 1);
-            if (!selected) return null;
-            // 라벨 형식: "1순위 — 이름 (95점)"
-            const options = r.group.candidates
-              .slice()
-              .sort((a, b) => a.rank - b.rank)
-              .map((c) => `${c.rank}순위 — ${c.mentorName} (${c.score}점)`);
-            const selectedLabel = `${selected.rank}순위 — ${selected.mentorName} (${selected.score}점)`;
-            return (
-              <tr key={r.group.menteeApplicationId} className="border-b border-border last:border-b-0">
-                <td className="py-4 pr-4 text-sm text-text-primary">{r.group.menteeName}</td>
-                <td className="py-4 pr-4 text-sm text-text-primary">
-                  <SelectField
-                    value={selectedLabel}
-                    options={options}
-                    onChange={(v) => {
-                      const m = v.match(/^(\d+)순위/);
-                      const rank = m ? parseInt(m[1], 10) : 1;
-                      onSelectRank(r.group.menteeApplicationId, rank);
-                    }}
-                  />
-                </td>
-                <td className="py-4 pr-4"><ScoreBadge score={selected.score} /></td>
-                <td className="py-4 pr-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed">{selected.reason}</td>
-                <td className="py-4 pr-4 text-sm text-text-primary">
-                  <SelectField
-                    value={MATCH_STATUS_LABELS[r.status]}
-                    options={MATCH_STATUS_OPTIONS}
-                    onChange={(v) => onSelectStatus(r.group.menteeApplicationId, matchStatusFromLabel(v))}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
