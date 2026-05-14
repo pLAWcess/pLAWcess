@@ -23,17 +23,6 @@ function getProcessYear(req: NextRequest): number {
   return match ? parseInt(match[0]) : new Date().getFullYear();
 }
 
-// 매칭 발표일이 지났으면 수정 금지 (멘토가 이미 보고 있을 수 있음).
-async function isLocked(processYear: number): Promise<boolean> {
-  const cycle = await prisma.cycleSchedule.findUnique({
-    where: { process_year: processYear },
-    select: { match_announce_date: true },
-  });
-  const announceDate = cycle?.match_announce_date;
-  if (!announceDate) return false;
-  return new Date().getTime() >= announceDate.getTime();
-}
-
 // ----------------------------------------------------------------
 // GET /api/mentee/share-settings?year=2026
 // ----------------------------------------------------------------
@@ -72,8 +61,7 @@ export async function GET(req: NextRequest) {
         requests: true,
       };
 
-  const locked = await isLocked(processYear);
-  return NextResponse.json({ settings, locked });
+  return NextResponse.json({ settings });
 }
 
 // ----------------------------------------------------------------
@@ -86,13 +74,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
   const processYear = getProcessYear(req);
-
-  if (await isLocked(processYear)) {
-    return NextResponse.json(
-      { error: "매칭 발표 이후에는 공개 설정을 수정할 수 없습니다." },
-      { status: 403 },
-    );
-  }
 
   let body: { settings?: Partial<ShareSettings> };
   try {

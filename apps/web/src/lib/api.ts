@@ -1440,7 +1440,6 @@ export type ShareSettings = {
 
 export type ShareSettingsResponse = {
   settings: ShareSettings;
-  locked: boolean;
 };
 
 export async function getShareSettings(year: string): Promise<ShareSettingsResponse> {

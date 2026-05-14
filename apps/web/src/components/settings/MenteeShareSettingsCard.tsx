@@ -13,7 +13,6 @@ const ITEMS: Array<{ key: keyof ShareSettings; label: string; desc: string }> = 
 
 export default function MenteeShareSettingsCard() {
   const [settings, setSettings] = useState<ShareSettings | null>(null);
-  const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<keyof ShareSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +24,6 @@ export default function MenteeShareSettingsCard() {
       .then((res) => {
         if (cancelled) return;
         setSettings(res.settings);
-        setLocked(res.locked);
       })
       .catch(() => {
         if (cancelled) return;
@@ -40,7 +38,7 @@ export default function MenteeShareSettingsCard() {
   }, []);
 
   async function toggle(key: keyof ShareSettings) {
-    if (!settings || locked) return;
+    if (!settings) return;
     const next = !settings[key];
     setSavingKey(key);
     try {
@@ -78,9 +76,7 @@ export default function MenteeShareSettingsCard() {
       <div className="mb-4">
         <h2 className="text-base font-semibold text-text-primary">공개 설정</h2>
         <p className="text-sm text-text-secondary mt-1">
-          {locked
-            ? '매칭 발표 이후에는 수정할 수 없습니다.'
-            : '매칭된 멘토에게 공유할 정보를 선택하세요. 매칭 발표 전까지 수정 가능합니다.'}
+          매칭된 멘토에게 공유할 정보를 선택하세요.
         </p>
       </div>
 
@@ -99,7 +95,7 @@ export default function MenteeShareSettingsCard() {
                 role="switch"
                 aria-checked={checked}
                 onClick={() => toggle(key)}
-                disabled={locked || saving}
+                disabled={saving}
                 className={`shrink-0 inline-flex items-center w-11 h-6 rounded-full transition-colors duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed ${
                   checked ? 'bg-brand' : 'bg-gray-300'
                 }`}

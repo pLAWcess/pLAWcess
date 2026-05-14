@@ -51,7 +51,7 @@ export default function ShareSettingsModal({
         <div className="px-6 sm:px-8 py-6 border-b border-border">
           <h2 className="text-lg font-bold text-text-primary">공개 설정</h2>
           <p className="text-sm text-text-secondary mt-1">
-            매칭된 멘토에게 공유할 정보를 선택하세요. 매칭 발표 전까지는 언제든 수정할 수 있습니다.
+            매칭된 멘토에게 공유할 정보를 선택하세요. 설정 페이지에서 언제든 수정할 수 있습니다.
           </p>
         </div>
 
