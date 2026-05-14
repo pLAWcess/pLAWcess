@@ -1,10 +1,13 @@
 import { cookies } from 'next/headers';
 import { serverFetch } from '@/lib/server-fetch';
 import AdminMatchingsClient from './AdminMatchingsClient';
-import type { EligiblePool } from '@/lib/api';
+import type { EligiblePool, GetSuggestionsResponse } from '@/lib/api';
 
 export default async function AdminMatchingsPage() {
   const token = (await cookies()).get('plawcess_token')?.value ?? '';
-  const pool = await serverFetch<EligiblePool>('/api/admin/matchings/eligible', token);
-  return <AdminMatchingsClient initialPool={pool} />;
+  const [pool, suggestions] = await Promise.all([
+    serverFetch<EligiblePool>('/api/admin/matchings/eligible', token),
+    serverFetch<GetSuggestionsResponse>('/api/admin/matchings/suggestions', token),
+  ]);
+  return <AdminMatchingsClient initialPool={pool} initialSuggestions={suggestions} />;
 }

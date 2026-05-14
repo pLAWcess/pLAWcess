@@ -807,6 +807,216 @@ export async function getEligibleMatchingPool(year?: number): Promise<EligiblePo
   return jsonOrError(res, "매칭 적격 풀 조회 실패");
 }
 
+// AI 매칭 ----------------------------------------------------------
+
+export type MatchPoolMode = "shortlist" | "fullpool" | "fullpool_after_extra_request_miss";
+
+export type MatchSuggestionCandidate = {
+  rank: number;
+  mentorApplicationId: string;
+  mentorUserId: string;
+  mentorName: string;
+  mentorLawSchool: string | null;
+  mentorMajor: string | null;
+  score: number;
+  reason: string;
+  satisfiesExtraRequest: boolean | null;
+  poolMode: MatchPoolMode;
+};
+
+export type MenteeSuggestionGroup = {
+  menteeApplicationId: string;
+  menteeUserId: string;
+  menteeName: string;
+  menteeMajor: string | null;
+  firstPreferenceSchool: string | null;
+  secondPreferenceSchool: string | null;
+  poolMode: MatchPoolMode;
+  candidates: MatchSuggestionCandidate[];
+};
+
+export type GetSuggestionsResponse = {
+  year: number;
+  items: MenteeSuggestionGroup[];
+};
+
+export type RunMatchingResponse = {
+  year: number;
+  processed: number;
+  skipped: { menteeApplicationId: string; reason: string }[];
+  // true 면 streaming done 라인 없이 watchdog fallback 으로 끝난 케이스 — processed/skipped
+  // 는 신뢰할 수 없으니 호출측이 getMatchingSuggestions 로 실제 결과를 재확인해야 한다.
+  fellBackToFetch?: boolean;
+};
+
+// NDJSON streaming 응답의 라인 타입.
+export type MatchingStreamEvent =
+  | { type: "start"; year: number; total: number; mentorCount: number; concurrency: number }
+  | {
+      type: "progress";
+      status: "ok" | "skipped";
+      menteeApplicationId: string;
+      menteeName: string;
+      completed: number;
+      total: number;
+      reason?: string;
+    }
+  | { type: "done"; year: number; processed: number; skipped: { menteeApplicationId: string; reason: string }[] }
+  | { type: "error"; message: string };
+
+/**
+ * AI 매칭 실행 — 백엔드가 NDJSON streaming 으로 응답. 멘티가 많아 응답 시간이 길어도
+ * 첫 라인이 즉시 와서 proxy 헤더 timeout 을 회피한다.
+ *
+ * onEvent 콜백으로 매 라인을 받을 수 있고, 최종 done 라인의 내용을 RunMatchingResponse 로 resolve.
+ */
+export async function runMatching(
+  year?: number,
+  onEvent?: (e: MatchingStreamEvent) => void,
+): Promise<RunMatchingResponse> {
+  const qs = year !== undefined ? `?year=${year}` : "";
+  // AbortController — 모든 mentee progress 가 도착했는데 done 라인이 지연되는 경우
+  // (Next.js rewrites · undici 가 꼬리 청크를 묶어둘 때) 짧게 대기 후 강제 종료.
+  const ac = new AbortController();
+  const res = await fetch(`${API_BASE}/api/admin/matchings/run${qs}`, {
+    method: "POST",
+    headers: headers(),
+    credentials: "include",
+    signal: ac.signal,
+  });
+
+  if (!res.ok) {
+    // 인증 실패 등은 JSON 응답으로 떨어짐 — 기존 패턴 그대로.
+    return jsonOrError(res, "AI 매칭 실행 실패");
+  }
+  if (!res.body) throw new Error("AI 매칭 응답 본문이 비어있어요.");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let done: RunMatchingResponse | undefined;
+  let lastError: string | undefined;
+  let lastYear: number | undefined;
+  let anyProgressArrived = false;
+
+  // tail: completed 가 total-1 이상까지 왔는데 done/EOS 가 안 올 때 짧게 대기 후 abort.
+  //       마지막 progress 라인이 proxy 에 묶이는 35/36 stall 을 빠르게 복구.
+  // idle: 어떤 chunk 도 안 오는 진짜 stall 일 때 abort. Gemini 호출이 가끔 10~15초씩
+  //       걸려 4 lane 이 동시에 느릴 수 있으므로 60초로 넉넉히 잡는다 — 너무 짧으면
+  //       정상 진행 중에도 fire 되어 부분 결과로 끝난다.
+  const TAIL_WATCHDOG_MS = 3000;
+  const IDLE_WATCHDOG_MS = 60000;
+  let tailWatchdog: ReturnType<typeof setTimeout> | null = null;
+  let idleWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+  // ac.abort() 만으로는 reader.read() 가 즉시 풀리지 않는 케이스가 있어 cancel() 도 함께.
+  // level: 'info' = 정상 fallback 경로 (dev proxy 가 done 라인을 매번 버퍼링하는 등),
+  //        'warn' = 비정상 정체 (실제 통신 stall) — 운영자가 봐야 할 신호.
+  const forceTerminate = (reason: string, level: "info" | "warn") => {
+    (level === "warn" ? console.warn : console.info)(`[runMatching] ${reason}`);
+    try { ac.abort(); } catch { /* ignore */ }
+    try { reader.cancel(reason).catch(() => {}); } catch { /* ignore */ }
+  };
+
+  const armTailWatchdog = () => {
+    if (tailWatchdog) return;
+    tailWatchdog = setTimeout(
+      () => forceTerminate("tail fallback: 마지막 progress 후 done 미수신 — 정상 경로", "info"),
+      TAIL_WATCHDOG_MS,
+    );
+  };
+  const resetIdleWatchdog = () => {
+    if (idleWatchdog) clearTimeout(idleWatchdog);
+    idleWatchdog = setTimeout(
+      () => forceTerminate("idle watchdog: chunk 미수신 — 통신 stall 의심", "warn"),
+      IDLE_WATCHDOG_MS,
+    );
+  };
+
+  const handleLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let event: MatchingStreamEvent;
+    try {
+      event = JSON.parse(trimmed) as MatchingStreamEvent;
+    } catch {
+      return;
+    }
+    onEvent?.(event);
+    if (event.type === "start") {
+      lastYear = event.year;
+    } else if (event.type === "progress") {
+      anyProgressArrived = true;
+      // total-1 까지만 와도 곧 끝났을 거라 보고 tail watchdog 을 arm. 마지막 progress
+      // 라인이 proxy 에 묶이는 35/36 stall 을 빠르게 복구한다.
+      if (event.total > 0 && event.completed >= event.total - 1) {
+        armTailWatchdog();
+      }
+    } else if (event.type === "done") {
+      done = { year: event.year, processed: event.processed, skipped: event.skipped };
+      lastYear = event.year;
+    } else if (event.type === "error") {
+      lastError = event.message;
+    }
+  };
+
+  resetIdleWatchdog();
+  try {
+    while (true) {
+      // reader.read() 가 reject 되는 경로:
+      //   - forceTerminate (watchdog) 가 cancel/abort 를 호출
+      //   - done 도착 후 우리가 직접 cancel 호출
+      // 둘 다 progress 가 한 번이라도 왔다면 정상 탈출로 간주.
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (readErr) {
+        if (!anyProgressArrived) throw readErr;
+        break;
+      }
+      if (chunk.done) break;
+      resetIdleWatchdog();
+      buffer += decoder.decode(chunk.value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) handleLine(line);
+      // done 라인이 왔으면 stream close 까지 기다리지 않고 즉시 탈출. proxy 가 EOS
+      // forward 를 지연시키는 케이스에서 reader.read() hang 을 우회한다.
+      if (done) {
+        reader.cancel("done-received").catch(() => { /* ignore */ });
+        break;
+      }
+    }
+    if (buffer.length > 0) handleLine(buffer);
+  } finally {
+    if (tailWatchdog) clearTimeout(tailWatchdog);
+    if (idleWatchdog) clearTimeout(idleWatchdog);
+  }
+
+  if (lastError) throw new Error(lastError);
+  if (done) return done;
+  // done 이 안 왔지만 progress 는 왔다 — 서버가 작업을 진행/완료한 상태로 간주.
+  // 호출측의 getMatchingSuggestions 로 실제 결과를 확인한다.
+  if (anyProgressArrived) {
+    return {
+      year: lastYear ?? new Date().getFullYear(),
+      processed: 0,
+      skipped: [],
+      fellBackToFetch: true,
+    };
+  }
+  throw new Error("AI 매칭 완료 응답을 받지 못했어요.");
+}
+
+export async function getMatchingSuggestions(year?: number): Promise<GetSuggestionsResponse> {
+  const qs = year !== undefined ? `?year=${year}` : "";
+  const res = await fetch(`${API_BASE}/api/admin/matchings/suggestions${qs}`, {
+    headers: headers(),
+    credentials: "include",
+  });
+  return jsonOrError(res, "매칭 결과 조회 실패");
+}
+
 // 공지사항 (admin) -------------------------------------------------
 
 export async function listAdminAnnouncements(

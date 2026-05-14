@@ -3,9 +3,19 @@ packages:
   - "packages/*"
   - "tools"
 
+allowBuilds:
+  '@google/genai': true
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+
 onlyBuiltDependencies:
   - "@google/genai"
   - "@prisma/engines"
+  - "esbuild"
   - "prisma"
   - "protobufjs"
   - "sharp"
