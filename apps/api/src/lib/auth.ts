@@ -19,6 +19,7 @@ export type TokenPayload = {
   current_role: string;
   name?: string;
   email?: string;
+  login_id?: string | null;
 };
 
 export function signToken(payload: TokenPayload): string {

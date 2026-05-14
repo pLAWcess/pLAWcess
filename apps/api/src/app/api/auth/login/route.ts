@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   await recordLoginAttempt(identifier, ip, true);
 
-  const token = signToken({ user_id: user.user_id, current_role: user.current_role, name: user.name, email: user.email });
+  const token = signToken({ user_id: user.user_id, current_role: user.current_role, name: user.name, email: user.email, login_id: user.login_id });
   const { password_hash: _, ...safeUser } = user;
 
   return NextResponse.json(

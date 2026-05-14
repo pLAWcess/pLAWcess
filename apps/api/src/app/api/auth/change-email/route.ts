@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { user_id: tokenPayload.user_id },
-    select: { user_id: true, name: true, current_role: true, is_deleted: true },
+    select: { user_id: true, name: true, login_id: true, current_role: true, is_deleted: true },
   });
   if (!user || user.is_deleted) {
     return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     current_role: user.current_role,
     name: user.name,
     email: payload.newEmail,
+    login_id: user.login_id,
   });
 
   return NextResponse.json(
