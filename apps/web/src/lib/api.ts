@@ -1599,3 +1599,73 @@ export async function deleteArchiveCase(id: string): Promise<void> {
   });
   await jsonOrError(res, "합격 케이스 삭제 실패");
 }
+
+// 합격 아카이브 — 어드민 (#274 후속) ---------------------------------
+
+export type AdminArchiveCase = {
+  id: string;
+  userId: string;
+  mentorName: string | null;
+  mentorEmail: string | null;
+  major: string | null;
+  secondMajor: string | null;
+  admittedSchool: string;
+  processYear: number;
+  leetScore: number | null;
+  leetVerbalStandard: number | null;
+  leetReasoningStandard: number | null;
+  gpa: number | null;
+  keywords: string[];
+  storySummary: string | null;
+  mentorMessage: string | null;
+  isPublished: boolean;
+};
+
+export type AdminArchiveListResponse = {
+  cases: AdminArchiveCase[];
+  filters: { majors: string[]; schools: string[]; years: number[] };
+};
+
+export type AdminArchiveFilter = {
+  major?: string;
+  school?: string;
+  year?: number;
+  /** 공개 여부 필터. 미지정이면 전체. */
+  published?: boolean;
+};
+
+export async function getAdminArchiveCases(
+  filter: AdminArchiveFilter = {},
+): Promise<AdminArchiveListResponse> {
+  const sp = new URLSearchParams();
+  if (filter.major && filter.major !== "전체") sp.set("major", filter.major);
+  if (filter.school && filter.school !== "전체") sp.set("school", filter.school);
+  if (filter.year) sp.set("year", String(filter.year));
+  if (filter.published !== undefined) sp.set("published", String(filter.published));
+  const qs = sp.toString();
+  const res = await fetch(`${API_BASE}/api/admin/archive${qs ? `?${qs}` : ""}`, {
+    credentials: "include",
+  });
+  return jsonOrError(res, "합격 아카이브 조회 실패");
+}
+
+export async function adminSetArchivePublished(
+  id: string,
+  isPublished: boolean,
+): Promise<{ id: string; isPublished: boolean }> {
+  const res = await fetch(`${API_BASE}/api/admin/archive/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: headers(),
+    credentials: "include",
+    body: JSON.stringify({ isPublished }),
+  });
+  return jsonOrError(res, "공개 여부 변경 실패");
+}
+
+export async function adminDeleteArchiveCase(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/archive/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  await jsonOrError(res, "합격 케이스 삭제 실패");
+}

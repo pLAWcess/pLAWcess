@@ -326,16 +326,18 @@ export default function ArchiveCaseFormModal({
                   placeholder={PLACEHOLDER_MAJOR}
                 />
               </Field>
-              {/* 추가 합격 학교 — 신규 등록일 때만. */}
+              {/* 추가 합격 학교 — 신규 등록일 때만. 라벨+힌트 폭을 위해 행 전체 사용. */}
               {!initial && (
-                <Field label="추가 합격 학교" hint="가/나군 둘 다 합격했다면 같은 정보로 함께 등록">
-                  <SelectField
-                    value={state.secondAdmittedSchool || '선택 안 함'}
-                    options={secondSchoolOptions}
-                    onChange={(v) => set('secondAdmittedSchool', v === '선택 안 함' ? '' : v)}
-                    placeholder="선택 안 함"
-                  />
-                </Field>
+                <div className="sm:col-span-2">
+                  <Field label="추가 합격 학교" hint="가/나군 둘 다 합격했다면 같은 정보로 함께 등록">
+                    <SelectField
+                      value={state.secondAdmittedSchool || '선택 안 함'}
+                      options={secondSchoolOptions}
+                      onChange={(v) => set('secondAdmittedSchool', v === '선택 안 함' ? '' : v)}
+                      placeholder="선택 안 함"
+                    />
+                  </Field>
+                </div>
               )}
             </div>
           </section>
