@@ -26,7 +26,7 @@ const TARGETS: Target[] = [
   },
   {
     title: '실제 합격자의 경험을 듣고 싶은 분',
-    description: '직접 합격한 선배 멘토와 1:1로 연결되어 생생한 이야기를 들을 수 있습니다.',
+    description: '직접 합격한 선배 멘토로 연결되어 생생한 이야기를 들을 수 있습니다.',
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
