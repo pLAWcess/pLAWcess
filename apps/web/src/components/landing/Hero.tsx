@@ -6,7 +6,7 @@ interface Props {
 
 export default function Hero({ startHref }: Props) {
   return (
-    <section className="relative overflow-hidden py-24 sm:py-32">
+    <section className="relative overflow-hidden py-24 sm:py-32 bg-slate-50/50">
       {/* Background Glow (Stripe-inspired) */}
       <div 
         className="absolute top-0 left-1/2 -z-10 h-[1000px] w-[1000px] -translate-x-1/2 [mask-image:radial-gradient(closest-side,white,transparent)] sm:-top-12 md:-top-20 lg:-top-32"
