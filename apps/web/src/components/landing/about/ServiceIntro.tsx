@@ -1,7 +1,7 @@
 const POINTS = [
   '실제 합격자 데이터 기반',
   'AI 자동 멘토 매칭',
-  '1:1 멘토링 연결',
+  '로스쿨 재학생과 멘토링 연결',
 ];
 
 export default function ServiceIntro() {
@@ -19,7 +19,7 @@ export default function ServiceIntro() {
               만들어진 멘토링 플랫폼입니다.
             </p>
             <p className="mt-4 text-lg text-text-body leading-relaxed">
-              합격 선배의 실제 데이터를 바탕으로 AI가 나에게 맞는 멘토를
+              로스쿨 합격생의 실제 데이터를 바탕으로 AI가 나에게 맞는 멘토를
               연결해줍니다.
             </p>
           </div>

@@ -17,7 +17,7 @@ export default function AboutHero() {
           로스쿨 입시, 혼자 준비하지 않아도 됩니다
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-text-secondary leading-relaxed">
-          자유전공학부 합격 선배와 연결되는 유일한 플랫폼
+          자유전공학부 출신 로스쿨생과 연결되는 유일한 플랫폼
         </p>
       </div>
     </section>
