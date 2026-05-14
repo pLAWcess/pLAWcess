@@ -31,6 +31,33 @@ export const maxDuration = 300;
 // Gemini 동시 호출 워커 수. 5분(maxDuration) 안에 회당 ~5초 가정 시 멘티 ~120명까지 안전.
 const MATCHING_CONCURRENCY = 4;
 
+// 스트림 종료 전 패딩 + 휴식. web→api proxy (Next.js rewrites · undici) 가 꼬리 chunk 를
+// 묶어서 client 까지 forward 못하는 케이스를 막기 위한 belt-and-suspenders.
+// 클라이언트의 handleLine 은 빈 줄을 skip 하므로 파싱에 영향 없음.
+async function flushAndClose(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  isClosed: () => boolean,
+) {
+  // 큰 enqueue 한 번 보다 작은 enqueue 여러 번이 각각 다른 TCP write 로 빠질 확률이 높다.
+  for (let i = 0; i < 8 && !isClosed(); i++) {
+    try {
+      controller.enqueue(encoder.encode("\n".repeat(2048)));
+    } catch {
+      break;
+    }
+    await new Promise<void>((r) => setTimeout(r, 100));
+  }
+  // 마지막 chunk 들이 실제 socket 으로 빠져나갈 시간 — 이게 없으면 같은 tick 안에서
+  // enqueue → close 가 일어나 EOS 가 데이터보다 먼저 client 에 도달하는 경우가 있다.
+  await new Promise<void>((r) => setTimeout(r, 1500));
+  try {
+    controller.close();
+  } catch {
+    /* already closed */
+  }
+}
+
 // 외부 의존성 없는 bounded concurrency 워커.
 // items 를 worker 함수로 처리하되 동시에 `concurrency` 개만 실행. 결과는 입력 순서 보장.
 async function runBounded<T, R>(
@@ -48,6 +75,10 @@ async function runBounded<T, R>(
       const res = await worker(items[i], i);
       results[i] = res;
       onComplete?.(items[i], res, i);
+      // 각 progress 라인을 별개 청크로 즉시 flush 시키기 위한 이벤트 루프 양보.
+      // 동기적으로 4개 lane 의 onComplete 가 연속 enqueue 되면 Node 가 같은 chunk 로
+      // 묶어 내보내는 경우가 있어, 마지막 묶음이 web→api proxy 의 tail buffer 에 걸린다.
+      await new Promise<void>((r) => setImmediate(r));
     }
   });
   await Promise.all(lanes);
@@ -69,7 +100,7 @@ type SuggestionRow = {
 };
 
 type PerMentee =
-  | { kind: "ok"; rows: SuggestionRow[] }
+  | { kind: "ok"; menteeApplicationId: string }
   | { kind: "skipped"; menteeApplicationId: string; reason: string };
 
 export async function POST(req: NextRequest) {
@@ -85,9 +116,9 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      // 클라이언트가 중도 이탈(페이지 새로고침, fetch abort 등)하면 controller 가 닫힌다.
-      // 그 뒤에도 진행 중이던 lane 의 onComplete 가 writeLine 을 호출하면 ERR_INVALID_STATE
-      // 가 throw 되므로, closed 플래그로 enqueue 를 silent 하게 skip 한다.
+      // closed 플래그는 두 가지 race 를 막는다:
+      //   1) 클라이언트 중도 이탈 후 진행 중 lane 의 onComplete 가 writeLine 을 호출
+      //   2) finally 단계에서 패딩/close 이후 추가 enqueue
       let closed = false;
       const writeLine = (obj: unknown) => {
         if (closed) return;
@@ -97,10 +128,7 @@ export async function POST(req: NextRequest) {
           closed = true;
         }
       };
-      // 클라이언트 abort 신호 감지 — 새 progress 라인 emit 을 즉시 멈춘다.
-      const onAbort = () => {
-        closed = true;
-      };
+      const onAbort = () => { closed = true; };
       req.signal.addEventListener("abort", onAbort, { once: true });
 
       try {
@@ -111,12 +139,8 @@ export async function POST(req: NextRequest) {
         writeLine({ type: "error", message });
       } finally {
         req.signal.removeEventListener("abort", onAbort);
+        await flushAndClose(controller, encoder, () => closed);
         closed = true;
-        try {
-          controller.close();
-        } catch {
-          /* already closed */
-        }
       }
     },
   });
@@ -154,10 +178,7 @@ async function runMatching({ year, adminUserId, writeLine }: RunArgs) {
             desired_mentor: true,
             core_keywords: true,
             career_goal: true,
-            ai_keywords: true,
-            ai_story_outline: true,
             star_analysis: true,
-            story_summary: true,
           },
         },
       },
@@ -171,12 +192,8 @@ async function runMatching({ year, adminUserId, writeLine }: RunArgs) {
         mentor_record: {
           select: {
             lawschool_name: true,
-            core_keywords: true,
             career_goal: true,
-            ai_keywords: true,
-            ai_story_outline: true,
             star_analysis: true,
-            personal_statement_summary: true,
           },
         },
       },
@@ -203,10 +220,7 @@ async function runMatching({ year, adminUserId, writeLine }: RunArgs) {
       desiredMentor: rec.desired_mentor,
       coreKeywords: rec.core_keywords,
       careerGoal: rec.career_goal,
-      aiKeywords: rec.ai_keywords,
-      aiStoryOutline: rec.ai_story_outline,
       starAnalysis: rec.star_analysis,
-      storySummary: rec.story_summary,
     }];
   });
 
@@ -219,12 +233,8 @@ async function runMatching({ year, adminUserId, writeLine }: RunArgs) {
       name: r.user.name,
       lawSchool: rec.lawschool_name,
       undergradMajor: r.user.undergrad_first_major,
-      coreKeywords: rec.core_keywords,
       careerGoal: rec.career_goal,
-      aiKeywords: rec.ai_keywords,
-      aiStoryOutline: rec.ai_story_outline,
       starAnalysis: rec.star_analysis,
-      personalStatementSummary: rec.personal_statement_summary,
     }];
   });
 
@@ -253,6 +263,12 @@ async function runMatching({ year, adminUserId, writeLine }: RunArgs) {
     return;
   }
 
+  // 기존 추천을 먼저 비운다. (예전엔 마지막에 deleteMany+createMany 트랜잭션을 했는데,
+  // 모든 멘티 처리 후 한꺼번에 DB 쓰기 → writeLine 사이에 다초 단위 정적 구간이 생겨
+  // proxy/undici 가 마지막 progress·done 청크를 묶어두는 버퍼링 증상이 있었다.
+  // 사전 삭제 + 멘티별 즉시 insert 로 바꿔 스트림 흐름을 끊지 않는다.)
+  await prisma.matchSuggestion.deleteMany({ where: { process_year: year } });
+
   let completedCount = 0;
 
   const perMentee = await runBounded<typeof mentees[number], PerMentee>(
@@ -278,7 +294,8 @@ async function runMatching({ year, adminUserId, writeLine }: RunArgs) {
           pool_mode: poolMode,
           created_by: adminUserId,
         }));
-        return { kind: "ok", rows };
+        await prisma.matchSuggestion.createMany({ data: rows });
+        return { kind: "ok", menteeApplicationId: mentee.applicationId };
       } catch (e) {
         const reason = e instanceof Error ? e.message : "UNKNOWN_ERROR";
         return { kind: "skipped", menteeApplicationId: mentee.applicationId, reason };
@@ -299,19 +316,12 @@ async function runMatching({ year, adminUserId, writeLine }: RunArgs) {
     },
   );
 
-  const rows: SuggestionRow[] = [];
   const skipped: SkipReason[] = [];
+  let processed = 0;
   for (const r of perMentee) {
-    if (r.kind === "ok") rows.push(...r.rows);
+    if (r.kind === "ok") processed += 1;
     else skipped.push({ menteeApplicationId: r.menteeApplicationId, reason: r.reason });
   }
 
-  // 트랜잭션: 해당 사이클의 기존 추천을 통째로 교체.
-  await prisma.$transaction([
-    prisma.matchSuggestion.deleteMany({ where: { process_year: year } }),
-    prisma.matchSuggestion.createMany({ data: rows }),
-  ]);
-
-  const processed = rows.filter((r) => r.rank === 1).length;
   writeLine({ type: "done", year, processed, skipped });
 }

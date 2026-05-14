@@ -100,14 +100,18 @@ export default function AdminMatchingsClient({
       setExpanded(new Set());
       setPage(1);
 
+      // done 라인이 안 와서 fallback 으로 끝난 경우 result.processed 가 0 으로 들어옴.
+      // 그때는 새로 받아온 suggestion 갯수를 신뢰값으로 사용.
+      const processedCount = result.processed > 0 ? result.processed : fresh.items.length;
+
       if (result.skipped.length > 0) {
         // 어떤 멘티가 어떤 이유로 빠졌는지 콘솔에 자세히 (운영자 디버깅용).
         console.warn('[AI 매칭] 처리되지 않은 멘티:', result.skipped);
         toast.info(
-          `${result.processed}명 매칭 완료. ${result.skipped.length}명은 처리되지 않았어요. (콘솔에서 사유 확인)`,
+          `${processedCount}명 매칭 완료. ${result.skipped.length}명은 처리되지 않았어요. (콘솔에서 사유 확인)`,
         );
       } else {
-        toast.success(`${result.processed}명 매칭 완료.`);
+        toast.success(`${processedCount}명 매칭 완료.`);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'AI 매칭 실행 실패');

@@ -22,12 +22,8 @@ export type MenteeForMatching = {
   desiredMentor: string | null;
   coreKeywords: string | null;
   careerGoal: string | null;
-  // 통합 분석 결과 (summarizeQualitative 후 채워짐) — 없을 수 있음
-  aiKeywords: unknown;
-  aiStoryOutline: unknown;
-  // 활동별 단일 STAR 분석 — { activities: StarItem[] } 형태. 통합 분석 안 했어도 채워질 수 있음
+  // 활동별 단일 STAR 분석 — { activities: StarItem[] } 형태. 매칭에 쓰는 유일한 AI 분석 입력.
   starAnalysis: unknown;
-  storySummary: string | null;
 };
 
 export type MentorForMatching = {
@@ -36,12 +32,8 @@ export type MentorForMatching = {
   name: string;
   lawSchool: string | null;
   undergradMajor: string | null;
-  coreKeywords: string | null;
   careerGoal: string | null;
-  aiKeywords: unknown;
-  aiStoryOutline: unknown;
   starAnalysis: unknown;
-  personalStatementSummary: string | null;
 };
 
 export type MentorAnnotated = MentorForMatching & {
