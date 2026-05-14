@@ -1405,6 +1405,7 @@ export type MenteeDetailResponse = {
     careerGoal: string | null;
     coreKeywords: string | null;
     activities: unknown;
+    starAnalysis: { activities: StarItem[]; keywords?: KeywordCount[] } | null;
   } | null;
   personalStatement: {
     ga: { hasHwp: boolean; textAnswers: unknown };

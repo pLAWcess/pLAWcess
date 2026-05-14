@@ -178,6 +178,39 @@ function IconDragHandle({ className = 'w-5 h-5' }: { className?: string }) {
 }
 
 // ----------------------------------------------------------------
+// 원문/요약 segmented 토글 (#271)
+// ----------------------------------------------------------------
+function ContentViewToggle({
+  value,
+  onChange,
+}: {
+  value: 'summary' | 'original';
+  onChange: (v: 'summary' | 'original') => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-md border border-border bg-gray-50 p-0.5 text-xs">
+      {(['summary', 'original'] as const).map((v) => {
+        const active = value === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(v)}
+            className={`px-2.5 py-1 rounded-[5px] font-medium transition-colors ${
+              active
+                ? 'bg-white text-text-primary shadow-sm'
+                : 'text-text-placeholder hover:text-text-secondary'
+            }`}
+          >
+            {v === 'summary' ? '요약' : '원문'}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------
 // 분석 진행 중 오버레이 — 대상 영역을 반투명으로 덮어 스피너 노출
 // ----------------------------------------------------------------
 function LoadingOverlay({ message }: { message: string }) {
@@ -667,8 +700,9 @@ function ActivityCard({
     ? `${activity.startDate} ~ ${activity.ongoing ? '현재' : (activity.endDate || '-')}`
     : '-';
   const keywords = star?.keywords ?? [];
-  const bodyText = star?.summary ?? activity.content;
-  const isAiSummary = !!star?.summary;
+  const hasAiSummary = !!star?.summary;
+  const [viewMode, setViewMode] = useState<'summary' | 'original'>('summary');
+  const bodyText = hasAiSummary && viewMode === 'summary' ? star!.summary : activity.content;
   const attachments = activity.attachments ?? [];
 
   return (
@@ -676,24 +710,29 @@ function ActivityCard({
       <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold text-text-primary">{activity.name}</h2>
-          {onDelete && (
-            <button
-              onClick={onDelete}
-              disabled={deleting}
-              aria-label="활동 삭제"
-              title="활동 삭제"
-              className="shrink-0 p-2 -mr-2 -mt-1 rounded-md text-text-placeholder hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
-            >
-              <IconTrash />
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {hasAiSummary && (
+              <ContentViewToggle value={viewMode} onChange={setViewMode} />
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                aria-label="활동 삭제"
+                title="활동 삭제"
+                className="p-2 -mr-2 -mt-1 rounded-md text-text-placeholder hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+              >
+                <IconTrash />
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-4 mt-2 text-sm text-text-secondary">
           <span className="flex items-center gap-1.5"><IconBuilding /> {activity.organization || '-'}</span>
           <span className="flex items-center gap-1.5"><IconCalendar /> {period}</span>
         </div>
         <p className="text-sm text-text-primary mt-4 whitespace-pre-wrap leading-relaxed">{bodyText}</p>
-        {!isAiSummary && (
+        {!hasAiSummary && (
           <p className="text-xs text-text-placeholder mt-2">분석 대기 중 — 분석 완료 시 AI 요약으로 대체됩니다.</p>
         )}
         {keywords.length > 0 && (

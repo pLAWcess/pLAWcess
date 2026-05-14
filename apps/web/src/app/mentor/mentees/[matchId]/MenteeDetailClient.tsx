@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { MenteeDetailResponse } from '@/lib/api';
+import type { MenteeDetailResponse, StarItem } from '@/lib/api';
 import LeetCard from '@/components/quantitative/LeetCard';
 import GpaCard from '@/components/quantitative/GpaCard';
 import LanguageCard from '@/components/quantitative/LanguageCard';
@@ -239,10 +239,89 @@ function parseActivities(raw: unknown): Activity[] {
   return raw as Activity[];
 }
 
+function ContentViewToggle({
+  value,
+  onChange,
+}: {
+  value: 'summary' | 'original';
+  onChange: (v: 'summary' | 'original') => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-md border border-border bg-gray-50 p-0.5 text-xs">
+      {(['summary', 'original'] as const).map((v) => {
+        const active = value === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(v)}
+            className={`px-2.5 py-1 rounded-[5px] font-medium transition-colors ${
+              active
+                ? 'bg-white text-text-primary shadow-sm'
+                : 'text-text-placeholder hover:text-text-secondary'
+            }`}
+          >
+            {v === 'summary' ? '요약' : '원문'}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MenteeActivityCard({ activity, index, star }: { activity: Activity; index: number; star?: StarItem }) {
+  const hasAiSummary = !!star?.summary;
+  const [viewMode, setViewMode] = useState<'summary' | 'original'>('summary');
+  const bodyText = hasAiSummary && viewMode === 'summary' ? star!.summary : (activity.content ?? '');
+  const keywords = star?.keywords ?? [];
+
+  return (
+    <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <h3 className="text-lg font-semibold text-text-primary">
+          {activity.name || `활동 ${index + 1}`}
+        </h3>
+        <div className="flex items-center gap-2 shrink-0">
+          {hasAiSummary && (
+            <ContentViewToggle value={viewMode} onChange={setViewMode} />
+          )}
+          {activity.category && (
+            <span className="px-2.5 py-1 text-xs rounded-md bg-blue-50 text-blue-600">
+              {activity.category}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-4 text-sm text-text-secondary mb-4">
+        <span>{activity.organization || '-'}</span>
+        <span className="text-border">|</span>
+        <span>
+          {activity.startDate || '-'} ~ {activity.ongoing ? '진행중' : activity.endDate || '-'}
+        </span>
+      </div>
+      {bodyText && (
+        <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
+          {bodyText}
+        </p>
+      )}
+      {keywords.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-4">
+          {keywords.map((k, i) => (
+            <span key={i} className="px-2.5 py-1 text-xs rounded-md bg-blue-50 text-blue-600">{k}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QualitativeTab({ data }: { data: MenteeDetailResponse }) {
   const { qualitative } = data;
   if (!qualitative) return <PrivateNotice label="정성 데이터" />;
   const activities = parseActivities(qualitative.activities);
+  const starItems = qualitative.starAnalysis?.activities ?? [];
+  const findStar = (idx: number): StarItem | undefined =>
+    starItems.find((s) => s.activity_index === idx);
 
   return (
     <div className="flex flex-col gap-6">
@@ -273,33 +352,7 @@ function QualitativeTab({ data }: { data: MenteeDetailResponse }) {
           </div>
         ) : (
           activities.map((a, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6"
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <h3 className="text-lg font-semibold text-text-primary">
-                  {a.name || `활동 ${i + 1}`}
-                </h3>
-                {a.category && (
-                  <span className="shrink-0 px-2.5 py-1 text-xs rounded-md bg-blue-50 text-blue-600">
-                    {a.category}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-4 text-sm text-text-secondary mb-4">
-                <span>{a.organization || '-'}</span>
-                <span className="text-border">|</span>
-                <span>
-                  {a.startDate || '-'} ~ {a.ongoing ? '진행중' : a.endDate || '-'}
-                </span>
-              </div>
-              {a.content && (
-                <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
-                  {a.content}
-                </p>
-              )}
-            </div>
+            <MenteeActivityCard key={i} activity={a} index={i} star={findStar(i)} />
           ))
         )}
       </div>

@@ -67,6 +67,7 @@ export async function GET(
               career_goal: true,
               core_keywords: true,
               qualitative_activities: true,
+              star_analysis: true,
               personal_statement_text_ga: true,
               personal_statement_text_na: true,
               personal_statement_hwp_ga: true,
@@ -169,6 +170,7 @@ export async function GET(
           careerGoal: record?.career_goal ?? null,
           coreKeywords: record?.core_keywords ?? null,
           activities: record?.qualitative_activities ?? null,
+          starAnalysis: record?.star_analysis ?? null,
         }
       : null,
     personalStatement: share.statement
