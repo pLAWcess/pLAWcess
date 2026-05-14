@@ -209,7 +209,14 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
             const item = isAdmissionEditing ? admissionDraft[group] : admissionInfo[group];
             const isPreferred = isAdmissionEditing ? preferredGroupDraft === group : preferredGroup === group;
             return (
-              <div key={group} className={`pl-5 pr-4 border-l-[3px] transition-colors ${isPreferred ? 'border-brand' : 'border-border'}`}>
+              <div
+                key={group}
+                className={`pr-4 transition-all ${
+                  isPreferred
+                    ? 'pl-[19px] border-l-4 border-brand bg-gradient-to-r from-brand-light/60 to-transparent rounded-r-md'
+                    : 'pl-5 border-l-[3px] border-border'
+                }`}
+              >
                 <div className="flex items-center gap-3 mb-5">
                   <span className="inline-block text-sm font-semibold text-brand bg-brand-light px-3 py-1 rounded">{group}군</span>
                   {isAdmissionEditing ? (
@@ -224,7 +231,12 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
                       1순위
                     </button>
                   ) : isPreferred ? (
-                    <span className="text-xs font-medium text-brand">1순위</span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-brand pl-2 pr-2.5 py-0.5 rounded-full">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ color: '#FFD86B' }}>
+                        <path d="M5 16L3 6l5.5 4L12 4l3.5 6L21 6l-2 10H5zm0 2h14v2H5v-2z" />
+                      </svg>
+                      1순위
+                    </span>
                   ) : null}
                 </div>
                 <div className="grid grid-cols-2 gap-5 text-sm">
@@ -246,7 +258,7 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
                         </button>
                       </div>
                     ) : (
-                      <span className="text-text-primary">{item.school}</span>
+                      <span className={`text-text-primary ${isPreferred ? 'font-semibold' : ''}`}>{item.school}</span>
                     )}
                   </div>
                   <div>
@@ -256,7 +268,7 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
                         <SelectField value={item.type} options={TYPE_OPTIONS} onChange={(val) => handleAdmissionChange(group, 'type', val)} placeholder="전형 선택" />
                       </div>
                     ) : (
-                      <span className="text-text-primary">{item.type}</span>
+                      <span className={`text-text-primary ${isPreferred ? 'font-semibold' : ''}`}>{item.type}</span>
                     )}
                   </div>
                 </div>
