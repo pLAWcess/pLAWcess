@@ -318,13 +318,14 @@ function Pagination({ page, totalPages, onPage }: { page: number; totalPages: nu
   const pages = pageNumbers(page, totalPages);
   return (
     <div className="flex items-center gap-1">
+      <PageButton onClick={() => onPage(Math.max(1, page - 5))} disabled={page === 1}>«</PageButton>
       <PageButton onClick={() => onPage(page - 1)} disabled={page === 1}>‹</PageButton>
       {pages.map((p, i) =>
-        p === '«' ? <PageButton key={`jl${i}`} onClick={() => onPage(Math.max(1, page - 5))}>«</PageButton>
-          : p === '»' ? <PageButton key={`jr${i}`} onClick={() => onPage(Math.min(totalPages, page + 5))}>»</PageButton>
+        p === null ? <span key={`ph${i}`} className="min-w-[28px] h-7 px-2" aria-hidden="true" />
           : <PageButton key={p} onClick={() => onPage(p)} active={p === page}>{p}</PageButton>
       )}
       <PageButton onClick={() => onPage(page + 1)} disabled={page === totalPages}>›</PageButton>
+      <PageButton onClick={() => onPage(Math.min(totalPages, page + 5))} disabled={page === totalPages}>»</PageButton>
     </div>
   );
 }
@@ -337,14 +338,22 @@ function PageButton({ onClick, disabled, active, children }: { onClick: () => vo
   );
 }
 
-function pageNumbers(current: number, total: number): (number | '«' | '»')[] {
+function pageNumbers(current: number, total: number): (number | null)[] {
   if (total <= 9) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages: (number | '«' | '»')[] = [1];
-  const start = Math.max(2, current - 2);
-  const end = Math.min(total - 1, current + 2);
-  if (start > 2) pages.push('«');
-  for (let p = start; p <= end; p++) pages.push(p);
-  if (end < total - 1) pages.push('»');
-  pages.push(total);
+  // 현재 페이지가 항상 시각적 가운데에 오도록 5칸 window 를 current 중심으로 고정.
+  // 범위 밖(<1 또는 >total) 은 null(보이지 않는 placeholder) 로 두어 셀 폭/위치를 유지한다.
+  // « / » (점프) 는 ‹ 의 왼쪽 / › 의 오른쪽에 별도 버튼으로 두므로 여기엔 포함하지 않는다.
+  const half = 2;
+  const windowStart = current - half;
+  const windowEnd = current + half;
+  const showLeftAnchor = 1 < windowStart;
+  const showRightAnchor = total > windowEnd;
+  const pages: (number | null)[] = [];
+  pages.push(showLeftAnchor ? 1 : null);
+  for (let i = -half; i <= half; i++) {
+    const p = current + i;
+    pages.push(p >= 1 && p <= total ? p : null);
+  }
+  pages.push(showRightAnchor ? total : null);
   return pages;
 }
