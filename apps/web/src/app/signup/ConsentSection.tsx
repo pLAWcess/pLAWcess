@@ -8,7 +8,7 @@ export type ConsentState = {
   thirdParty: boolean;      // [선택] 개인정보 제3자 제공 동의
 };
 
-const CONSENT_PDF = '/개인정보 수집 이용 동의서.pdf';
+const CONSENT_PDF = '/privacy-consent.pdf';
 
 type Props = {
   value: ConsentState;
