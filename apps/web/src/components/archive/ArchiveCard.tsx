@@ -122,7 +122,7 @@ export default function ArchiveCard({ data, actions }: Props) {
             </div>
           )}
           {data.mentorMessage && (
-            <div className="border-l-2 border-brand/30 pl-3">
+            <div>
               <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-1.5">
                 선배 한마디
               </p>
