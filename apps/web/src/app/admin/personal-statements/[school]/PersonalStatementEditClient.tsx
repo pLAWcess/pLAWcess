@@ -45,6 +45,7 @@ export default function PersonalStatementEditClient({
   );
   const [savingQ, setSavingQ] = useState(false);
   const [uploadingHwp, setUploadingHwp] = useState(false);
+  const [hwpVersion, setHwpVersion] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   // 문항을 편집했지만 아직 "문항 저장" 안 한 상태 (HWP 업로드는 즉시 저장이라 제외)
@@ -96,6 +97,7 @@ export default function PersonalStatementEditClient({
       reader.onload = () => {
         const result = reader.result as string;
         setHwpBase64(result.split(',')[1]);
+        setHwpVersion((v) => v + 1);
       };
       reader.readAsDataURL(file);
       toast.success('HWP 양식을 업로드했습니다.');
@@ -247,7 +249,7 @@ export default function PersonalStatementEditClient({
 
           <div className="flex-1 overflow-hidden">
             {hwpBase64 ? (
-              <HwpEditor initialHwpBase64={hwpBase64} />
+              <HwpEditor key={hwpVersion} initialHwpBase64={hwpBase64} />
             ) : (
               <div
                 onClick={() => fileInputRef.current?.click()}
