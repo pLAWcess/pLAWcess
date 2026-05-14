@@ -378,6 +378,10 @@ export default function PersonalStatementClient({
                     />
                   </div>
                 </>
+              ) : hasQuestions ? (
+                <EmptyState
+                  message={`${activeGroup.school}이(가) 한글(HWP) 형식의 양식을 제공하지 않아 파일이 업로드되지 않았습니다. '문항별 작성' 모드에서 작성해 주세요.`}
+                />
               ) : (
                 <EmptyState
                   message={`${activeGroup.school} 자기소개서 양식이 아직 준비되지 않았습니다.`}
