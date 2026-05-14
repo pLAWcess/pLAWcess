@@ -20,27 +20,25 @@ export default function ArchiveCard({ data, actions }: Props) {
     : '전공 미기재';
 
   return (
-    <div className="group bg-white rounded-xl border border-border overflow-hidden transition-all hover:border-brand/30 hover:shadow-sm">
+    <div className="group bg-white rounded-xl border border-border overflow-hidden transition-colors hover:border-brand/35">
       <button
         type="button"
-        className="w-full text-left px-6 py-5 flex flex-col gap-3"
+        className="w-full text-left px-7 pt-6 pb-5 flex flex-col gap-1"
         onClick={() => hasDetails && setExpanded((v) => !v)}
       >
-        {/* 1열: 학교 + 연도 + 비공개 + 화살표 */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand text-white text-xs font-semibold rounded-md">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-              <path d="M6 12v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5" />
-            </svg>
+        {/* 1열: 학교(헤드라인) + 비공개 + 연도 + 캐럿 */}
+        <div className="flex items-baseline gap-3">
+          <h3 className="text-[17px] font-bold text-text-primary tracking-[-0.012em] leading-snug">
             {data.admittedSchool}
-          </span>
-          <span className="text-xs text-text-secondary">{data.processYear}년 합격</span>
+          </h3>
           {data.isMine && !data.isPublished && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-[11px] font-semibold rounded border border-amber-200">
               비공개
             </span>
           )}
+          <span className="ml-auto shrink-0 text-[13px] font-medium text-text-secondary whitespace-nowrap">
+            {data.processYear}년 합격
+          </span>
           {hasDetails && (
             <svg
               width="16"
@@ -51,7 +49,7 @@ export default function ArchiveCard({ data, actions }: Props) {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={`ml-auto text-text-placeholder group-hover:text-text-secondary transition-all ${expanded ? 'rotate-180' : ''}`}
+              className={`shrink-0 text-text-placeholder group-hover:text-text-secondary transition-all ${expanded ? 'rotate-180' : ''}`}
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
@@ -59,26 +57,55 @@ export default function ArchiveCard({ data, actions }: Props) {
         </div>
 
         {/* 2열: 전공 */}
-        <p className="text-base font-semibold text-text-primary truncate">{majorLine}</p>
+        <p className="text-sm font-medium text-text-body truncate">{majorLine}</p>
 
-        {/* 3열: 정량 메트릭 */}
+        {/* 3열: 정량 메트릭 — 한 줄 인라인 텍스트, 가운뎃점 구분자 */}
         {(data.leetVerbalStandard !== null
           || data.leetReasoningStandard !== null
           || data.gpa !== null) && (
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <p className="mt-3 text-[13.5px] font-medium text-text-secondary leading-normal flex flex-wrap items-baseline gap-x-0 gap-y-1">
             {data.leetVerbalStandard !== null && (
-              <MetricPill label="언어이해" value={data.leetVerbalStandard} />
-            )}
-            {data.leetReasoningStandard !== null && (
-              <MetricPill label="추리논증" value={data.leetReasoningStandard} />
-            )}
-            {data.leetScore !== null && (
-              <span className="px-2 py-0.5 bg-brand/10 text-brand text-xs font-semibold rounded">
-                LEET 합 {data.leetScore}
+              <span>
+                언어이해
+                <b className="ml-1 font-bold text-text-primary tabular-nums tracking-[-0.01em]">
+                  {data.leetVerbalStandard}
+                </b>
               </span>
             )}
-            {data.gpa !== null && <MetricPill label="GPA" value={data.gpa} />}
-          </div>
+            {data.leetReasoningStandard !== null && (
+              <>
+                <span aria-hidden className="mx-2 text-text-placeholder">·</span>
+                <span>
+                  추리논증
+                  <b className="ml-1 font-bold text-text-primary tabular-nums tracking-[-0.01em]">
+                    {data.leetReasoningStandard}
+                  </b>
+                </span>
+              </>
+            )}
+            {data.leetScore !== null && (
+              <>
+                <span aria-hidden className="mx-2 text-text-placeholder">·</span>
+                <span className="text-brand">
+                  LEET 합
+                  <b className="ml-1.5 font-bold tabular-nums tracking-[-0.01em]">
+                    {data.leetScore}
+                  </b>
+                </span>
+              </>
+            )}
+            {data.gpa !== null && (
+              <>
+                <span aria-hidden className="mx-2 text-text-placeholder">·</span>
+                <span>
+                  GPA
+                  <b className="ml-1 font-bold text-text-primary tabular-nums tracking-[-0.01em]">
+                    {data.gpa}
+                  </b>
+                </span>
+              </>
+            )}
+          </p>
         )}
       </button>
 
@@ -115,14 +142,5 @@ export default function ArchiveCard({ data, actions }: Props) {
         </div>
       )}
     </div>
-  );
-}
-
-function MetricPill({ label, value }: { label: string; value: number }) {
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-page-bg text-xs rounded border border-border">
-      <span className="text-text-placeholder">{label}</span>
-      <span className="font-semibold text-text-primary">{value}</span>
-    </span>
   );
 }
