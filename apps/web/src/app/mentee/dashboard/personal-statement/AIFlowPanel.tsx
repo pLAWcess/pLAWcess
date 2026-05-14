@@ -65,11 +65,11 @@ export default function AIFlowPanel({ outline, outdated, loading, onClose }: Pro
           <button
             type="button"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label="패널 접기"
             className="text-text-secondary hover:text-text-primary transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
         )}

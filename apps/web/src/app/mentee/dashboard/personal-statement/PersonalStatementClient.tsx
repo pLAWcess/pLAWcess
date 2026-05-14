@@ -448,11 +448,12 @@ export default function PersonalStatementClient({
         ),
       )}
 
-      {/* AI 추천 자소서 흐름 — outline 있을 때만 노출. floating overlay 라 에디터 폭에 영향 없음.
-          기본은 열림(우측 패널), 사용자가 닫으면 우하단 FAB 로 축소되어 다시 펼칠 수 있다.
+      {/* AI 추천 자소서 흐름 — 항상 노출 (outline 없으면 패널 안에 "정성 데이터를 먼저 분석하세요"
+          안내 메시지). floating overlay 라 에디터 폭에 영향 없음. 기본은 열림(우측 패널),
+          사용자가 닫으면 우하단 FAB 로 축소되어 다시 펼칠 수 있다.
           lg 이상에서만 노출 (모바일은 화면 좁아 overlay 가 부담스러움). */}
-      {!readOnly && aiOutline && (aiPanelOpen ? (
-        <div className="hidden lg:flex fixed right-6 top-24 bottom-6 w-80 z-30">
+      {!readOnly && (aiPanelOpen ? (
+        <div className="hidden lg:flex fixed right-6 bottom-6 w-80 h-[60vh] z-30">
           <AIFlowPanel
             outline={aiOutline}
             outdated={aiOutdated}
