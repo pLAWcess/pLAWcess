@@ -1,18 +1,32 @@
-'use client';
+import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { serverFetch } from '@/lib/server-fetch';
+import MentorArchiveClient from './MentorArchiveClient';
+import type { ArchiveCase, ArchiveCaseDefaults, ArchiveListResponse } from '@/lib/api';
 
-export default function MentorArchivePage() {
+export const metadata: Metadata = {
+  title: 'pLAWcess | 합격 아카이브',
+};
+
+const EMPTY_LIST: ArchiveListResponse = {
+  cases: [],
+  filters: { majors: [], schools: [], years: [] },
+};
+
+export default async function MentorArchivePage() {
+  const token = (await cookies()).get('plawcess_token')?.value ?? '';
+  // 공개 케이스 + 본인 케이스 + 프리필 — SSR 에서 한 번에 조회.
+  const [pub, mine, defaults] = await Promise.all([
+    serverFetch<ArchiveListResponse>('/api/archive', token),
+    serverFetch<{ cases: ArchiveCase[] }>('/api/mentor/archive', token),
+    serverFetch<ArchiveCaseDefaults>('/api/mentor/archive/defaults', token),
+  ]);
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">합격 아카이브</h1>
-        <p className="text-sm text-text-secondary mt-1">
-          자유전공학부 출신 로스쿨 합격 선배들의 익명 케이스를 확인하세요
-        </p>
-      </div>
-
-      <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-10 text-center text-sm text-text-secondary">
-        준비 중입니다.
-      </div>
-    </div>
+    <MentorArchiveClient
+      initialPublic={pub ?? EMPTY_LIST}
+      initialMine={mine ?? { cases: [] }}
+      initialDefaults={defaults}
+    />
   );
 }

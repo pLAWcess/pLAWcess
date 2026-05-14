@@ -1485,3 +1485,116 @@ export async function submitMenteeApplicationWithShare(
   }
   return res.json();
 }
+
+// 합격 아카이브 (#261) ---------------------------------------------
+
+export type ArchiveCase = {
+  id: string;
+  major: string | null;
+  secondMajor: string | null;
+  admittedSchool: string;
+  processYear: number;
+  /** 언어이해 + 추리논증 표준점수 합. 둘 다 있을 때만 서버가 채운다. */
+  leetScore: number | null;
+  leetVerbalStandard: number | null;
+  leetReasoningStandard: number | null;
+  gpa: number | null;
+  keywords: string[];
+  storySummary: string | null;
+  mentorMessage: string | null;
+  isPublished: boolean;
+  isMine: boolean;
+};
+
+export type ArchiveListResponse = {
+  cases: ArchiveCase[];
+  filters: { majors: string[]; schools: string[]; years: number[] };
+};
+
+export type ArchiveFilter = {
+  major?: string;
+  school?: string;
+  year?: number;
+  leetMin?: number;
+  leetMax?: number;
+};
+
+export type ArchiveCaseInput = {
+  processYear: number;
+  admittedSchool: string;
+  major?: string | null;
+  secondMajor?: string | null;
+  leetVerbalStandard?: number | null;
+  leetReasoningStandard?: number | null;
+  gpa?: number | null;
+  storySummary?: string | null;
+  mentorMessage?: string | null;
+  isPublished?: boolean;
+};
+
+export type ArchiveCaseDefaults = {
+  major: string | null;
+  secondMajor: string | null;
+  leetVerbalStandard: number | null;
+  leetReasoningStandard: number | null;
+  gpa: number | null;
+  admittedSchools: string[];
+  processYear: number;
+};
+
+export async function getArchiveCases(filter: ArchiveFilter = {}): Promise<ArchiveListResponse> {
+  const sp = new URLSearchParams();
+  if (filter.major && filter.major !== "전체") sp.set("major", filter.major);
+  if (filter.school && filter.school !== "전체") sp.set("school", filter.school);
+  if (filter.year) sp.set("year", String(filter.year));
+  if (filter.leetMin !== undefined) sp.set("leetMin", String(filter.leetMin));
+  if (filter.leetMax !== undefined) sp.set("leetMax", String(filter.leetMax));
+  const qs = sp.toString();
+  const res = await fetch(`${API_BASE}/api/archive${qs ? `?${qs}` : ""}`, {
+    credentials: "include",
+  });
+  return jsonOrError(res, "합격 아카이브 조회 실패");
+}
+
+export async function getMyArchiveCases(): Promise<{ cases: ArchiveCase[] }> {
+  const res = await fetch(`${API_BASE}/api/mentor/archive`, { credentials: "include" });
+  return jsonOrError(res, "내 합격 케이스 조회 실패");
+}
+
+export async function getArchiveCaseDefaults(): Promise<ArchiveCaseDefaults> {
+  const res = await fetch(`${API_BASE}/api/mentor/archive/defaults`, {
+    credentials: "include",
+  });
+  return jsonOrError(res, "프리필 데이터 조회 실패");
+}
+
+export async function createArchiveCase(input: ArchiveCaseInput): Promise<{ case: ArchiveCase }> {
+  const res = await fetch(`${API_BASE}/api/mentor/archive`, {
+    method: "POST",
+    headers: headers(),
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  return jsonOrError(res, "합격 케이스 등록 실패");
+}
+
+export async function updateArchiveCase(
+  id: string,
+  input: Partial<ArchiveCaseInput>,
+): Promise<{ case: ArchiveCase }> {
+  const res = await fetch(`${API_BASE}/api/mentor/archive/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: headers(),
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  return jsonOrError(res, "합격 케이스 수정 실패");
+}
+
+export async function deleteArchiveCase(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/mentor/archive/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  await jsonOrError(res, "합격 케이스 삭제 실패");
+}

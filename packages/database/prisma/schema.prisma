@@ -130,6 +130,7 @@ model User {
   admin_memos               AdminMemo[]
   password_reset_tokens     PasswordResetToken[]
   created_announcements     Announcement[]       @relation("AnnouncementCreatedBy")
+  archive_cases             ArchiveCase[]
 
   @@map("users")
 }
@@ -584,7 +585,45 @@ model SchoolPersonalStatement {
 }
 
 // ----------------------------------------------------------------
-// 12. login_attempts (#179)
+// 12. archive_cases (#261)
+//    - 합격 아카이브. 멘토가 본인의 합격 케이스를 후배에게 익명으로 공유하는 카드.
+//    - 한 멘토가 가/나군 합격을 모두 등록할 수 있으므로 (user, year, school) unique.
+//    - is_published=false 인 동안은 멘티에게 노출되지 않으며, 멘토가 직접 토글한다.
+//    - leet_score 는 verbal/reasoning 둘 다 있을 때만 자동 합산되어 저장되며,
+//      멘티 LEET 합계 구간 필터에 사용된다.
+// ----------------------------------------------------------------
+model ArchiveCase {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String   @db.Uuid
+  process_year    Int // 합격 연도
+
+  // 표시 정보
+  major                   String?  @db.VarChar(100) // 1전공 (등록 시점 스냅샷)
+  second_major            String?  @db.VarChar(100) // 2전공 (등록 시점 스냅샷)
+  admitted_school         String   @db.VarChar(100) // 합격 로스쿨 (예: "고려대학교 로스쿨")
+  leet_score              Decimal? @db.Decimal(5, 2) // verbal + reasoning 합 (서버에서 자동 계산)
+  leet_verbal_standard    Decimal? @db.Decimal(5, 2) // 언어이해 표준점수
+  leet_reasoning_standard Decimal? @db.Decimal(5, 2) // 추리논증 표준점수
+  gpa                     Decimal? @db.Decimal(3, 2)
+  keywords                Json? // string[] — 카드 키워드 태그 (현재 입력 폼에서는 제거됐으나 미래 자동 추출용으로 컬럼 유지)
+  story_summary           String?  @db.Text // 합격 스토리
+  mentor_message          String?  @db.Text // 선배 한마디
+
+  // 공개 제어 — 멘토 본인이 토글
+  is_published    Boolean  @default(false)
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  user            User     @relation(fields: [user_id], references: [user_id])
+
+  @@unique([user_id, process_year, admitted_school])
+  @@index([is_published, process_year])
+  @@map("archive_cases")
+}
+
+// ----------------------------------------------------------------
+// 13. login_attempts (#179)
 //    - 로그인 brute-force / credential stuffing 방어용 시도 기록.
 //    - /api/auth/login 이 시도 직전에 (identifier, IP)별 최근 15분 실패 횟수를 세고,
 //      한도 초과 시 429 + Retry-After.
