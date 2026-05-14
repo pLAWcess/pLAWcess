@@ -122,12 +122,15 @@ export default function AdminUserDetailClient({ initialUser }: { initialUser: Ad
   return <UserDetailView initial={user} onUpdate={setUser} />;
 }
 
-function UserDetailView({
+export function UserDetailView({
   initial,
   onUpdate,
+  embedded = false,
 }: {
   initial: AdminUserDetail;
   onUpdate: (next: AdminUserDetail) => void;
+  // 회원관리 목록의 "수정" 모달에서 재사용될 때 페이지 헤더와 참여 이력을 숨긴다.
+  embedded?: boolean;
 }) {
   const router = useRouter();
 
@@ -143,28 +146,30 @@ function UserDetailView({
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleBack}
-          aria-label="뒤로"
-          className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors -ml-1"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">회원 상세</h1>
-          <p className="text-sm text-text-secondary mt-1">회원 정보를 확인하고 수정합니다</p>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleBack}
+            aria-label="뒤로"
+            className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors -ml-1"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary">회원 상세</h1>
+            <p className="text-sm text-text-secondary mt-1">회원 정보를 확인하고 수정합니다</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {initial.currentRole === 'mentor' ? <MentorProfileCard user={initial} onSave={persist} />
        : initial.currentRole === 'mentee' ? <MenteeProfileCard user={initial} onSave={persist} />
        : <ProfileCard user={initial} onSave={persist} />}
       <AccountCard user={initial} onSave={persist} />
-      <ParticipationCard participation={initial.participation} />
+      {!embedded && <ParticipationCard participation={initial.participation} />}
     </div>
   );
 }

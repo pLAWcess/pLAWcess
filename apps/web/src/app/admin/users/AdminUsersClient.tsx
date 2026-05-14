@@ -1,16 +1,18 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
+  getAdminUser,
   getAdminUsers,
   type AdminMenteeRow,
   type AdminMentorRow,
   type AdminAdminRow,
   type AdminAccountStatus,
+  type AdminUserDetail,
   type Paged,
 } from '@/lib/api';
+import { UserDetailView } from './[userId]/AdminUserDetailClient';
 
 const STATUS_LABELS: Record<AdminAccountStatus, string> = {
   active: '활성',
@@ -138,7 +140,7 @@ function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMe
       initialData={initialData}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
+        { key: 'name', label: '이름', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
         { key: 'studentId', label: '학번' },
         { key: 'firstMajor', label: '전공', render: (m) => m.firstMajor ?? '-' },
         { key: 'accountStatus', label: '계정 상태', render: (m) => <StatusBadge status={m.accountStatus} /> },
@@ -154,7 +156,7 @@ function MentorPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatu
       initialData={null}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', render: (m) => <Link href={`/admin/users/${m.userId}`} className="text-brand hover:underline font-medium">{m.name}</Link> },
+        { key: 'name', label: '이름', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
         { key: 'studentId', label: '학번' },
         { key: 'lawSchool', label: '소속 로스쿨', render: (m) => m.lawSchool ?? '-' },
         { key: 'cohort', label: '기수', render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
@@ -171,7 +173,7 @@ function AdminPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatus
       initialData={null}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', render: (a) => <Link href={`/admin/users/${a.userId}`} className="text-brand hover:underline font-medium">{a.name}</Link> },
+        { key: 'name', label: '이름', render: (a) => <span className="font-medium text-text-primary">{a.name}</span> },
         { key: 'studentId', label: '학번' },
         { key: 'email', label: '이메일' },
         { key: 'accountStatus', label: '계정 상태', render: (a) => <StatusBadge status={a.accountStatus} /> },
@@ -200,6 +202,12 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  // 행 끝 "수정" 버튼 → 모달에서 상세 편집. 닫힐 때 변경이 있었으면 목록을
+  // 새로고침해 표의 이름/상태/소속 등을 반영한다. 상세 fetch 는 모달 내부에서
+  // 처리해 버튼 라벨/폭이 변하지 않도록 함(컬럼 폭 재계산으로 인한 시각적 흔들림 방지).
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // 검색어 debounce — 입력 도중 매번 API를 때리지 않도록.
   useEffect(() => {
@@ -259,7 +267,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
     }
     load();
     return () => { cancelled = true; };
-  }, [role, page, debouncedQuery, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [role, page, debouncedQuery, statusFilter, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -282,15 +290,16 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
                 {col.label}
               </th>
             ))}
+            <th className="w-16"></th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
-            <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
           ) : error ? (
-            <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-red-500">{error}</td></tr>
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-red-500">{error}</td></tr>
           ) : rows.length === 0 ? (
-            <tr><td colSpan={columns.length} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td></tr>
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td></tr>
           ) : (
             rows.map((row) => (
               <tr key={row.userId} className="border-b border-border last:border-b-0">
@@ -299,6 +308,18 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
                     {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}
+                <td className="py-4 pr-2 text-right align-middle whitespace-nowrap">
+                  <button
+                    onClick={() => setEditingUserId(row.userId)}
+                    className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    수정
+                  </button>
+                </td>
               </tr>
             ))
           )}
@@ -310,7 +331,103 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
         <span className="text-xs text-text-secondary">총 {totalCount}명 · {safePage} / {totalPages} 페이지</span>
         {totalPages > 1 && <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />}
       </div>
+
+      <UserEditModal
+        userId={editingUserId}
+        onClose={() => setEditingUserId(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
     </section>
+  );
+}
+
+function UserEditModal({
+  userId,
+  onClose,
+  onSaved,
+}: {
+  userId: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const touchedRef = useRef(false);
+
+  // userId 가 바뀔 때마다 상세 fetch. 모달 안에서 처리해야 목록의 "수정" 버튼이
+  // 라벨/폭을 바꾸지 않는다 (table-auto 컬럼 폭 흔들림 방지).
+  useEffect(() => {
+    if (!userId) {
+      setDetail(null);
+      setError(null);
+      setLoading(false);
+      touchedRef.current = false;
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setDetail(null);
+    touchedRef.current = false;
+    getAdminUser(userId)
+      .then((d) => { if (!cancelled) setDetail(d); })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : '회원 상세 조회 실패');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const handleClose = () => {
+    if (touchedRef.current) onSaved();
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') handleClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!userId) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40" onClick={handleClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="회원 수정"
+        className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <h2 className="text-base font-semibold text-text-primary">회원 수정</h2>
+          <button type="button" onClick={handleClose} aria-label="닫기" className="text-text-placeholder hover:text-text-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-6 py-5 overflow-y-auto">
+          {loading ? (
+            <div className="py-16 text-center text-sm text-text-secondary">불러오는 중...</div>
+          ) : error ? (
+            <div className="py-16 text-center text-sm text-red-500">{error}</div>
+          ) : detail ? (
+            <UserDetailView
+              initial={detail}
+              onUpdate={(next) => {
+                setDetail(next);
+                touchedRef.current = true;
+              }}
+              embedded
+            />
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
