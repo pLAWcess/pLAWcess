@@ -306,6 +306,7 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
             <>
               <p>모든 내용을 꼼꼼히 확인한 후 신청해주시기 바랍니다.</p>
               <p className="mt-1">매칭은 <span className="text-brand font-medium">{formatDateKo(activeSchedule!.mentee_apply_end)}</span>까지 등록된 정량 및 정성 데이터를 기준으로 진행되므로, 마감 전까지 정보 등록을 완료해주시기 바랍니다.</p>
+              <p className="mt-1">신청 후에도 언제든 내용을 수정할 수 있습니다.</p>
             </>
           ) : null}
         </div>
