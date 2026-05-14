@@ -226,8 +226,12 @@ export default function SignupPage() {
   }
 
   function handleFile(file: File | null) {
-    if (file && file.size > 10 * 1024 * 1024) {
-      setFieldErrors((prev) => ({ ...prev, file: '파일 크기는 10MB 이하여야 합니다.' }));
+    if (file && file.size > 4 * 1024 * 1024) {
+      setFieldErrors((prev) => ({ ...prev, file: '파일 크기는 4MB 이하여야 합니다.' }));
+      return;
+    }
+    if (file && !['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+      setFieldErrors((prev) => ({ ...prev, file: 'PDF/JPG/PNG 파일만 업로드 가능합니다.' }));
       return;
     }
     setFieldErrors((prev) => ({ ...prev, file: undefined }));
@@ -276,6 +280,10 @@ export default function SignupPage() {
       next.phone = '010-XXXX-XXXX 형식으로 입력해주세요';
       mark('phone');
     }
+    if (!form.enrollmentFile) {
+      next.file = '재학증명서를 첨부해주세요.';
+      mark('file');
+    }
     if (!consent.privacyRequired) {
       next.consent = '개인정보 수집·이용에 동의해주세요.';
       mark('consent');
@@ -304,19 +312,20 @@ export default function SignupPage() {
 
     let res: Response;
     try {
+      const fd = new FormData();
+      fd.append('name', form.name);
+      fd.append('loginId', form.loginId);
+      fd.append('email', form.email);
+      fd.append('password', form.password);
+      fd.append('studentId', form.studentId);
+      fd.append('birthDate', form.birthDate);
+      fd.append('signupVerificationToken', signupVerificationToken);
+      if (form.enrollmentFile) fd.append('enrollmentFile', form.enrollmentFile);
       res = await fetch(`${API_BASE}/api/auth/signup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Content-Type 은 명시하지 않음 — 브라우저가 boundary 포함해 자동 설정
         credentials: 'include',
-        body: JSON.stringify({
-          name: form.name,
-          loginId: form.loginId,
-          email: form.email,
-          password: form.password,
-          studentId: form.studentId,
-          birthDate: form.birthDate,
-          signupVerificationToken,
-        }),
+        body: fd,
       });
     } catch {
       setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
@@ -569,7 +578,7 @@ export default function SignupPage() {
                   ) : (
                     <>
                       <span className="text-sm text-text-secondary">클릭하거나 파일을 드래그하여 업로드</span>
-                      <span className="text-xs text-text-placeholder mt-1">PDF, JPG, PNG (최대 10MB)</span>
+                      <span className="text-xs text-text-placeholder mt-1">PDF, JPG, PNG (최대 4MB)</span>
                     </>
                   )}
                 </div>
