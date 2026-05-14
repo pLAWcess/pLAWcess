@@ -236,7 +236,7 @@ export default function AdminArchiveClient({ initial }: { initial: AdminArchiveL
                         onClick={() => togglePublished(c)}
                         disabled={busyId === c.id}
                         aria-label={c.isPublished ? '공개 중 — 클릭하여 비공개로' : '비공개 중 — 클릭하여 공개로'}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors disabled:opacity-50 ${
+                        className={`inline-flex items-center justify-center gap-1.5 min-w-[72px] px-2.5 py-1 text-xs font-medium rounded-md border transition-colors disabled:opacity-50 ${
                           c.isPublished
                             ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
                             : 'border-border bg-white text-text-secondary hover:bg-gray-50'
