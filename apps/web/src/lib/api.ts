@@ -703,7 +703,11 @@ export type AdminMentorCreateInput = {
   name: string;
   loginId: string;
   password: string;
+  email?: string | null;
+  studentId?: string | null;
+  undergradFirstMajor?: string | null;
   currentLawschool?: string | null;
+  lawschoolGrade?: number | null;
 };
 
 export async function createAdminMentor(

@@ -15,6 +15,8 @@ import { prisma } from "@plawcess/database";
 import { requireAdmin } from "@/lib/admin-guard";
 
 const LOGIN_ID_REGEX = /^[a-zA-Z0-9_]{4,30}$/;
+const STUDENT_ID_REGEX = /^[a-zA-Z0-9]{4,20}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NAME_MAX = 50;
 const SCHOOL_NAME_MAX = 100;
 // 어드민이 발급하는 임시 비밀번호는 일반 회원가입의 복잡도 규칙을 적용하지 않는다.
@@ -22,6 +24,18 @@ const SCHOOL_NAME_MAX = 100;
 // ASCII printable 만 가드.
 const TEMP_PASSWORD_MAX = 72;
 const ASCII_PRINTABLE = /^[\x20-\x7E]+$/;
+
+function trimOrNull(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length > 0 ? t : null;
+}
+
+function intOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : null;
+}
 
 function placeholderEmail(loginId: string): string {
   // 어드민이 만든 멘토 계정은 실제 이메일이 없으므로 충돌 안 나는 도메인을 사용한다.
@@ -79,8 +93,11 @@ export async function POST(req: NextRequest) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const loginId = typeof body.loginId === "string" ? body.loginId.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  const currentLawschoolRaw = typeof body.currentLawschool === "string" ? body.currentLawschool.trim() : "";
-  const currentLawschool = currentLawschoolRaw.length > 0 ? currentLawschoolRaw : null;
+  const emailInput = trimOrNull(body.email);
+  const studentId = trimOrNull(body.studentId);
+  const undergradFirstMajor = trimOrNull(body.undergradFirstMajor);
+  const currentLawschool = trimOrNull(body.currentLawschool);
+  const lawschoolGrade = intOrNull(body.lawschoolGrade);
 
   if (!name || !loginId || !password) {
     return NextResponse.json(
@@ -115,29 +132,43 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  if (emailInput && !EMAIL_REGEX.test(emailInput)) {
+    return NextResponse.json({ error: "이메일 형식이 올바르지 않습니다." }, { status: 400 });
+  }
+  if (studentId && !STUDENT_ID_REGEX.test(studentId)) {
+    return NextResponse.json(
+      { error: "학번은 영문/숫자 4~20자여야 합니다." },
+      { status: 400 },
+    );
+  }
 
-  const email = placeholderEmail(loginId);
+  const email = emailInput ?? placeholderEmail(loginId);
 
-  const [loginIdDup, emailDup] = await Promise.all([
+  const [loginIdDup, emailDup, studentIdDup] = await Promise.all([
     prisma.user.findUnique({ where: { login_id: loginId } }),
     prisma.user.findUnique({ where: { email } }),
+    studentId
+      ? prisma.user.findFirst({
+          where: { student_id: studentId, is_deleted: false },
+          select: { user_id: true },
+        })
+      : Promise.resolve(null),
   ]);
   if (loginIdDup) {
     return NextResponse.json({ error: "이미 사용 중인 아이디입니다." }, { status: 409 });
   }
   if (emailDup) {
-    // login_id 와 1:1 로 파생되는 placeholder 가 부딪힐 가능성은 사실상 없지만 방어.
-    return NextResponse.json(
-      { error: "이메일 충돌 — 다른 아이디를 사용해 주세요." },
-      { status: 409 },
-    );
+    return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
+  }
+  if (studentIdDup) {
+    return NextResponse.json({ error: "이미 가입된 학번입니다." }, { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  // 활성 cycle 이 있을 때만 mentor_record 를 미리 생성해 lawschool_name 을 채워둔다.
-  // 활성 cycle 이 없거나 currentLawschool 이 비었으면 User 만 생성 (멘토가 직접 채우게).
-  const activeCycle = currentLawschool
+  // 로스쿨 정보(소속 또는 기수)가 하나라도 있으면 활성 cycle 의 mentor_record 를 미리 만든다.
+  const hasLawschoolInfo = !!(currentLawschool || lawschoolGrade !== null);
+  const activeCycle = hasLawschoolInfo
     ? await prisma.cycleSchedule.findFirst({
         where: { is_active: true },
         select: { process_year: true },
@@ -153,6 +184,8 @@ export async function POST(req: NextRequest) {
           email,
           password_hash: passwordHash,
           current_role: "mentor",
+          student_id: studentId,
+          undergrad_first_major: undergradFirstMajor,
         },
         select: {
           user_id: true,
@@ -163,12 +196,13 @@ export async function POST(req: NextRequest) {
           created_at: true,
         },
       });
-      if (currentLawschool && activeCycle) {
+      if (hasLawschoolInfo && activeCycle) {
         await tx.mentorRecord.create({
           data: {
             user_id: created.user_id,
             process_year: activeCycle.process_year,
             lawschool_name: currentLawschool,
+            lawschool_grade: lawschoolGrade,
           },
         });
       }
