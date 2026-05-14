@@ -54,7 +54,7 @@ export default function AdminMentorCreateClient() {
   ] as const;
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-6 w-full max-w-xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">멘토 계정 생성</h1>
         <p className="text-sm text-text-secondary mt-1">신규 멘토 계정을 생성합니다.</p>
@@ -62,7 +62,7 @@ export default function AdminMentorCreateClient() {
 
       <section className="bg-white border border-border rounded-xl shadow-sm px-4 sm:px-8 py-6">
         <h2 className="text-base font-semibold text-text-primary mb-6">신규 계정</h2>
-        <form onSubmit={handleCreate} className="space-y-4 max-w-md">
+        <form onSubmit={handleCreate} className="space-y-4">
           {fields.map(({ key, label, type, placeholder, required }) => (
             <div key={key} className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-text-primary">
