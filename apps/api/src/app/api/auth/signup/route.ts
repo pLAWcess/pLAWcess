@@ -4,9 +4,11 @@ import { prisma } from "@plawcess/database";
 import { signToken, makeAuthCookie } from "@/lib/auth";
 import { verifySignupVerificationToken } from "@/lib/auth-tokens";
 import { validatePassword } from "@/lib/password";
+import { labelToDate } from "@/lib/labels";
 
 const LOGIN_ID_REGEX = /^[a-zA-Z0-9_]{4,30}$/;
 const STUDENT_ID_REGEX = /^[a-zA-Z0-9]{4,20}$/;
+const BIRTH_DATE_REGEX = /^\d{4}\.\d{2}\.\d{2}\.$/;
 
 export async function POST(req: NextRequest) {
   let body: {
@@ -15,6 +17,7 @@ export async function POST(req: NextRequest) {
     email?: string;
     password?: string;
     studentId?: string;
+    birthDate?: string;
     signupVerificationToken?: string;
   };
   try {
@@ -23,10 +26,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const { name, loginId, email, password, studentId, signupVerificationToken } = body;
-  if (!name || !loginId || !email || !password || !studentId || !signupVerificationToken) {
+  const { name, loginId, email, password, studentId, birthDate, signupVerificationToken } = body;
+  if (!name || !loginId || !email || !password || !studentId || !birthDate || !signupVerificationToken) {
     return NextResponse.json(
-      { error: "이름·아이디·이메일·비밀번호·학번·이메일 인증 토큰은 필수입니다." },
+      { error: "이름·아이디·이메일·비밀번호·학번·생년월일·이메일 인증 토큰은 필수입니다." },
       { status: 400 },
     );
   }
@@ -35,6 +38,13 @@ export async function POST(req: NextRequest) {
   }
   if (!STUDENT_ID_REGEX.test(studentId)) {
     return NextResponse.json({ error: "학번은 영문/숫자 4~20자여야 합니다." }, { status: 400 });
+  }
+  if (!BIRTH_DATE_REGEX.test(birthDate)) {
+    return NextResponse.json({ error: "생년월일은 YYYY.MM.DD. 형식으로 입력해주세요." }, { status: 400 });
+  }
+  const birthDateParsed = labelToDate(birthDate);
+  if (!birthDateParsed) {
+    return NextResponse.json({ error: "유효하지 않은 생년월일입니다." }, { status: 400 });
   }
   const pwResult = validatePassword(password);
   if (!pwResult.ok) {
@@ -68,6 +78,7 @@ export async function POST(req: NextRequest) {
       email,
       password_hash,
       student_id: studentId,
+      birth_date: birthDateParsed,
       current_role: "mentee",
       military_status: "not_applicable",
     },

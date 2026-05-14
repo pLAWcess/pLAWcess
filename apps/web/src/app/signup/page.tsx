@@ -314,6 +314,7 @@ export default function SignupPage() {
           email: form.email,
           password: form.password,
           studentId: form.studentId,
+          birthDate: form.birthDate,
           signupVerificationToken,
         }),
       });
