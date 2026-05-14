@@ -688,6 +688,44 @@ export async function getAdminUsers(
   return jsonOrError(res, "회원 목록 조회 실패");
 }
 
+// 멘토 계정 생성 (#262) ---------------------------------------------
+
+export type AdminMentorAccount = {
+  userId: string;
+  name: string;
+  loginId: string | null;
+  email: string;
+  lawschoolName: string | null;
+  createdAt: string;
+};
+
+export type AdminMentorCreateInput = {
+  name: string;
+  loginId: string;
+  password: string;
+  currentLawschool?: string | null;
+};
+
+export async function getAdminMentors(): Promise<{ mentors: AdminMentorAccount[] }> {
+  const res = await fetch(`${API_BASE}/api/admin/mentors`, {
+    headers: headers(),
+    credentials: "include",
+  });
+  return jsonOrError(res, "멘토 목록 조회 실패");
+}
+
+export async function createAdminMentor(
+  input: AdminMentorCreateInput,
+): Promise<{ mentor: AdminMentorAccount }> {
+  const res = await fetch(`${API_BASE}/api/admin/mentors`, {
+    method: "POST",
+    headers: headers(),
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  return jsonOrError(res, "멘토 계정 생성 실패");
+}
+
 // 신청관리 ----------------------------------------------------------
 
 export async function getAdminApplications(
