@@ -12,9 +12,19 @@ const NAV_ITEMS = [
   { href: '/announcements', label: '공지사항' },
 ];
 
+// admin 전용 진입점 — LandingNavbarInner 의 ADMIN_EXTRA_ITEMS 와 동일.
+const ADMIN_EXTRA_ITEMS = [
+  { href: '/admin/schedule', label: '관리자 대시보드' },
+  { href: '/mentee/dashboard/basic-info', label: '멘티 대시보드' },
+  { href: '/mentor/dashboard', label: '멘토 대시보드' },
+];
+
 export default function LandingNavbarMobile({ user }: { user: AuthUser | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const navItems = user?.current_role === 'admin'
+    ? [...NAV_ITEMS, ...ADMIN_EXTRA_ITEMS]
+    : NAV_ITEMS;
 
   return (
     <>
@@ -36,7 +46,7 @@ export default function LandingNavbarMobile({ user }: { user: AuthUser | null })
 
       {open && (
         <div className="absolute top-16 left-0 right-0 bg-white border-t border-border px-4 py-3 flex flex-col gap-1 shadow-md z-50">
-          {NAV_ITEMS.map(({ href, label }) => (
+          {navItems.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
