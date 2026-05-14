@@ -70,10 +70,10 @@ export default function AdminMentorCreateClient() {
     { key: 'loginId', label: '아이디', type: 'text', placeholder: 'mentor01', required: true, inputMode: undefined },
     { key: 'password', label: '임시 비밀번호', type: 'password', placeholder: '••••••••', required: true, inputMode: undefined },
     { key: 'email', label: '이메일', type: 'email', placeholder: 'mentor@example.com', required: false, inputMode: undefined },
-    { key: 'studentId', label: '학번', type: 'text', placeholder: '예: 2020123456', required: false, inputMode: undefined },
+    { key: 'studentId', label: '학번', type: 'text', placeholder: '2020123456', required: false, inputMode: undefined },
     { key: 'undergradFirstMajor', label: '제1전공', type: 'text', placeholder: '컴퓨터학과', required: false, inputMode: undefined },
     { key: 'currentLawschool', label: '소속 로스쿨', type: 'text', placeholder: '고려대학교 로스쿨', required: false, inputMode: undefined },
-    { key: 'lawschoolGrade', label: '기수', type: 'text', placeholder: '예: 17', required: false, inputMode: 'numeric' as const },
+    { key: 'lawschoolGrade', label: '기수', type: 'text', placeholder: '17', required: false, inputMode: 'numeric' as const },
   ] as const;
 
   return (

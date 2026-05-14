@@ -130,10 +130,10 @@ function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentor
             { label: '전공', value: a.major },
           ]}
           columns={[
-            { key: 'name', label: '이름', sortable: true },
-            { key: 'studentId', label: '학번', sortable: true },
-            { key: 'major', label: '전공', sortable: true },
-            { key: 'status', label: '신청 상태', sortable: true, render: (a) => <StatusBadge status={a.status} /> },
+            { key: 'name', label: '이름', sortable: true, widthClass: 'w-32' },
+            { key: 'studentId', label: '학번', sortable: true, widthClass: 'w-32' },
+            { key: 'major', label: '전공', sortable: true, widthClass: 'w-44' },
+            { key: 'status', label: '신청 상태', sortable: true, widthClass: 'w-28', render: (a) => <StatusBadge status={a.status} /> },
             { key: 'memo', label: '요청사항 및 관리자메모', render: (a) => <MemoCell memo={a.memo} /> },
           ]}
         />
@@ -152,11 +152,11 @@ function ApplicationsPageContent({ initialYear, initialMenteeData, initialMentor
             { label: '기수', value: a.cohort != null ? `${a.cohort}기` : '-' },
           ]}
           columns={[
-            { key: 'name', label: '이름', sortable: true },
-            { key: 'studentId', label: '학번', sortable: true },
-            { key: 'school', label: '소속 로스쿨', sortable: true, render: (a) => a.school ?? '-' },
-            { key: 'cohort', label: '기수', sortable: true, render: (a) => a.cohort != null ? `${a.cohort}기` : '-' },
-            { key: 'status', label: '신청 상태', sortable: true, render: (a) => <StatusBadge status={a.status} /> },
+            { key: 'name', label: '이름', sortable: true, widthClass: 'w-32' },
+            { key: 'studentId', label: '학번', sortable: true, widthClass: 'w-32' },
+            { key: 'school', label: '소속 로스쿨', sortable: true, widthClass: 'w-44', render: (a) => a.school ?? '-' },
+            { key: 'cohort', label: '기수', sortable: true, widthClass: 'w-20', render: (a) => a.cohort != null ? `${a.cohort}기` : '-' },
+            { key: 'status', label: '신청 상태', sortable: true, widthClass: 'w-28', render: (a) => <StatusBadge status={a.status} /> },
             { key: 'memo', label: '요청사항 및 관리자메모', render: (a) => <MemoCell memo={a.memo} /> },
           ]}
         />
@@ -186,6 +186,8 @@ type ColumnDef<T> = {
   label: string;
   sortable?: boolean;
   render?: (row: T) => React.ReactNode;
+  // table-fixed 컬럼 폭. 미지정 컬럼은 남는 폭을 나눠 받는다.
+  widthClass?: string;
 };
 
 type AdminApplicationRow = AdminMenteeApplicationRow | AdminMentorApplicationRow;
@@ -257,7 +259,7 @@ function ApplicationPanel<T extends AdminApplicationRow>({
     }
     load();
     return () => { cancelled = true; };
-  }, [role, year, page]);
+  }, [role, year, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -299,11 +301,11 @@ function ApplicationPanel<T extends AdminApplicationRow>({
       </div>
 
       <div className="overflow-x-auto">
-      <table className="w-full table-auto min-w-[600px]">
+      <table className={`w-full table-fixed min-w-150 transition-opacity ${loading && processed.length > 0 ? 'opacity-60' : ''}`}>
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
-              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap">
+              <th key={String(col.key)} className={`text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap ${col.widthClass ?? ''}`}>
                 {col.sortable ? (
                   <button onClick={() => onSort(col.key)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     {col.label}
@@ -314,21 +316,21 @@ function ApplicationPanel<T extends AdminApplicationRow>({
                 )}
               </th>
             ))}
-            <th className="w-16"></th>
+            <th className="w-20"></th>
           </tr>
         </thead>
         <tbody>
-          {loading ? (
-            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
-          ) : error ? (
+          {error ? (
             <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-red-500">{error}</td></tr>
+          ) : processed.length === 0 && loading ? (
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
           ) : processed.length === 0 ? (
             <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td></tr>
           ) : (
             processed.map((row) => (
               <tr key={row.applicationId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
+                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis">
                     {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}

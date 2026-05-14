@@ -28,6 +28,8 @@ export default function SelectField({ value, options, onChange, placeholder }: P
   const isEmpty = value === '-' || value === '';
   const displayValue = isEmpty && placeholder ? placeholder : value;
 
+  // SSR 하이드레이션 안전을 위한 mount 가드 — 서버 렌더에 portal 이 끼지 않게.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   function recompute() {
@@ -48,7 +50,7 @@ export default function SelectField({ value, options, onChange, placeholder }: P
   useLayoutEffect(() => {
     if (!open) return;
     recompute();
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) return;

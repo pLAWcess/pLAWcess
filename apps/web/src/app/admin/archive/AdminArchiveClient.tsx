@@ -69,21 +69,6 @@ export default function AdminArchiveClient({ initial }: { initial: AdminArchiveL
     };
   }, [major, school, year, published]);
 
-  async function refresh() {
-    try {
-      const res = await getAdminArchiveCases({
-        major,
-        school,
-        year: year === 'all' ? undefined : year,
-        published: published === 'all' ? undefined : published === 'true',
-      });
-      setCases(res.cases);
-      setFilterOpts(res.filters);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '조회 실패');
-    }
-  }
-
   async function togglePublished(c: AdminArchiveCase) {
     if (busyId) return;
     setBusyId(c.id);

@@ -131,7 +131,13 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-type ColumnDef<T> = { key: keyof T; label: string; render?: (row: T) => React.ReactNode };
+type ColumnDef<T> = {
+  key: keyof T;
+  label: string;
+  render?: (row: T) => React.ReactNode;
+  // table-fixed 컬럼 폭. 미지정 컬럼은 남는 폭을 나눠 받는다.
+  widthClass?: string;
+};
 
 function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMenteeRow> | null; statusFilter: 'all' | AdminAccountStatus }) {
   return (
@@ -140,10 +146,10 @@ function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMe
       initialData={initialData}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
-        { key: 'studentId', label: '학번' },
+        { key: 'name', label: '이름', widthClass: 'w-32', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
+        { key: 'studentId', label: '학번', widthClass: 'w-32' },
         { key: 'firstMajor', label: '전공', render: (m) => m.firstMajor ?? '-' },
-        { key: 'accountStatus', label: '계정 상태', render: (m) => <StatusBadge status={m.accountStatus} /> },
+        { key: 'accountStatus', label: '계정 상태', widthClass: 'w-28', render: (m) => <StatusBadge status={m.accountStatus} /> },
       ]}
     />
   );
@@ -156,11 +162,11 @@ function MentorPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatu
       initialData={null}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
-        { key: 'studentId', label: '학번' },
+        { key: 'name', label: '이름', widthClass: 'w-32', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
+        { key: 'studentId', label: '학번', widthClass: 'w-32' },
         { key: 'lawSchool', label: '소속 로스쿨', render: (m) => m.lawSchool ?? '-' },
-        { key: 'cohort', label: '기수', render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
-        { key: 'accountStatus', label: '계정 상태', render: (m) => <StatusBadge status={m.accountStatus} /> },
+        { key: 'cohort', label: '기수', widthClass: 'w-20', render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
+        { key: 'accountStatus', label: '계정 상태', widthClass: 'w-28', render: (m) => <StatusBadge status={m.accountStatus} /> },
       ]}
     />
   );
@@ -173,10 +179,10 @@ function AdminPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatus
       initialData={null}
       statusFilter={statusFilter}
       columns={[
-        { key: 'name', label: '이름', render: (a) => <span className="font-medium text-text-primary">{a.name}</span> },
-        { key: 'studentId', label: '학번' },
+        { key: 'name', label: '이름', widthClass: 'w-32', render: (a) => <span className="font-medium text-text-primary">{a.name}</span> },
+        { key: 'studentId', label: '학번', widthClass: 'w-32' },
         { key: 'email', label: '이메일' },
-        { key: 'accountStatus', label: '계정 상태', render: (a) => <StatusBadge status={a.accountStatus} /> },
+        { key: 'accountStatus', label: '계정 상태', widthClass: 'w-28', render: (a) => <StatusBadge status={a.accountStatus} /> },
       ]}
     />
   );
@@ -282,29 +288,29 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
       </div>
 
       <div className="overflow-x-auto">
-      <table className="w-full table-auto min-w-[600px]">
+      <table className={`w-full table-fixed min-w-150 transition-opacity ${loading && rows.length > 0 ? 'opacity-60' : ''}`}>
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
-              <th key={String(col.key)} className="text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap">
+              <th key={String(col.key)} className={`text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap ${col.widthClass ?? ''}`}>
                 {col.label}
               </th>
             ))}
-            <th className="w-16"></th>
+            <th className="w-20"></th>
           </tr>
         </thead>
         <tbody>
-          {loading ? (
-            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
-          ) : error ? (
+          {error ? (
             <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-red-500">{error}</td></tr>
+          ) : rows.length === 0 && loading ? (
+            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">로딩 중...</td></tr>
           ) : rows.length === 0 ? (
             <tr><td colSpan={columns.length + 1} className="py-10 text-center text-sm text-text-secondary">검색 결과가 없습니다.</td></tr>
           ) : (
             rows.map((row) => (
               <tr key={row.userId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
+                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis">
                     {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}
@@ -332,11 +338,14 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
         {totalPages > 1 && <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />}
       </div>
 
-      <UserEditModal
-        userId={editingUserId}
-        onClose={() => setEditingUserId(null)}
-        onSaved={() => setRefreshKey((k) => k + 1)}
-      />
+      {editingUserId && (
+        <UserEditModal
+          key={editingUserId}
+          userId={editingUserId}
+          onClose={() => setEditingUserId(null)}
+          onSaved={() => setRefreshKey((k) => k + 1)}
+        />
+      )}
     </section>
   );
 }
@@ -346,30 +355,20 @@ function UserEditModal({
   onClose,
   onSaved,
 }: {
-  userId: string | null;
+  userId: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  // 부모가 conditional 렌더 + key={userId} 로 마운트하므로 userId 변경 시
+  // 컴포넌트 자체가 새로 마운트되어 상태가 초기값으로 자연스럽게 리셋된다.
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const touchedRef = useRef(false);
 
-  // userId 가 바뀔 때마다 상세 fetch. 모달 안에서 처리해야 목록의 "수정" 버튼이
-  // 라벨/폭을 바꾸지 않는다 (table-auto 컬럼 폭 흔들림 방지).
+  // 모달 안에서 상세 fetch — 행 "수정" 버튼이 라벨/폭을 바꾸지 않도록.
   useEffect(() => {
-    if (!userId) {
-      setDetail(null);
-      setError(null);
-      setLoading(false);
-      touchedRef.current = false;
-      return;
-    }
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setDetail(null);
-    touchedRef.current = false;
     getAdminUser(userId)
       .then((d) => { if (!cancelled) setDetail(d); })
       .catch((e) => {
@@ -385,13 +384,10 @@ function UserEditModal({
   };
 
   useEffect(() => {
-    if (!userId) return;
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') handleClose(); }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!userId) return null;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
