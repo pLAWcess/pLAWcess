@@ -10,10 +10,12 @@ const PAGE_SIZE = 8;
 
 const LEET_OPTIONS = [
   { label: '전체', min: undefined as number | undefined, max: undefined as number | undefined },
-  { label: '160+', min: 160, max: undefined },
-  { label: '150~159', min: 150, max: 159 },
+  { label: '150+', min: 150, max: undefined },
   { label: '140~149', min: 140, max: 149 },
-  { label: '139 이하', min: undefined, max: 139 },
+  { label: '130~139', min: 130, max: 139 },
+  { label: '129~120', min: 120, max: 129 },
+  { label: '119~110', min: 110, max: 119 },
+  { label: '110 이하', min: undefined, max: 109 },
 ];
 
 export default function MenteeArchiveClient({ initial }: { initial: ArchiveListResponse }) {
