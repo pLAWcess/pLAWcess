@@ -28,7 +28,7 @@ const STEPS: Step[] = [
   },
   {
     number: '03',
-    title: '1:1 멘토링',
+    title: '로스쿨 재학생과의 멘토링',
     description: '매칭된 멘토와 직접 연결되어 입시 전략을 구체화하세요.',
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
