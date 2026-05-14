@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Dropdown from '@/components/ui/Dropdown';
 import ArchiveCard from '@/components/archive/ArchiveCard';
+import ArchivePagination from '@/components/archive/ArchivePagination';
 import { getArchiveCases, type ArchiveCase, type ArchiveListResponse } from '@/lib/api';
+
+const PAGE_SIZE = 8;
 
 const LEET_OPTIONS = [
   { label: '전체', min: undefined as number | undefined, max: undefined as number | undefined },
@@ -24,6 +27,7 @@ export default function MenteeArchiveClient({ initial }: { initial: ArchiveListR
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   // 첫 마운트는 SSR 데이터 그대로 — 필터가 바뀐 뒤에만 재조회.
   const firstRun = useRef(true);
@@ -69,6 +73,17 @@ export default function MenteeArchiveClient({ initial }: { initial: ArchiveListR
     [filterOpts.schools],
   );
 
+  // 필터 바뀌면 1페이지로 리셋.
+  useEffect(() => {
+    setPage(1);
+  }, [major, school, leetRange, cases.length]);
+
+  const totalPages = Math.max(1, Math.ceil(cases.length / PAGE_SIZE));
+  const pageItems = useMemo(
+    () => cases.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [cases, page],
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -108,7 +123,14 @@ export default function MenteeArchiveClient({ initial }: { initial: ArchiveListR
       ) : cases.length === 0 && !loading ? (
         <EmptyState />
       ) : (
-        cases.map((c) => <ArchiveCard key={c.id} data={c} />)
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {pageItems.map((c) => <ArchiveCard key={c.id} data={c} />)}
+          </div>
+          {totalPages > 1 && (
+            <ArchivePagination page={page} totalPages={totalPages} onChange={setPage} />
+          )}
+        </>
       )}
 
       <p className="text-xs text-text-secondary text-center pb-2">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Dropdown from '@/components/ui/Dropdown';
 import ArchiveCard from '@/components/archive/ArchiveCard';
+import ArchivePagination from '@/components/archive/ArchivePagination';
 import ArchiveCaseFormModal from '@/components/archive/ArchiveCaseFormModal';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
@@ -25,6 +26,8 @@ const LEET_OPTIONS = [
   { label: '140~149', min: 140, max: 149 },
   { label: '139 이하', min: undefined, max: 139 },
 ];
+
+const PAGE_SIZE = 8;
 
 interface Props {
   initialPublic: ArchiveListResponse;
@@ -49,6 +52,7 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ArchiveCase | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const defaults = initialDefaults;
   const toast = useToast();
   const confirm = useConfirm();
@@ -136,6 +140,16 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
   const schoolOptions = useMemo(
     () => ['전체', ...filterOpts.schools].map((s) => ({ value: s, label: s })),
     [filterOpts.schools],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [major, school, leetRange, merged.length]);
+
+  const totalPages = Math.max(1, Math.ceil(merged.length / PAGE_SIZE));
+  const pageItems = useMemo(
+    () => merged.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [merged, page],
   );
 
   function openCreate() {
@@ -244,42 +258,49 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
       ) : merged.length === 0 && !loading ? (
         <MentorEmptyState onRegister={openCreate} />
       ) : (
-        merged.map((c) => (
-          <ArchiveCard
-            key={c.id}
-            data={c}
-            actions={
-              c.isMine ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => togglePublished(c)}
-                    disabled={busyId === c.id}
-                    className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-                  >
-                    {c.isPublished ? '비공개로' : '공개로'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openEdit(c)}
-                    disabled={busyId === c.id}
-                    className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(c)}
-                    disabled={busyId === c.id}
-                    className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
-                  >
-                    삭제
-                  </button>
-                </>
-              ) : undefined
-            }
-          />
-        ))
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {pageItems.map((c) => (
+              <ArchiveCard
+                key={c.id}
+                data={c}
+                actions={
+                  c.isMine ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => togglePublished(c)}
+                        disabled={busyId === c.id}
+                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        {c.isPublished ? '비공개로' : '공개로'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(c)}
+                        disabled={busyId === c.id}
+                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(c)}
+                        disabled={busyId === c.id}
+                        className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
+                      >
+                        삭제
+                      </button>
+                    </>
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <ArchivePagination page={page} totalPages={totalPages} onChange={setPage} />
+          )}
+        </>
       )}
 
       <p className="text-xs text-text-secondary text-center pb-2">
