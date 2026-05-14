@@ -70,6 +70,8 @@ export default function PersonalStatementClient({
   const [aiOutline, setAiOutline] = useState<StoryOutline | null>(null);
   const [aiOutdated, setAiOutdated] = useState(false);
   const [aiLoading, setAiLoading] = useState(true);
+  // 우측 floating overlay 토글. outline 있을 때 기본 펼침, 사용자가 닫으면 우하단 FAB 로 축소.
+  const [aiPanelOpen, setAiPanelOpen] = useState(true);
 
   useEffect(() => {
     if (readOnly) {
@@ -286,8 +288,7 @@ export default function PersonalStatementClient({
   const statusText = getSaveStatus();
 
   return (
-    <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-      <div className="flex flex-col gap-6 flex-1 min-w-0 w-full">
+    <div className="flex flex-col gap-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
@@ -446,13 +447,32 @@ export default function PersonalStatementClient({
           </div>
         ),
       )}
-      </div>
 
-      {!readOnly && (
-        <aside className="hidden lg:block lg:w-80 shrink-0 lg:sticky lg:top-6 self-start">
-          <AIFlowPanel outline={aiOutline} outdated={aiOutdated} loading={aiLoading} />
-        </aside>
-      )}
+      {/* AI 추천 자소서 흐름 — outline 있을 때만 노출. floating overlay 라 에디터 폭에 영향 없음.
+          기본은 열림(우측 패널), 사용자가 닫으면 우하단 FAB 로 축소되어 다시 펼칠 수 있다.
+          lg 이상에서만 노출 (모바일은 화면 좁아 overlay 가 부담스러움). */}
+      {!readOnly && aiOutline && (aiPanelOpen ? (
+        <div className="hidden lg:flex fixed right-6 top-24 bottom-6 w-80 z-30">
+          <AIFlowPanel
+            outline={aiOutline}
+            outdated={aiOutdated}
+            loading={aiLoading}
+            onClose={() => setAiPanelOpen(false)}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAiPanelOpen(true)}
+          aria-label="AI 추천 자소서 흐름 열기"
+          className="hidden lg:inline-flex fixed right-6 bottom-6 z-30 items-center gap-2 px-4 py-3 bg-brand text-white text-sm font-medium rounded-full shadow-lg hover:bg-brand-dark transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2Z" />
+          </svg>
+          AI 자소서 흐름
+        </button>
+      ))}
     </div>
   );
 }
