@@ -560,6 +560,8 @@ export type AdminMenteeRow = {
   studentId: string;
   firstMajor: string | null;
   accountStatus: AdminAccountStatus;
+  hasEnrollmentDoc: boolean;
+  enrollmentDocMime: string | null;
 };
 
 export type AdminMentorRow = {
@@ -569,6 +571,8 @@ export type AdminMentorRow = {
   lawSchool: string | null;
   cohort: number | null;
   accountStatus: AdminAccountStatus;
+  hasEnrollmentDoc: boolean;
+  enrollmentDocMime: string | null;
 };
 
 export type AdminMenteeApplicationRow = {
@@ -598,6 +602,8 @@ export type AdminAdminRow = {
   studentId: string;
   email: string;
   accountStatus: AdminAccountStatus;
+  hasEnrollmentDoc: boolean;
+  enrollmentDocMime: string | null;
 };
 
 export type EligibleMentee = {

@@ -16,7 +16,18 @@ const nextConfig: NextConfig = {
   // node_modules에서 직접 resolve하도록 external 처리.
   serverExternalPackages: ["mammoth"],
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // 관리자 회원관리 모달이 이 응답을 same-origin iframe(또는 <img>) 에 임베드한다.
+      // X-Frame-Options 와 CSP frame-ancestors 를 same-origin 허용으로 좁힌다 — 동일 키는 후행 매칭이 우선.
+      {
+        source: "/api/admin/users/:userId/enrollment-cert",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'self'" },
+        ],
+      },
+    ];
   },
 };
 
