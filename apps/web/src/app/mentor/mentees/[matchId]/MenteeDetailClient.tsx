@@ -403,16 +403,28 @@ function StatementTab({ data }: { data: MenteeDetailResponse }) {
 
       {/* 학교 + HWP 상태 카드 */}
       <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm text-text-secondary mb-1">지원 학교</p>
             <p className="text-base font-semibold text-text-primary">{school || '미설정'}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-text-secondary mb-1">HWP 첨부</p>
-            <p className="text-base font-semibold text-text-primary">
-              {ps.hasHwp ? '있음' : '없음'}
-            </p>
+            {ps.hasHwp ? (
+              <a
+                href={`/api/mentor/mentees/${encodeURIComponent(data.matchId)}/personal-statement/${group}`}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                다운로드
+              </a>
+            ) : (
+              <p className="text-base font-semibold text-text-primary">없음</p>
+            )}
           </div>
         </div>
       </div>
