@@ -46,20 +46,24 @@ export default function LandingNavbarMobile({ user }: { user: AuthUser | null })
 
       {open && (
         <div className="absolute top-16 left-0 right-0 bg-white border-t border-border px-4 py-3 flex flex-col gap-1 shadow-md z-50">
-          {navItems.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className={`px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
-                pathname === href
-                  ? 'bg-brand-light text-brand'
-                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
+          {navItems.map(({ href, label }) => {
+            const active = pathname === href || pathname.startsWith(href + '/');
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                aria-current={active ? 'page' : undefined}
+                className={`px-3 py-2.5 text-sm rounded-md transition-colors ${
+                  active
+                    ? 'font-bold bg-brand-light text-brand'
+                    : 'font-medium text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
           {!user && (
             <div className="flex flex-col gap-2 pt-3 border-t border-border mt-1">
               <Link

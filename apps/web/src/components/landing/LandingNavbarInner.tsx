@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useIsMobile } from '@/lib/useIsMobile';
 import type { AuthUser } from '@/lib/api';
 import LandingNavbarAuth from './LandingNavbarAuth';
@@ -21,8 +22,14 @@ const ADMIN_EXTRA_ITEMS = [
   { href: '/mentor/dashboard', label: '멘토 대시보드' },
 ];
 
+// /announcements/[id] 같은 하위 경로에서도 부모 메뉴를 활성으로 보이려면 startsWith 비교.
+function isNavActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(href + '/');
+}
+
 export default function LandingNavbarInner({ initialUser }: { initialUser: AuthUser | null }) {
   const isMobile = useIsMobile(768);
+  const pathname = usePathname();
   const navItems = initialUser?.current_role === 'admin'
     ? [...NAV_ITEMS, ...ADMIN_EXTRA_ITEMS]
     : NAV_ITEMS;
@@ -32,11 +39,23 @@ export default function LandingNavbarInner({ initialUser }: { initialUser: AuthU
       {/* Center: nav items (desktop only) */}
       {!isMobile && (
         <nav className="flex items-center gap-6" aria-label="주요 메뉴">
-          {navItems.map(({ href, label }) => (
-            <Link key={href} href={href} className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-              {label}
-            </Link>
-          ))}
+          {navItems.map(({ href, label }) => {
+            const active = isNavActive(pathname, href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={`text-sm transition-colors ${
+                  active
+                    ? 'font-bold text-text-primary'
+                    : 'font-medium text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
         </nav>
       )}
 

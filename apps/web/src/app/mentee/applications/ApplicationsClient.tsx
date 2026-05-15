@@ -6,6 +6,7 @@ import { submitMenteeApplicationWithShare, patchConcern, type CycleSchedule, typ
 import ShareSettingsModal from './ShareSettingsModal';
 import { useToast } from '@/components/ui/Toast';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
+import { isTodayInRange } from '@/lib/schedule';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -127,14 +128,17 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
               { label: '멘티-멘토 매칭', start: activeSchedule.matching_start, end: activeSchedule.matching_end },
               { label: '매칭 공지', start: activeSchedule.match_announce_date, end: null },
               { label: '입시 결과 수집', start: activeSchedule.admission_result_start, end: activeSchedule.admission_result_end },
-            ] as { label: string; start: string | null; end: string | null }[]).map(({ label, start, end }) => (
-              <div key={label} className="flex items-center gap-4 text-sm">
-                <span className="w-28 shrink-0 text-text-secondary">{label}</span>
-                <span className="text-text-primary">
-                  {start ? (end ? `${formatDateKo(start)} ~ ${formatDateKo(end)}` : formatDateKo(start)) : '-'}
-                </span>
-              </div>
-            ))}
+            ] as { label: string; start: string | null; end: string | null }[]).map(({ label, start, end }) => {
+              const isCurrent = isTodayInRange(start, end);
+              return (
+                <div key={label} className="flex items-center gap-4 text-sm">
+                  <span className={`w-28 shrink-0 ${isCurrent ? 'text-brand font-semibold' : 'text-text-secondary'}`}>{label}</span>
+                  <span className={isCurrent ? 'text-brand font-medium' : 'text-text-primary'}>
+                    {start ? (end ? `${formatDateKo(start)} ~ ${formatDateKo(end)}` : formatDateKo(start)) : '-'}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

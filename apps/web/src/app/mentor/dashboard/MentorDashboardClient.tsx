@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { MentorProcessStatus, MatchedMentee, CycleSchedule } from '@/lib/api';
+import { isTodayInRange } from '@/lib/schedule';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '미정';
@@ -227,14 +228,17 @@ function CycleScheduleCard({ cycle }: { cycle: CycleSchedule }) {
         {cycle.process_year}학년도 pLAWcess 일정
       </h2>
       <div className="space-y-3">
-        {items.map(({ label, start, end }) => (
-          <div key={label} className="flex items-center gap-4 text-sm">
-            <span className="w-28 shrink-0 text-text-secondary">{label}</span>
-            <span className="text-text-primary">
-              {start ? (end ? `${formatDateKo(start)} ~ ${formatDateKo(end)}` : formatDateKo(start)) : '-'}
-            </span>
-          </div>
-        ))}
+        {items.map(({ label, start, end }) => {
+          const isCurrent = isTodayInRange(start, end);
+          return (
+            <div key={label} className="flex items-center gap-4 text-sm">
+              <span className={`w-28 shrink-0 ${isCurrent ? 'text-brand font-semibold' : 'text-text-secondary'}`}>{label}</span>
+              <span className={isCurrent ? 'text-brand font-medium' : 'text-text-primary'}>
+                {start ? (end ? `${formatDateKo(start)} ~ ${formatDateKo(end)}` : formatDateKo(start)) : '-'}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
