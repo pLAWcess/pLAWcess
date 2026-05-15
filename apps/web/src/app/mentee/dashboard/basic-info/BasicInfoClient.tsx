@@ -13,6 +13,7 @@ import {
   fieldRows,
 } from '@/constants/basic-info';
 import { patchBasicInfo, type AdmissionSlot } from '@/lib/api';
+import { applyAutoFormat, BIRTH_DATE_FORMAT } from '@/lib/format-input';
 
 const YEAR_FIELDS: (keyof PersonalInfo)[] = ['admissionYear', 'graduationYear'];
 
@@ -84,12 +85,17 @@ export default function BasicInfoClient({ initialPersonal, initialAdmission, ini
   function handleCancel() { setBirthDateError(''); setYearErrors({}); setIsEditing(false); }
 
   function handleChange(key: keyof PersonalInfo, value: string) {
-    setDraft((prev) => ({ ...prev, [key]: value }));
+    // 생년월일은 placeholder 형식대로 자동 포맷 (YYYY.MM.DD.).
+    let nextValue = value;
     if (key === 'birthDate') {
-      setBirthDateError(value !== '' && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(value) ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)' : '');
+      nextValue = applyAutoFormat(value, draft.birthDate, BIRTH_DATE_FORMAT);
+    }
+    setDraft((prev) => ({ ...prev, [key]: nextValue }));
+    if (key === 'birthDate') {
+      setBirthDateError(nextValue !== '' && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(nextValue) ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)' : '');
     }
     if (YEAR_FIELDS.includes(key)) {
-      setYearErrors((prev) => ({ ...prev, [key]: validateYear(value) }));
+      setYearErrors((prev) => ({ ...prev, [key]: validateYear(nextValue) }));
     }
   }
 

@@ -585,7 +585,6 @@ export default function SignupPage() {
                   maxLength={11}
                   value={form.birthDate}
                   onChange={(e) => update('birthDate', e.target.value)}
-                  placeholder="2000.03.15."
                   required
                   className={`${inputClass} scroll-mt-20`}
                 />
@@ -600,7 +599,6 @@ export default function SignupPage() {
                   maxLength={13}
                   value={form.phone}
                   onChange={(e) => update('phone', e.target.value)}
-                  placeholder="010-0000-0000"
                   className={`${inputClass} scroll-mt-20`}
                 />
               </Field>

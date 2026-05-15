@@ -9,6 +9,7 @@ import {
   fieldRows,
 } from '@/constants/mentor-basic-info';
 import { patchMentorBasicInfo } from '@/lib/api';
+import { applyAutoFormat, BIRTH_DATE_FORMAT } from '@/lib/format-input';
 
 const YEAR_FIELDS: (keyof MentorPersonalInfo)[] = ['admissionYear', 'graduationYear'];
 
@@ -73,12 +74,16 @@ export default function MentorBasicInfoClient({ initialData, year }: Props) {
   }
 
   function handleChange(key: keyof MentorPersonalInfo, value: string) {
-    setDraft((prev) => ({ ...prev, [key]: value }));
+    let nextValue = value;
     if (key === 'birthDate') {
-      setBirthDateError(value !== '' && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(value) ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)' : '');
+      nextValue = applyAutoFormat(value, draft.birthDate, BIRTH_DATE_FORMAT);
+    }
+    setDraft((prev) => ({ ...prev, [key]: nextValue }));
+    if (key === 'birthDate') {
+      setBirthDateError(nextValue !== '' && !/^\d{4}\.\d{2}\.\d{2}\.$/.test(nextValue) ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)' : '');
     }
     if (YEAR_FIELDS.includes(key)) {
-      setYearErrors((prev) => ({ ...prev, [key]: validateYear(value) }));
+      setYearErrors((prev) => ({ ...prev, [key]: validateYear(nextValue) }));
     }
   }
 
