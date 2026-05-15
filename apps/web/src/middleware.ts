@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Content-Security-Policy — nonce 기반 엄격 정책. 지금은 Report-Only(차단 안 함, 위반만
-// 브라우저 콘솔에 로그) 로 깔아 두고, 위반을 관찰한 뒤 후속 PR 에서 enforce 로 전환한다.
+// Content-Security-Policy — nonce 기반 엄격 정책. dev 에서만 Report-Only(차단 안 함, 위반만
+// 브라우저 콘솔에 로그) 로 깔아 두고, production 응답에는 헤더를 세팅하지 않는다.
+//   이유: 알려진 next/image 인라인 style("color:transparent") 위반이 production 콘솔에
+//   계속 잡혀서 노이즈가 컸다. 실제 차단은 안 하던 상태였으므로 production 헤더만 빼도
+//   보안 동작은 동일하고, dev 에서는 enforce 전환에 대비해 위반 추적을 계속 한다.
 //
 // Next.js 의 nonce 메커니즘: 미들웨어가 요청 헤더에 "Content-Security-Policy" 를 세팅하면
 // Next 가 거기서 'nonce-...' 를 추출해 자기 인라인 <script>/<style> 에 자동 부착한다.
@@ -39,8 +42,10 @@ export function middleware(request: NextRequest) {
   requestHeaders.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  // 브라우저에는 Report-Only 로 — 위반을 콘솔에 로그만 하고 차단하지 않는다.
-  response.headers.set("Content-Security-Policy-Report-Only", csp);
+  // dev 에서만 브라우저에 Report-Only 헤더 — production 콘솔 노이즈 방지.
+  if (isDev) {
+    response.headers.set("Content-Security-Policy-Report-Only", csp);
+  }
   return response;
 }
 
