@@ -28,7 +28,7 @@ const ROLE_LABELS: Record<AdminUserCurrentRole, string> = {
 };
 
 const ACCOUNT_STATUS_LABELS: Record<AdminAccountStatus, string> = {
-  active: '활성', inactive: '비활성', blocked: '차단',
+  active: '검증', inactive: '미검증', blocked: '차단',
 };
 
 const GENDER_OPTIONS = Object.values(GENDER_LABELS);

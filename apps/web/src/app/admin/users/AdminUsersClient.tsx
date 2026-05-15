@@ -15,8 +15,8 @@ import {
 import { UserDetailView } from './[userId]/AdminUserDetailClient';
 
 const STATUS_LABELS: Record<AdminAccountStatus, string> = {
-  active: '활성',
-  inactive: '비활성',
+  active: '검증',
+  inactive: '미검증',
   blocked: '차단',
 };
 const PAGE_SIZE = 5;
@@ -59,8 +59,8 @@ export default function AdminUsersClient({
 
 const STATUS_FILTER_OPTIONS: { value: 'all' | AdminAccountStatus; label: string }[] = [
   { value: 'all', label: '전체' },
-  { value: 'active', label: '활성' },
-  { value: 'inactive', label: '비활성' },
+  { value: 'active', label: '검증' },
+  { value: 'inactive', label: '미검증' },
   { value: 'blocked', label: '차단' },
 ];
 
