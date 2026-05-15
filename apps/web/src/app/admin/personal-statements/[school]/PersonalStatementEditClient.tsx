@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import {
   uploadSchoolTemplate,
   updateSchoolQuestions,
+  parseSchoolStatementForm,
   type Question,
 } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 
 const YEAR = new Date().getFullYear().toString();
@@ -45,9 +47,12 @@ export default function PersonalStatementEditClient({
   );
   const [savingQ, setSavingQ] = useState(false);
   const [uploadingHwp, setUploadingHwp] = useState(false);
+  const [aiParsing, setAiParsing] = useState(false);
   const [hwpVersion, setHwpVersion] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const aiFileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const confirm = useConfirm();
   // 문항을 편집했지만 아직 "문항 저장" 안 한 상태 (HWP 업로드는 즉시 저장이라 제외)
   const questionsDirtyRef = useRef(false);
   useBeforeUnloadGuard(() => questionsDirtyRef.current);
@@ -108,6 +113,43 @@ export default function PersonalStatementEditClient({
     }
   }
 
+  async function handleAiExtract(file: File) {
+    if (!file.name.match(/\.(hwp|hwpx|pdf)$/i)) {
+      toast.error('.hwp / .hwpx / .pdf 파일만 업로드할 수 있습니다.');
+      return;
+    }
+    if (questions.length > 0) {
+      const ok = await confirm({
+        title: '문항 덮어쓰기',
+        message: '기존에 입력된 문항이 자동 추출 결과로 덮어써집니다.\n계속할까요?',
+        confirmText: '덮어쓰기',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    setAiParsing(true);
+    try {
+      const { questions: parsed } = await parseSchoolStatementForm(school, file);
+      if (parsed.length === 0) {
+        toast.error('양식에서 문항을 찾지 못했어요. 다른 파일로 시도해주세요.');
+        return;
+      }
+      const next: Question[] = parsed.map((q, i) => ({
+        id: `q-${Date.now()}-${i}-${Math.random()}`,
+        order: i + 1,
+        prompt: q.prompt,
+        charLimit: null,
+      }));
+      setQuestions(next);
+      questionsDirtyRef.current = true;
+      toast.success(`${next.length}개 문항을 추출했어요. 검토 후 "문항 저장"을 눌러주세요.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '자동 추출 실패');
+    } finally {
+      setAiParsing(false);
+    }
+  }
+
   function handleDownload() {
     if (!hwpBase64) return;
     const binary = atob(hwpBase64);
@@ -153,13 +195,34 @@ export default function PersonalStatementEditClient({
         <div className="bg-white border border-border rounded-xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <h2 className="text-sm font-semibold text-text-primary">문항 설정</h2>
-            <button
-              onClick={saveQuestions}
-              disabled={savingQ}
-              className="px-4 py-1.5 text-xs font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50"
-            >
-              {savingQ ? '저장 중...' : '문항 저장'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => aiFileInputRef.current?.click()}
+                disabled={aiParsing}
+                title=".hwp / .hwpx / .pdf 양식에서 문항을 자동 추출"
+                className="px-3 py-1.5 text-xs font-medium text-brand bg-brand/5 border border-brand/30 rounded-md hover:bg-brand/10 transition-colors disabled:opacity-50"
+              >
+                {aiParsing ? '추출 중...' : 'AI로 문항 추출'}
+              </button>
+              <input
+                ref={aiFileInputRef}
+                type="file"
+                accept=".hwp,.hwpx,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleAiExtract(f);
+                  if (aiFileInputRef.current) aiFileInputRef.current.value = '';
+                }}
+              />
+              <button
+                onClick={saveQuestions}
+                disabled={savingQ}
+                className="px-4 py-1.5 text-xs font-medium text-white bg-brand rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50"
+              >
+                {savingQ ? '저장 중...' : '문항 저장'}
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">

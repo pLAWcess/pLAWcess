@@ -1338,6 +1338,26 @@ export async function updateSchoolQuestions(
   await jsonOrError(res, "문항 저장 실패");
 }
 
+// 학교 자기소개서 양식(.hwp / .hwpx / .pdf)에서 문항을 자동 추출. 저장은 별도.
+// charLimit 은 자동 추출 대상이 아님 — admin 이 폼에서 직접 입력.
+export type ParsedQuestion = {
+  order: number;
+  prompt: string;
+};
+
+export async function parseSchoolStatementForm(
+  school: string,
+  file: File,
+): Promise<{ questions: ParsedQuestion[] }> {
+  const body = new FormData();
+  body.append("file", file);
+  const res = await fetch(
+    `${API_BASE}/api/admin/personal-statements/parse?school=${encodeURIComponent(school)}`,
+    { method: "POST", credentials: "include", body },
+  );
+  return jsonOrError(res, "문항 자동 추출 실패");
+}
+
 // ----------------------------------------------------------------
 // Mentor Process Dashboard (#232)
 // ----------------------------------------------------------------
