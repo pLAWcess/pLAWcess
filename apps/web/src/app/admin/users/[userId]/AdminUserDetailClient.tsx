@@ -104,24 +104,6 @@ function roleFromLabel(l: string): AdminUserCurrentRole {
   return (Object.entries(ROLE_LABELS).find(([, lb]) => lb === l)?.[0] as AdminUserCurrentRole) ?? 'none';
 }
 
-export default function AdminUserDetailClient({ initialUser }: { initialUser: AdminUserDetail | null }) {
-  const router = useRouter();
-  const [user, setUser] = useState<AdminUserDetail | null>(initialUser);
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="text-text-secondary">존재하지 않는 회원입니다.</p>
-        <button onClick={() => router.push('/admin/users')} className="text-sm text-brand hover:underline">
-          회원 목록으로
-        </button>
-      </div>
-    );
-  }
-
-  return <UserDetailView initial={user} onUpdate={setUser} />;
-}
-
 export function UserDetailView({
   initial,
   onUpdate,
