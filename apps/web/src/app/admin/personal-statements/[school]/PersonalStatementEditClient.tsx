@@ -13,8 +13,6 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 
-const YEAR = new Date().getFullYear().toString();
-
 const HwpEditor = dynamic(
   () => import('@/app/mentee/dashboard/personal-statement/HwpEditor'),
   {
@@ -33,10 +31,12 @@ function newQuestion(order: number): Question {
 
 export default function PersonalStatementEditClient({
   school,
+  year,
   initialHwp,
   initialQuestions,
 }: {
   school: string;
+  year: string;
   initialHwp: string | null;
   initialQuestions: Question[] | null;
 }) {
@@ -80,7 +80,7 @@ export default function PersonalStatementEditClient({
   async function saveQuestions() {
     setSavingQ(true);
     try {
-      await updateSchoolQuestions(YEAR, school, questions);
+      await updateSchoolQuestions(year, school, questions);
       questionsDirtyRef.current = false;
       toast.success('문항을 저장했습니다.');
     } catch (e) {
@@ -97,7 +97,7 @@ export default function PersonalStatementEditClient({
     }
     setUploadingHwp(true);
     try {
-      await uploadSchoolTemplate(YEAR, school, file);
+      await uploadSchoolTemplate(year, school, file);
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
@@ -169,7 +169,7 @@ export default function PersonalStatementEditClient({
       {/* 헤더 */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.push('/admin/personal-statements')}
+          onClick={() => router.push(`/admin/personal-statements?year=${encodeURIComponent(year)}`)}
           aria-label="뒤로"
           className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors -ml-1"
         >
@@ -179,7 +179,12 @@ export default function PersonalStatementEditClient({
           </svg>
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">{school}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-text-primary">{school}</h1>
+            <span className="px-2 py-0.5 text-xs font-semibold text-text-secondary bg-gray-100 border border-border rounded-full">
+              {year}학년도
+            </span>
+          </div>
           <p className="text-sm text-text-secondary mt-1">자기소개서 양식 및 문항 관리</p>
         </div>
       </div>

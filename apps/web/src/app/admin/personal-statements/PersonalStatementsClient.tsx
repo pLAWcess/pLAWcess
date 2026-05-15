@@ -1,14 +1,22 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { uploadSchoolTemplate, type SchoolTemplate } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import {
+  uploadSchoolTemplate,
+  type CycleSchedule,
+  type SchoolTemplate,
+} from '@/lib/api';
 import { LAW_SCHOOLS } from '@/constants/basic-info';
 import { useToast } from '@/components/ui/Toast';
 
 const SCHOOLS = LAW_SCHOOLS.map((s) => s.name);
 const PAGE_SIZE = 5;
-const YEAR = new Date().getFullYear().toString();
+
+function yearLabel(year: number) {
+  return `${year}학년도 입시`;
+}
 
 type Filter = 'all' | 'uploaded' | 'missing';
 
@@ -19,10 +27,15 @@ const FILTER_OPTIONS: { value: Filter; label: string }[] = [
 ];
 
 export default function PersonalStatementsClient({
+  schedules,
+  selectedYear,
   initialTemplates,
 }: {
+  schedules: CycleSchedule[];
+  selectedYear: string;
   initialTemplates: SchoolTemplate[];
 }) {
+  const router = useRouter();
   const [templates, setTemplates] = useState<Record<string, SchoolTemplate>>(
     () => Object.fromEntries(initialTemplates.map((t) => [t.school_name, t])),
   );
@@ -33,6 +46,18 @@ export default function PersonalStatementsClient({
   const pendingSchoolRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+
+  // SSR 이 새 연도의 templates 를 내려주면 로컬 state 도 동기화한다.
+  useEffect(() => {
+    setTemplates(Object.fromEntries(initialTemplates.map((t) => [t.school_name, t])));
+    setPage(1);
+  }, [initialTemplates, selectedYear]);
+
+  function handleYearChange(year: number) {
+    const yearStr = String(year);
+    if (yearStr === selectedYear) return;
+    router.push(`/admin/personal-statements?year=${encodeURIComponent(yearStr)}`);
+  }
 
   const filtered = SCHOOLS.filter((school) => {
     if (search.trim() && !school.includes(search.trim())) return false;
@@ -71,7 +96,7 @@ export default function PersonalStatementsClient({
     }
     setUploading(school);
     try {
-      await uploadSchoolTemplate(YEAR, school, file);
+      await uploadSchoolTemplate(selectedYear, school, file);
       const now = new Date().toISOString();
       setTemplates((prev) => ({
         ...prev,
@@ -112,6 +137,33 @@ export default function PersonalStatementsClient({
           ))}
         </div>
       </div>
+
+      {/* 연도 탭 */}
+      {schedules.length === 0 ? (
+        <div className="bg-white border border-border rounded-xl px-4 sm:px-8 py-12 text-center text-sm text-text-secondary">
+          등록된 연도가 없습니다. <Link href="/admin/settings/year" className="text-brand font-medium hover:underline">연도 설정</Link>에서 먼저 연도를 추가하세요.
+        </div>
+      ) : (
+        <div className="flex gap-1 border-b border-border overflow-x-auto">
+          {schedules.map((s) => {
+            const isSelected = String(s.process_year) === selectedYear;
+            return (
+              <button
+                key={s.process_year}
+                onClick={() => handleYearChange(s.process_year)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+                  isSelected
+                    ? 'border-brand text-brand'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {yearLabel(s.process_year)}
+                {s.is_active && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <input
         ref={fileInputRef}
@@ -177,7 +229,7 @@ export default function PersonalStatementsClient({
                     <td className="py-4 text-right align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          href={`/admin/personal-statements/${encodeURIComponent(school)}`}
+                          href={`/admin/personal-statements/${encodeURIComponent(school)}?year=${encodeURIComponent(selectedYear)}`}
                           className="px-3 py-1.5 text-xs font-medium text-brand border border-brand rounded-md hover:bg-brand/5 transition-colors"
                         >
                           편집
