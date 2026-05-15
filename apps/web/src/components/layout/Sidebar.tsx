@@ -29,6 +29,7 @@ const mentorNavItems: NavItem[] = [
   { label: '기본정보', href: '/mentor/dashboard/basic-info' },
   { label: '정량 데이터', href: '/mentor/dashboard/quantitative' },
   { label: '정성 데이터', href: '/mentor/dashboard/qualitative' },
+  { label: '프로세스 신청', href: '/mentor/applications' },
   { label: '공지사항', href: '/mentor/announcements', dividerBefore: true },
   { label: '합격 아카이브', href: '/mentor/archive' },
   { label: '지난 기록', href: '/mentor/history' },

@@ -1547,6 +1547,33 @@ export async function submitMenteeApplicationWithShare(
   return res.json();
 }
 
+export async function submitMentorApplication(year: string): Promise<SubmitApplicationResult> {
+  const res = await fetch(
+    `${API_BASE}/api/mentor/applications/submit?year=${encodeURIComponent(year)}`,
+    { method: "POST", headers: headers(), credentials: "include" },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "신청서 제출 실패");
+  }
+  return res.json();
+}
+
+export type MentorApplicationStatus = {
+  submitted: boolean;
+  submittedAt: string | null;
+  missingFields: string[];
+  hasRecord: boolean;
+};
+
+export async function getMentorApplicationStatus(year: string): Promise<MentorApplicationStatus> {
+  const res = await fetch(
+    `${API_BASE}/api/mentor/applications/status?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "신청 상태 조회 실패");
+}
+
 // 합격 아카이브 (#261) ---------------------------------------------
 
 export type ArchiveCase = {

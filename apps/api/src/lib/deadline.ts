@@ -41,3 +41,48 @@ export async function checkMenteeApplicationDeadline(): Promise<NextResponse | n
   }
   return null;
 }
+
+/**
+ * 멘토 모집 기간 가드. KST 기준으로:
+ *   - today < mentor_recruit_start          → 시작 전 차단
+ *   - today >= matching_start               → 매칭 시작 시점부터 차단
+ *
+ * 마감 경계로 mentor_recruit_end 가 아니라 matching_start 를 쓰는 이유: 멘토 모집 종료 후에도
+ * 멘티 신청 기간 동안 어드민 승인이 이뤄지므로, 매칭이 시작되기 전까지는 멘토 제출을 받아둔다.
+ * matching_start 가 null 이면 mentor_recruit_end 로 fallback, 둘 다 null 이면 통과(정책 미설정).
+ */
+export async function checkMentorApplicationDeadline(): Promise<NextResponse | null> {
+  const active = await prisma.cycleSchedule.findFirst({
+    where: { is_active: true },
+    select: { mentor_recruit_start: true, mentor_recruit_end: true, matching_start: true },
+  });
+
+  if (!active) return null;
+
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const todayIso = kstNow.toISOString().slice(0, 10);
+
+  if (active.mentor_recruit_start) {
+    const startIso = active.mentor_recruit_start.toISOString().slice(0, 10);
+    if (todayIso < startIso) {
+      return NextResponse.json(
+        { error: "멘토 모집 기간이 아직 시작되지 않았습니다." },
+        { status: 403 },
+      );
+    }
+  }
+
+  const closeBoundary = active.matching_start ?? active.mentor_recruit_end;
+  if (closeBoundary) {
+    const boundaryIso = closeBoundary.toISOString().slice(0, 10);
+    // matching_start 기준은 "당일부터 차단" (>=), mentor_recruit_end fallback 은 "다음날부터 차단" (>)
+    const closed = active.matching_start ? todayIso >= boundaryIso : todayIso > boundaryIso;
+    if (closed) {
+      return NextResponse.json(
+        { error: "멘토 신청 기간이 마감되었습니다." },
+        { status: 403 },
+      );
+    }
+  }
+  return null;
+}
