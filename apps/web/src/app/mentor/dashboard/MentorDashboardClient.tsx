@@ -158,8 +158,8 @@ function MenteeCard({ m }: { m: MatchedMentee }) {
           <span className="text-xs text-text-secondary">자기소개서</span>
           {(() => {
             const map = {
-              submitted: { label: '제출', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50' },
-              not_submitted: { label: '미제출', dot: 'bg-gray-400', text: 'text-text-secondary', bg: 'bg-gray-100' },
+              submitted: { label: '작성', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50' },
+              not_submitted: { label: '미작성', dot: 'bg-gray-400', text: 'text-text-secondary', bg: 'bg-gray-100' },
               hidden: { label: '비공개', dot: 'bg-gray-400', text: 'text-text-secondary', bg: 'bg-gray-100' },
             } as const;
             const s = map[m.personalStatementStatus];
