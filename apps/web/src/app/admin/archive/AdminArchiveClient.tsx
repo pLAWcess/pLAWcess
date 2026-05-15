@@ -166,16 +166,16 @@ export default function AdminArchiveClient({ initial }: { initial: AdminArchiveL
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full table-auto min-w-[760px]">
+          <table className="w-full table-fixed min-w-[760px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">멘토</th>
-                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">연도</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-20">연도</th>
                 <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">합격학교</th>
-                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">전공</th>
-                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">LEET</th>
-                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">GPA</th>
-                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">공개</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-32">전공</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-16">LEET</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-16">GPA</th>
+                <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-24">공개</th>
                 <th className="w-20"></th>
               </tr>
             </thead>
@@ -193,26 +193,26 @@ export default function AdminArchiveClient({ initial }: { initial: AdminArchiveL
               ) : (
                 cases.map((c) => (
                   <tr key={c.id} className="border-b border-border last:border-b-0">
-                    <td className="py-4 pr-4 align-middle whitespace-nowrap">
-                      <div className="text-sm font-medium text-text-primary">{c.mentorName ?? '-'}</div>
-                      <div className="text-xs text-text-placeholder">{c.mentorEmail ?? '-'}</div>
+                    <td className="py-4 pr-4 align-middle whitespace-nowrap overflow-hidden">
+                      <div className="text-sm font-medium text-text-primary text-ellipsis overflow-hidden">{c.mentorName ?? '-'}</div>
+                      <div className="text-xs text-text-placeholder text-ellipsis overflow-hidden">{c.mentorEmail ?? '-'}</div>
                     </td>
-                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis">
                       {c.processYear}년
                     </td>
-                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap">
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis">
                       {c.admittedSchool}
                     </td>
-                    <td className="py-4 pr-4 align-middle whitespace-nowrap">
-                      <div className="text-sm text-text-primary">{c.major ?? '-'}</div>
+                    <td className="py-4 pr-4 align-middle whitespace-nowrap overflow-hidden">
+                      <div className="text-sm text-text-primary text-ellipsis overflow-hidden">{c.major ?? '-'}</div>
                       {c.secondMajor && (
-                        <div className="text-xs text-text-placeholder">{c.secondMajor}</div>
+                        <div className="text-xs text-text-placeholder text-ellipsis overflow-hidden">{c.secondMajor}</div>
                       )}
                     </td>
-                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap tabular-nums">
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap tabular-nums overflow-hidden text-ellipsis">
                       {c.leetScore !== null ? c.leetScore.toFixed(2) : '-'}
                     </td>
-                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap tabular-nums">
+                    <td className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap tabular-nums overflow-hidden text-ellipsis">
                       {c.gpa !== null ? c.gpa.toFixed(2) : '-'}
                     </td>
                     <td className="py-4 pr-4 align-middle whitespace-nowrap">

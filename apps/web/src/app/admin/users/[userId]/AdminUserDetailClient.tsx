@@ -778,18 +778,18 @@ function ParticipationCard({ participation }: { participation: AdminUserDetail['
         <p className="py-2 text-sm text-text-secondary">참여 이력이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto">
-        <table className="w-full table-auto">
+        <table className="w-full table-fixed">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">프로세스 참여 연도</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">당시 역할</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-32">당시 역할</th>
             </tr>
           </thead>
           <tbody>
             {participation.map(({ year, role }) => (
               <tr key={`${year}-${role}`} className="border-b border-border last:border-b-0">
-                <td className="py-3 pr-4 text-sm text-text-primary">{year}</td>
-                <td className="py-3 pr-4 text-sm text-text-primary">
+                <td className="py-3 pr-4 text-sm text-text-primary whitespace-nowrap overflow-hidden text-ellipsis">{year}</td>
+                <td className="py-3 pr-4 text-sm text-text-primary whitespace-nowrap">
                   <span className={`inline-flex items-center justify-center min-w-[48px] px-2.5 py-0.5 rounded-full text-xs font-semibold ${role === 'mentor' ? 'bg-brand-light text-brand' : 'bg-gray-100 text-text-secondary'}`}>
                     {role === 'mentee' ? '멘티' : '멘토'}
                   </span>

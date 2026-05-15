@@ -139,13 +139,13 @@ export default function PersonalStatementsClient({
 
         {/* 목록 */}
         <div className="overflow-x-auto">
-        <table className="w-full table-auto min-w-[400px]">
+        <table className="w-full table-fixed min-w-150">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">학교명</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">상태</th>
-              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap">최근 업데이트</th>
-              <th className="py-3" />
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-28">상태</th>
+              <th className="text-left text-xs font-medium text-text-secondary py-3 pr-4 whitespace-nowrap w-32">최근 업데이트</th>
+              <th className="py-3 w-44" />
             </tr>
           </thead>
           <tbody>
@@ -161,20 +161,20 @@ export default function PersonalStatementsClient({
                 const isUploading = uploading === school;
                 return (
                   <tr key={school} className="border-b border-border last:border-b-0">
-                    <td className="py-4 pr-4 text-sm font-medium text-text-primary align-middle">
+                    <td className="py-4 pr-4 text-sm font-medium text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis">
                       {school}
                     </td>
-                    <td className="py-4 pr-4 align-middle">
+                    <td className="py-4 pr-4 align-middle whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                         template ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-text-secondary'
                       }`}>
                         {template ? '업로드됨' : '미업로드'}
                       </span>
                     </td>
-                    <td className="py-4 pr-4 text-sm text-text-secondary align-middle">
+                    <td className="py-4 pr-4 text-sm text-text-secondary align-middle whitespace-nowrap overflow-hidden text-ellipsis">
                       {template ? new Date(template.updated_at).toLocaleDateString('ko-KR') : '—'}
                     </td>
-                    <td className="py-4 text-right align-middle">
+                    <td className="py-4 text-right align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/admin/personal-statements/${encodeURIComponent(school)}`}

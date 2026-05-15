@@ -252,7 +252,12 @@ export default function AdminMatchingsClient({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
           <ApprovedTable
             title={`승인된 멘티 신청자 목록 (${pool.mentees.length}명)`}
-            columns={['이름', '전공', '제1지망 학교', '제2지망 학교']}
+            columns={[
+              { label: '이름', widthClass: 'w-24' },
+              { label: '전공' },
+              { label: '제1지망 학교' },
+              { label: '제2지망 학교' },
+            ]}
             rows={pool.mentees.map((m) => [
               m.name,
               m.major || '-',
@@ -262,7 +267,11 @@ export default function AdminMatchingsClient({
           />
           <ApprovedTable
             title={`승인된 멘토 신청자 목록 (${pool.mentors.length}명)`}
-            columns={['이름', '학부 전공', '소속 로스쿨']}
+            columns={[
+              { label: '이름', widthClass: 'w-24' },
+              { label: '학부 전공' },
+              { label: '소속 로스쿨' },
+            ]}
             rows={pool.mentors.map((m) => [
               m.name,
               m.undergradMajor || '-',
@@ -376,7 +385,7 @@ function MergedTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full table-auto min-w-[720px]">
+      <table className="w-full table-fixed min-w-[720px]">
         <thead>
           <tr className="border-b border-border">
             <th className="w-10" />
@@ -440,7 +449,7 @@ function MergedRowGroup({
           <Chevron open={isOpen} />
         </td>
         <td
-          className="py-3 pr-4 text-sm font-medium text-text-primary whitespace-nowrap cursor-pointer"
+          className="py-3 pr-4 text-sm font-medium text-text-primary whitespace-nowrap cursor-pointer overflow-hidden text-ellipsis"
           onClick={onToggle}
         >
           {row.group.menteeName}
@@ -469,7 +478,7 @@ function MergedRowGroup({
         <tr key={c.rank} className="border-b border-border last:border-b-0 bg-page-bg/40">
           <td className="py-3 pl-3 pr-1 align-middle text-xs text-text-placeholder">{c.rank}순위</td>
           <td />
-          <td className="py-3 pr-4 text-sm text-text-primary whitespace-nowrap">{c.mentorName}</td>
+          <td className="py-3 pr-4 text-sm text-text-primary whitespace-nowrap overflow-hidden text-ellipsis">{c.mentorName}</td>
           <td className="py-3 pr-4"><ScoreBadge score={c.score} /></td>
           <td className="py-3 pr-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed">{c.reason}</td>
           <td />
@@ -493,7 +502,17 @@ function Chevron({ open }: { open: boolean }) {
 
 // ---------------- 적격 풀 테이블 (기존 유지) ----------------
 
-function ApprovedTable({ title, columns, rows }: { title: string; columns: string[]; rows: React.ReactNode[][] }) {
+type ApprovedColumn = { label: string; widthClass?: string };
+
+function ApprovedTable({
+  title,
+  columns,
+  rows,
+}: {
+  title: string;
+  columns: ApprovedColumn[];
+  rows: React.ReactNode[][];
+}) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -502,11 +521,16 @@ function ApprovedTable({ title, columns, rows }: { title: string; columns: strin
       </div>
       <div className="overflow-hidden border border-border rounded-lg bg-white">
         <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: '320px' }}>
-          <table className="w-full table-auto min-w-[320px]">
+          <table className="w-full table-fixed min-w-[320px]">
             <thead className="sticky top-0 bg-page-bg z-10">
               <tr className="border-b border-border">
                 {columns.map((c) => (
-                  <th key={c} className="text-left text-xs font-semibold text-text-secondary py-3 px-4 whitespace-nowrap">{c}</th>
+                  <th
+                    key={c.label}
+                    className={`text-left text-xs font-semibold text-text-secondary py-3 px-4 whitespace-nowrap ${c.widthClass ?? ''}`}
+                  >
+                    {c.label}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -524,7 +548,7 @@ function ApprovedTable({ title, columns, rows }: { title: string; columns: strin
                     className={`border-b border-border last:border-b-0 hover:bg-brand-light/40 transition-colors ${i % 2 === 1 ? 'bg-page-bg/30' : ''}`}
                   >
                     {cells.map((cell, j) => (
-                      <td key={j} className="py-3 px-4 text-sm text-text-primary align-middle whitespace-nowrap">{cell}</td>
+                      <td key={j} className="py-3 px-4 text-sm text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis">{cell}</td>
                     ))}
                   </tr>
                 ))
