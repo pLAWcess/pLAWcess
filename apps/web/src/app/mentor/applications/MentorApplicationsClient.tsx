@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { submitMentorApplication, type CycleSchedule, type MentorApplicationStatus } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { isTodayInRange } from '@/lib/schedule';
+import { useIsVerified } from '@/lib/UserContext';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -49,6 +50,7 @@ type Props = {
 export default function MentorApplicationsClient({ initialSchedule, initialStatus }: Props) {
   const router = useRouter();
   const toast = useToast();
+  const isVerified = useIsVerified();
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,9 +69,13 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
   const missing = status?.missingFields ?? [];
   const allFilled = missing.length === 0;
 
-  const canSubmit = !isNotRegistered && recruitState.inRange && !submitted && allFilled && agreed && !isSubmitting;
+  const canSubmit = !isNotRegistered && recruitState.inRange && !submitted && allFilled && agreed && !isSubmitting && isVerified;
 
   async function handleSubmit() {
+    if (!isVerified) {
+      toast.error('계정 검증 후 신청할 수 있습니다.');
+      return;
+    }
     if (!agreed) {
       setShowConsentError(true);
       return;
@@ -246,9 +252,13 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
         {!submitted && recruitState.inRange && !isNotRegistered && (
           <>
             <div className="flex flex-col items-center mt-6 gap-3">
+              {!isVerified && (
+                <p className="text-sm text-red-500 font-medium">계정 검증 후 신청할 수 있습니다.</p>
+              )}
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
+                title={!isVerified ? '계정 검증 후 신청할 수 있습니다.' : undefined}
                 className={`flex items-center gap-2 px-6 py-2.5 text-sm rounded-md transition-colors ${
                   canSubmit
                     ? 'bg-brand text-white hover:bg-brand-dark'

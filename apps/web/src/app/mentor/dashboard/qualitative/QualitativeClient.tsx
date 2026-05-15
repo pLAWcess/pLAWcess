@@ -5,6 +5,7 @@ import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
+import { useIsVerified } from '@/lib/UserContext';
 import {
   getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, deleteQualitativeActivity,
   listPreviousQualitativeYears,
@@ -893,6 +894,7 @@ function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
 // 페이지
 // ================================================================
 export default function QualitativeClient({ initialData, year, readOnly }: { initialData?: QualitativeData; year: string; readOnly?: boolean }) {
+  const isVerified = useIsVerified();
   const didInitRef = useRef(false);
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
   const [careerGoal, setCareerGoal] = useState<CareerGoal>(initialData?.careerGoal || '');
@@ -990,6 +992,10 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   }
 
   async function triggerSingleAnalysis(idx: number) {
+    if (!isVerified) {
+      toast.error('계정 검증 후 AI 분석을 이용할 수 있습니다.');
+      return;
+    }
     setAnalyzingIdx(idx);
     try {
       const res = await analyzeQualitativeActivity('mentor', year, idx);

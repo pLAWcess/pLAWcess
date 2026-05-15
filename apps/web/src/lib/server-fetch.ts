@@ -1,5 +1,4 @@
 import type { AuthUser } from '@/lib/api';
-import { decodeSessionToken } from '@/lib/jwt';
 import { redirect } from 'next/navigation';
 
 export function getRoleHomePath(role: string): string {
@@ -54,9 +53,8 @@ export async function getActiveProcessYear(token: string): Promise<string> {
 
 export async function getAuthUser(token: string): Promise<AuthUser | null> {
   if (!token) return null;
-  const fromJwt = await decodeSessionToken(token);
-  if (fromJwt) return fromJwt;
-  // 구 토큰 fallback
+  // JWT 디코드 결과에는 account_status 가 없어 미검증 사용자 가드(#289)에서 빠지는 사고가 발생한다.
+  // 매 SSR 마다 /api/auth/me 로 DB 의 최신 상태(역할·계정 상태)를 조회한다.
   const data = await serverFetch<{ user: AuthUser }>('/api/auth/me', token);
   return data?.user ?? null;
 }

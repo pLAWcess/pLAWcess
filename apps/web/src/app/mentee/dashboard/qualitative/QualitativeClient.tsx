@@ -5,6 +5,7 @@ import { EditButton, EditButtons } from '@/components/ui/EditButton';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
+import { useIsVerified } from '@/lib/UserContext';
 import {
   getQualitative, patchQualitative, patchQualitativeMultipart, analyzeQualitativeActivity, summarizeQualitative, deleteQualitativeActivity,
   listPreviousQualitativeYears,
@@ -992,17 +993,21 @@ function SummaryAnalysisCard({
   analyzedAt,
   onAnalyze,
   loading,
+  isVerified,
 }: {
   state: SummaryState;
   analyzedAt: string | null;
   onAnalyze: () => void;
   loading: boolean;
+  isVerified: boolean;
 }) {
-  const buttonDisabled = loading || state === 'incomplete' || state === 'fresh';
+  const buttonDisabled = loading || state === 'incomplete' || state === 'fresh' || !isVerified;
   const buttonLabel = loading ? '분석 중...' : state === 'pending' ? '분석' : '다시 분석';
 
   let status: React.ReactNode;
-  if (state === 'fresh' && analyzedAt) {
+  if (!isVerified) {
+    status = <span className="text-red-500 font-medium">계정 검증 후 AI 종합 분석을 이용할 수 있습니다.</span>;
+  } else if (state === 'fresh' && analyzedAt) {
     status = <span className="text-text-secondary">분석 완료 · {formatRelativeTime(analyzedAt)}</span>;
   } else if (state === 'outdated') {
     status = <span className="text-amber-700 font-medium">활동이 변경되었습니다. 다시 분석해 결과를 갱신해보세요.</span>;
@@ -1094,6 +1099,7 @@ function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
 // 페이지
 // ================================================================
 export default function QualitativeClient({ initialData, year, readOnly }: { initialData?: QualitativeData; year: string; readOnly?: boolean }) {
+  const isVerified = useIsVerified();
   const didInitRef = useRef(false);
   const [activeTab, setActiveTab] = useState<Tab>('대시보드');
   const [careerGoal, setCareerGoal] = useState<CareerGoal>(initialData?.careerGoal || '');
@@ -1192,6 +1198,10 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
   }
 
   async function triggerSingleAnalysis(idx: number) {
+    if (!isVerified) {
+      toast.error('계정 검증 후 AI 분석을 이용할 수 있습니다.');
+      return;
+    }
     setAnalyzingIdx(idx);
     try {
       const res = await analyzeQualitativeActivity('mentee', year, idx);
@@ -1207,6 +1217,10 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
 
   async function handleSummarize() {
     if (summarizing) return;
+    if (!isVerified) {
+      toast.error('계정 검증 후 AI 종합 분석을 이용할 수 있습니다.');
+      return;
+    }
     setSummarizing(true);
     try {
       const data = await summarizeQualitative(year);
@@ -1500,6 +1514,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
             analyzedAt={analysis?.analyzedAt ?? null}
             onAnalyze={handleSummarize}
             loading={summarizing}
+            isVerified={isVerified}
           />
         )}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative">

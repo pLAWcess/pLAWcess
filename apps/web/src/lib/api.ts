@@ -29,7 +29,21 @@ function headers() {
 
 const USER_KEY = "plawcess:user";
 
-export type AuthUser = { user_id: string; name: string; login_id: string | null; email: string; current_role: string };
+// account_status: 'active'(검증됨) / 'inactive'(미검증) / 'blocked'(차단). 미검증 사용자는
+// 프로세스 신청·AI 정성 분석·합격 아카이브 등 일부 기능이 제한된다 (#289).
+export type AccountStatus = 'active' | 'inactive' | 'blocked';
+export type AuthUser = {
+  user_id: string;
+  name: string;
+  login_id: string | null;
+  email: string;
+  current_role: string;
+  account_status?: AccountStatus;
+};
+
+export function isVerified(user: AuthUser | null | undefined): boolean {
+  return user?.account_status === 'active';
+}
 
 export function saveUser(user: AuthUser) {
   try { localStorage.setItem(USER_KEY, JSON.stringify(user)); } catch {}

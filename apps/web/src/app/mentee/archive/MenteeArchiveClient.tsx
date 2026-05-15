@@ -5,6 +5,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import ArchiveCard from '@/components/archive/ArchiveCard';
 import ArchivePagination from '@/components/archive/ArchivePagination';
 import { getArchiveCases, type ArchiveCase, type ArchiveListResponse } from '@/lib/api';
+import { useIsVerified } from '@/lib/UserContext';
 
 const PAGE_SIZE = 8;
 
@@ -19,6 +20,7 @@ const LEET_OPTIONS = [
 ];
 
 export default function MenteeArchiveClient({ initial }: { initial: ArchiveListResponse }) {
+  const isVerified = useIsVerified();
   const [major, setMajor] = useState('전체');
   const [school, setSchool] = useState('전체');
   const [leetRange, setLeetRange] = useState(0);
@@ -85,6 +87,23 @@ export default function MenteeArchiveClient({ initial }: { initial: ArchiveListR
     () => cases.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [cases, page],
   );
+
+  if (!isVerified) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">합격 아카이브</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            자유전공학부 출신 로스쿨 합격 선배들의 익명 케이스를 확인하세요
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-border shadow-sm px-8 py-16 text-center">
+          <p className="text-base font-medium text-text-primary">계정 검증 후 이용할 수 있습니다.</p>
+          <p className="text-sm text-text-secondary mt-2">관리자 검증이 완료되면 합격 아카이브를 열람할 수 있어요.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

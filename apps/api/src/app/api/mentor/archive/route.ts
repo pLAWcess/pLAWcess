@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@plawcess/database";
 import { requireAuth } from "@/lib/auth-guard";
+import { requireVerified } from "@/lib/verified-guard";
 
 type CaseRow = {
   id: string;
@@ -105,6 +106,9 @@ export async function POST(req: NextRequest) {
   if (auth.error) return auth.error;
   const forbidden = requireMentor(auth.payload);
   if (forbidden) return forbidden;
+
+  const unverified = await requireVerified(auth.payload.user_id);
+  if (unverified) return unverified;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const input = normalizeInput(body);

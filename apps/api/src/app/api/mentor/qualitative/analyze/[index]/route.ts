@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
+import { requireVerified } from "@/lib/verified-guard";
 import { hashAnalysisInput, buildSingleAnalysisHash } from "@/lib/hash";
 import type { StarItem } from "@/lib/gemini";
 import { runSingleAnalysisInPlace } from "@/lib/qualitativeAnalysis";
@@ -118,6 +119,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ index: str
   if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
+
+  const unverified = await requireVerified(userId);
+  if (unverified) return unverified;
 
   const { index: indexParam } = await ctx.params;
   const index = parseInt(indexParam, 10);

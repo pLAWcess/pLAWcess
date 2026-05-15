@@ -7,6 +7,7 @@ import ShareSettingsModal from './ShareSettingsModal';
 import { useToast } from '@/components/ui/Toast';
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import { isTodayInRange } from '@/lib/schedule';
+import { useIsVerified } from '@/lib/UserContext';
 
 function formatDateKo(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -36,6 +37,7 @@ type Props = {
 };
 
 export default function ApplicationsClient({ initialSchedule, initialAdmission, initialConcerns }: Props) {
+  const isVerified = useIsVerified();
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,6 +82,10 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
   // 1단계: 사전 검증 후 공개 설정 모달 오픈. 실제 제출은 모달의 onConfirm 에서.
   function handleSubmit() {
     if (isClosed || isNotRegistered) return;
+    if (!isVerified) {
+      toast.error('계정 검증 후 신청할 수 있습니다.');
+      return;
+    }
     if (hasUnsavedCard) {
       toast.error('저장하지 않은 내용이 있습니다.\n완료 버튼을 누른 후 다시 시도해주세요.');
       return;
@@ -320,12 +326,16 @@ export default function ApplicationsClient({ initialSchedule, initialAdmission, 
             <p className="text-sm text-red-500 font-medium">신청 기간이 마감되어 신청이 불가합니다.</p>
           </div>
         ) : (
-          <div className="flex justify-center mt-6">
+          <div className="flex flex-col items-center mt-6 gap-2">
+            {!isVerified && (
+              <p className="text-sm text-red-500 font-medium">계정 검증 후 신청할 수 있습니다.</p>
+            )}
             <button
               onClick={handleSubmit}
-              disabled={isNotRegistered || isSubmitting}
+              disabled={isNotRegistered || isSubmitting || !isVerified}
+              title={!isVerified ? '계정 검증 후 신청할 수 있습니다.' : undefined}
               className={`flex items-center gap-2 px-6 py-2.5 text-sm rounded-md transition-colors ${
-                isNotRegistered || isSubmitting
+                isNotRegistered || isSubmitting || !isVerified
                   ? 'bg-border text-text-placeholder cursor-not-allowed'
                   : agreed
                     ? 'bg-brand text-white hover:bg-brand-dark'

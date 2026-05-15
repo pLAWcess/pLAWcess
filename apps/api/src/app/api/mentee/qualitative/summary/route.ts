@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
+import { requireVerified } from "@/lib/verified-guard";
 import { hashAnalysisInput, buildSingleAnalysisHash } from "@/lib/hash";
 import type { StoredAttachment } from "@/lib/attachments";
 import { summarizeQualitative, type QualitativeActivity, type StarItem } from "@/lib/gemini";
@@ -107,6 +108,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
+
+  const unverified = await requireVerified(userId);
+  if (unverified) return unverified;
 
   const processYear = getProcessYear(req);
 

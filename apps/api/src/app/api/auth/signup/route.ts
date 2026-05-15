@@ -120,6 +120,9 @@ export async function POST(req: NextRequest) {
         birth_date: birthDateParsed,
         phone: phone || null,
         current_role: "mentee",
+        // 신규 가입은 미검증 상태로 시작한다. 관리자 검증 전까지는
+        // 프로세스 신청·AI 정성 분석·합격 아카이브 등 제한 기능을 사용할 수 없다 (#289).
+        account_status: "inactive",
         military_status: "not_applicable",
         enrollment_doc_path: cert.storagePath,
         enrollment_doc_filename: cert.filename,
@@ -134,6 +137,7 @@ export async function POST(req: NextRequest) {
         email: true,
         student_id: true,
         current_role: true,
+        account_status: true,
         military_status: true,
       },
     });

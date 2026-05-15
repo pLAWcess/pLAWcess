@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@plawcess/database";
 import { requireAuth } from "@/lib/auth-guard";
+import { requireVerified } from "@/lib/verified-guard";
 
 type CaseRow = {
   id: string;
@@ -46,6 +47,9 @@ function toDto(row: CaseRow, viewerId: string) {
 export async function GET(req: NextRequest) {
   const auth = requireAuth(req);
   if (auth.error) return auth.error;
+
+  const unverified = await requireVerified(auth.payload.user_id);
+  if (unverified) return unverified;
 
   const sp = req.nextUrl.searchParams;
   const major = sp.get("major");
