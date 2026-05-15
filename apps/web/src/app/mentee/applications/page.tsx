@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import ApplicationsClient from './ApplicationsClient';
-import type { CycleSchedule, BasicInfoAdmission, ConcernData } from '@/lib/api';
+import type { CycleSchedule, BasicInfoAdmission, ConcernData, MenteeApplicationStatus } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const COOKIE_NAME = 'plawcess_token';
@@ -26,14 +26,17 @@ export default async function ApplicationsPage() {
 
   let initialAdmission: BasicInfoAdmission | null = null;
   let initialConcerns: ConcernData | null = null;
+  let initialStatus: MenteeApplicationStatus | null = null;
   if (activeSchedule) {
     const year = encodeURIComponent(`${activeSchedule.process_year}학년도`);
-    const [basicInfo, concerns] = await Promise.all([
+    const [basicInfo, concerns, status] = await Promise.all([
       fetchWithCookie<{ admission: BasicInfoAdmission }>(`/api/mentee/basic-info?year=${year}`, token),
       fetchWithCookie<ConcernData>(`/api/mentee/concerns?year=${year}`, token),
+      fetchWithCookie<MenteeApplicationStatus>(`/api/mentee/applications/status?year=${year}`, token),
     ]);
     initialAdmission = basicInfo?.admission ?? null;
     initialConcerns = concerns;
+    initialStatus = status;
   }
 
   return (
@@ -41,6 +44,7 @@ export default async function ApplicationsPage() {
       initialSchedule={activeSchedule}
       initialAdmission={initialAdmission}
       initialConcerns={initialConcerns}
+      initialStatus={initialStatus}
     />
   );
 }

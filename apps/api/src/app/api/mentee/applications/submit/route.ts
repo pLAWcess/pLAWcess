@@ -55,11 +55,24 @@ export async function POST(req: NextRequest) {
     share_requests: shareInput.requests ?? true,
   };
 
-  // 사용자 + 멘티 record 조회
-  const record = await prisma.menteeRecord.findUnique({
-    where: { user_id_process_year: { user_id: userId, process_year: processYear } },
-    select: { record_id: true, record_status: true },
-  });
+  // 사용자 + 멘티 record + 기존 application 조회
+  // record_status 가 아니라 Application 존재/상태를 진실의 원천으로 분기한다.
+  const [record, existing] = await Promise.all([
+    prisma.menteeRecord.findUnique({
+      where: { user_id_process_year: { user_id: userId, process_year: processYear } },
+      select: { record_id: true, record_status: true },
+    }),
+    prisma.application.findUnique({
+      where: {
+        user_id_process_year_role: {
+          user_id: userId,
+          process_year: processYear,
+          role: "mentee",
+        },
+      },
+      select: { application_id: true, application_status: true },
+    }),
+  ]);
 
   if (!record) {
     return NextResponse.json(
@@ -68,11 +81,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (record.record_status === "submitted") {
-    return NextResponse.json({ error: "이미 제출된 신청서입니다." }, { status: 409 });
+  // 기존 신청이 있는데 보완요청 외의 상태(승인/거절/대기) → 사용자가 임의로 재제출 불가
+  if (existing && existing.application_status !== "revision_requested") {
+    const message =
+      existing.application_status === "approved"
+        ? "이미 승인된 신청서입니다."
+        : existing.application_status === "rejected"
+          ? "거절된 신청서입니다. 관리자에게 문의해주세요."
+          : "이미 제출된 신청서입니다.";
+    return NextResponse.json({ error: message }, { status: 409 });
   }
 
-  // 트랜잭션: record_status 전환 + 공개 설정 저장 + Application 생성
+  // 트랜잭션: record_status 전환 + 공개 설정 저장 + Application upsert
+  // - 첫 제출            : Application 새로 생성
+  // - 보완요청 후 재제출 : Application status 를 submitted 로 되돌리고 submitted_at 만 갱신
+  //                       (revision_requested_at 등 기존 timestamp 는 audit 으로 보존)
   const submittedAt = new Date();
   try {
     const application = await prisma.$transaction(async (tx) => {
@@ -80,6 +103,17 @@ export async function POST(req: NextRequest) {
         where: { record_id: record.record_id },
         data: { record_status: "submitted", ...shareData },
       });
+
+      if (existing) {
+        return tx.application.update({
+          where: { application_id: existing.application_id },
+          data: {
+            application_status: "submitted",
+            submitted_at: submittedAt,
+          },
+          select: { application_id: true, submitted_at: true },
+        });
+      }
 
       return tx.application.create({
         data: {

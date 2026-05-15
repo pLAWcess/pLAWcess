@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
+import { applicationStatusToLabel } from "@/lib/labels";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   const processYear = getProcessYear(req);
 
-  const [user, record] = await Promise.all([
+  const [user, record, application] = await Promise.all([
     prisma.user.findUnique({
       where: { user_id: userId },
       select: {
@@ -48,6 +49,23 @@ export async function GET(req: NextRequest) {
         lawschool_name: true,
         lawschool_grade: true,
         application: { select: { submitted_at: true } },
+      },
+    }),
+    prisma.application.findUnique({
+      where: {
+        user_id_process_year_role: {
+          user_id: userId,
+          process_year: processYear,
+          role: "mentor",
+        },
+      },
+      select: {
+        application_status: true,
+        admin_memos: {
+          take: 1,
+          orderBy: { created_at: "desc" },
+          select: { memo_content: true },
+        },
       },
     }),
   ]);
@@ -71,10 +89,18 @@ export async function GET(req: NextRequest) {
     missingFields.push("학적상태", "소속 로스쿨", "로스쿨 기수");
   }
 
+  const label = application
+    ? (applicationStatusToLabel(application.application_status) || null)
+    : null;
+  const exposeMemo = label === "revision" || label === "rejected";
+  const latestMemo = exposeMemo ? (application?.admin_memos[0]?.memo_content ?? null) : null;
+
   return NextResponse.json({
     submitted: record?.record_status === "submitted",
     submittedAt: record?.application?.submitted_at?.toISOString() ?? null,
     missingFields,
     hasRecord: !!record,
+    applicationStatus: label,
+    latestMemo,
   });
 }
