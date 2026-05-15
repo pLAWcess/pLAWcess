@@ -1,9 +1,21 @@
+<div align="center">
+
+<img src="apps/web/public/logo/pLAWcess_serif_logo.png" alt="pLAWcess" width="320" />
+
+</div>
+
 # pLAWcess
 
 > 고려대학교 자유전공학부 로스쿨 멘토링 플랫폼.
 > Law + Process — 합격까지의 과정을 함께 만든다.
 
-**라이브 서비스**: [plawcess.com](https://plawcess.com)
+<div align="center">
+
+[![Live](https://img.shields.io/badge/Live_Service-plawcess.com-2ea44f?style=for-the-badge)](https://plawcess.com)
+
+**실제 운영 중인 라이브 멘토링 플랫폼**
+
+</div>
 
 ## 서비스 개요
 
