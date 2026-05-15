@@ -1159,7 +1159,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       .then(applyData)
       .catch(() => {})
       .finally(() => setPageLoading(false));
-  }, [applyData, initialData]);
+  }, [applyData, initialData, year]);
 
   // 이전 연도 캐리오버 진입점 노출 여부 — submitted/readOnly 가 아닐 때만 의미 있음
   useEffect(() => {

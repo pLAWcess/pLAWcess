@@ -956,7 +956,7 @@ export default function QualitativeClient({ initialData, year, readOnly }: { ini
       .then(applyData)
       .catch(() => {})
       .finally(() => setPageLoading(false));
-  }, [applyData, initialData]);
+  }, [applyData, initialData, year]);
 
   // 이전 멘티 시절 활동 캐리오버 진입점 노출 — readOnly 가 아니고
   // 본인의 이전 연도 MenteeRecord 가 있을 때만.
