@@ -289,7 +289,7 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
                         type="button"
                         onClick={() => togglePublished(c)}
                         disabled={busyId === c.id}
-                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         {c.isPublished ? '비공개로' : '공개로'}
                       </button>
@@ -297,7 +297,7 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
                         type="button"
                         onClick={() => openEdit(c)}
                         disabled={busyId === c.id}
-                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         수정
                       </button>
@@ -305,7 +305,7 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
                         type="button"
                         onClick={() => handleDelete(c)}
                         disabled={busyId === c.id}
-                        className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         삭제
                       </button>

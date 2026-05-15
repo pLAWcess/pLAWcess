@@ -137,7 +137,7 @@ export default function ArchiveCard({ data, actions }: Props) {
             </p>
           )}
           {actions && (
-            <div className="flex items-center justify-end gap-2 pt-1">{actions}</div>
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">{actions}</div>
           )}
         </div>
       )}
