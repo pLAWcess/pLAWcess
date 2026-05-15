@@ -711,8 +711,8 @@ export type AdminMentorCreateInput = {
   password: string;
   email?: string | null;
   studentId?: string | null;
-  undergradFirstMajor?: string | null;
-  currentLawschool?: string | null;
+  undergradFirstMajor: string;
+  currentLawschool: string;
   lawschoolGrade?: number | null;
 };
 
