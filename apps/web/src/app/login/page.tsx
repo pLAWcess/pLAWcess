@@ -58,72 +58,6 @@ export default function LoginPage() {
     router.push(ROLE_REDIRECT[role] ?? '/');
   }
 
-  async function handleTestAdminLogin() {
-    setError('');
-    setLoading(true);
-
-    const testEmail = process.env.NEXT_PUBLIC_TEST_ADMIN_EMAIL ?? 'admin@test.com';
-    const testPassword = process.env.NEXT_PUBLIC_TEST_ADMIN_PASSWORD ?? '1234';
-
-    let res: Response;
-    try {
-      res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: testEmail, password: testPassword }),
-      });
-    } catch {
-      setError('테스트 로그인 실패: 서버에 연결할 수 없습니다.');
-      setLoading(false);
-      return;
-    }
-
-    const data = await readJson<LoginResponse>(res);
-    setLoading(false);
-
-    if (!res.ok || !data.user) {
-      setError(`테스트 로그인 실패: ${data.error ?? '알 수 없는 오류'}`);
-      return;
-    }
-
-    saveUser(data.user);
-    router.push(ROLE_REDIRECT['admin'] ?? '/');
-  }
-
-  async function handleTestMentorLogin() {
-    setError('');
-    setLoading(true);
-
-    const testLoginId = process.env.NEXT_PUBLIC_TEST_MENTOR_LOGIN_ID ?? 'test.mentor';
-    const testPassword = process.env.NEXT_PUBLIC_TEST_MENTOR_PASSWORD ?? 'test1234';
-
-    let res: Response;
-    try {
-      res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ loginId: testLoginId, password: testPassword }),
-      });
-    } catch {
-      setError('테스트 로그인 실패: 서버에 연결할 수 없습니다.');
-      setLoading(false);
-      return;
-    }
-
-    const data = await readJson<LoginResponse>(res);
-    setLoading(false);
-
-    if (!res.ok || !data.user) {
-      setError(`테스트 로그인 실패: ${data.error ?? '알 수 없는 오류'}`);
-      return;
-    }
-
-    saveUser(data.user);
-    router.push(ROLE_REDIRECT['mentor'] ?? '/');
-  }
-
   return (
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-50 h-16 bg-white border-b border-border flex items-center px-6 shrink-0">
@@ -196,25 +130,6 @@ export default function LoginPage() {
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
-
-              {process.env.NEXT_PUBLIC_SHOW_DEV_LOGIN === 'true' && (
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleTestAdminLogin()}
-                    className="w-full py-2.5 text-sm font-semibold text-brand bg-blue-50 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
-                  >
-                    [dev용] Admin으로 빠른 로그인
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTestMentorLogin()}
-                    className="w-full py-2.5 text-sm font-semibold text-brand bg-blue-50 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
-                  >
-                    [dev용] Mentor로 빠른 로그인
-                  </button>
-                </div>
-              )}
 
               <p className="text-center text-sm text-text-secondary flex justify-center gap-4">
                 <Link href="/find-id" className="text-brand hover:underline font-medium">
