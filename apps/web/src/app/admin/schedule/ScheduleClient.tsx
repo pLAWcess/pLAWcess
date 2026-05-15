@@ -117,7 +117,7 @@ export default function ScheduleClient({ initialSchedules }: Props) {
       ) : (
         <>
           {/* 연도 탭 */}
-          <div className="flex gap-1 border-b border-border overflow-x-auto">
+          <div className="flex gap-1 border-b border-border overflow-x-auto overflow-y-hidden">
             {schedules.map((s) => (
               <button
                 key={s.process_year}

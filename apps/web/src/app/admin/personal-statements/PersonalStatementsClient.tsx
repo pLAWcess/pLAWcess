@@ -144,7 +144,7 @@ export default function PersonalStatementsClient({
           등록된 연도가 없습니다. <Link href="/admin/settings/year" className="text-brand font-medium hover:underline">연도 설정</Link>에서 먼저 연도를 추가하세요.
         </div>
       ) : (
-        <div className="flex gap-1 border-b border-border overflow-x-auto">
+        <div className="flex gap-1 border-b border-border overflow-x-auto overflow-y-hidden">
           {schedules.map((s) => {
             const isSelected = String(s.process_year) === selectedYear;
             return (
