@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
+import AutocompleteField from '@/components/ui/AutocompleteField';
 import { createAdminMentor } from '@/lib/api';
+import { MAJOR_OPTIONS } from '@/constants/basic-info';
+import { LAW_SCHOOL_NAMES } from '@/constants/mentor-basic-info';
 
 type FormState = {
   name: string;
@@ -26,6 +29,15 @@ const EMPTY_FORM: FormState = {
   lawschoolGrade: '',
 };
 
+type TextFieldConfig = {
+  key: keyof FormState;
+  label: string;
+  type: 'text' | 'password' | 'email';
+  placeholder: string;
+  required: boolean;
+  inputMode?: 'numeric';
+};
+
 export default function AdminMentorCreateClient() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -37,21 +49,30 @@ export default function AdminMentorCreateClient() {
     if (submitting) return;
     setError(null);
 
-    if (!form.name.trim() || !form.loginId.trim() || !form.password) {
+    const name = form.name.trim();
+    const loginId = form.loginId.trim();
+    const undergradFirstMajor = form.undergradFirstMajor.trim();
+    const currentLawschool = form.currentLawschool.trim();
+
+    if (!name || !loginId || !form.password) {
       setError('이름·아이디·비밀번호는 필수입니다.');
+      return;
+    }
+    if (!undergradFirstMajor || !currentLawschool) {
+      setError('제1전공·소속 로스쿨은 필수입니다.');
       return;
     }
 
     setSubmitting(true);
     try {
       const res = await createAdminMentor({
-        name: form.name.trim(),
-        loginId: form.loginId.trim(),
+        name,
+        loginId,
         password: form.password,
         email: form.email.trim() || null,
         studentId: form.studentId.trim() || null,
-        undergradFirstMajor: form.undergradFirstMajor.trim() || null,
-        currentLawschool: form.currentLawschool.trim() || null,
+        undergradFirstMajor,
+        currentLawschool,
         lawschoolGrade: form.lawschoolGrade.trim()
           ? parseInt(form.lawschoolGrade, 10)
           : null,
@@ -65,16 +86,13 @@ export default function AdminMentorCreateClient() {
     }
   }
 
-  const fields = [
-    { key: 'name', label: '이름', type: 'text', placeholder: '홍길동', required: true, inputMode: undefined },
-    { key: 'loginId', label: '아이디', type: 'text', placeholder: 'mentor01', required: true, inputMode: undefined },
-    { key: 'password', label: '임시 비밀번호', type: 'password', placeholder: '••••••••', required: true, inputMode: undefined },
-    { key: 'email', label: '이메일', type: 'email', placeholder: 'mentor@example.com', required: false, inputMode: undefined },
-    { key: 'studentId', label: '학번', type: 'text', placeholder: '2020123456', required: false, inputMode: undefined },
-    { key: 'undergradFirstMajor', label: '제1전공', type: 'text', placeholder: '컴퓨터학과', required: false, inputMode: undefined },
-    { key: 'currentLawschool', label: '소속 로스쿨', type: 'text', placeholder: '고려대학교 로스쿨', required: false, inputMode: undefined },
-    { key: 'lawschoolGrade', label: '기수', type: 'text', placeholder: '17', required: false, inputMode: 'numeric' as const },
-  ] as const;
+  const textFields: readonly TextFieldConfig[] = [
+    { key: 'name', label: '이름', type: 'text', placeholder: '홍길동', required: true },
+    { key: 'loginId', label: '아이디', type: 'text', placeholder: 'mentor01', required: true },
+    { key: 'password', label: '임시 비밀번호', type: 'password', placeholder: '••••••••', required: true },
+    { key: 'email', label: '이메일', type: 'email', placeholder: 'mentor@example.com', required: false },
+    { key: 'studentId', label: '학번', type: 'text', placeholder: '2020123456', required: false },
+  ];
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -87,7 +105,7 @@ export default function AdminMentorCreateClient() {
         <h2 className="text-base font-semibold text-text-primary mb-6">신규 계정</h2>
         <form onSubmit={handleCreate} className="flex flex-col gap-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-            {fields.map(({ key, label, type, placeholder, required, inputMode }) => (
+            {textFields.map(({ key, label, type, placeholder, required, inputMode }) => (
               <div key={key} className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-text-primary">
                   {label}
@@ -108,6 +126,48 @@ export default function AdminMentorCreateClient() {
                 />
               </div>
             ))}
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-text-primary">제1전공</label>
+              <AutocompleteField
+                variant="box"
+                match="starts"
+                value={form.undergradFirstMajor}
+                options={MAJOR_OPTIONS}
+                onChange={(v) => setForm((f) => ({ ...f, undergradFirstMajor: v }))}
+                placeholder="제1전공 선택 또는 검색"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-text-primary">소속 로스쿨</label>
+              <AutocompleteField
+                variant="box"
+                match="starts"
+                value={form.currentLawschool}
+                options={LAW_SCHOOL_NAMES}
+                onChange={(v) => setForm((f) => ({ ...f, currentLawschool: v }))}
+                placeholder="소속 로스쿨 선택 또는 검색"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-text-primary">
+                기수
+                <span className="ml-1 text-xs text-text-secondary">(선택)</span>
+              </label>
+              <input
+                type="text"
+                value={form.lawschoolGrade}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, lawschoolGrade: e.target.value.replace(/[^0-9]/g, '') }))
+                }
+                placeholder="17"
+                inputMode="numeric"
+                autoComplete="off"
+                className="px-3 py-2.5 text-sm border border-border-input rounded-md focus:outline-none focus:border-brand transition-colors"
+              />
+            </div>
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex justify-end pt-2 border-t border-border">

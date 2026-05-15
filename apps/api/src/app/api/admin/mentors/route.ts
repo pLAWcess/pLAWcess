@@ -1,10 +1,12 @@
-// 어드민 — 멘토 계정 생성/목록 (#262)
+// 어드민 — 멘토 계정 생성/목록 (#262, #283)
 //
 // - POST: 회원가입 흐름을 거치지 않고 어드민이 직접 멘토 계정을 만든다.
 //   학번/생년월일/재학증명서 등 회원가입에 강제되던 필드는 받지 않으며
 //   email 은 현재 폼에 항목이 없으므로 placeholder 로 자동 생성한다 (login_id 기반).
-//   currentLawschool 이 제공되고 활성 cycle 이 있으면 mentor_record 의
-//   lawschool_name 도 함께 채워 곧장 매칭 풀에 노출되도록 한다.
+//   제1전공/소속 로스쿨은 필수(#283) — 합격 아카이브 자동 채우기 등 후속 흐름이
+//   이 두 값에 의존하므로 빈 값 케이스가 생기지 않도록 강제한다.
+//   활성 cycle 이 있으면 mentor_record 의 lawschool_name 도 함께 채워
+//   곧장 매칭 풀에 노출되도록 한다.
 //
 // - GET: current_role=mentor 인 활성 계정 목록. 최신 mentor_record 의
 //   lawschool_name 을 합성해 카드 표시용 데이터로 내려준다.
@@ -105,6 +107,12 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  if (!undergradFirstMajor || !currentLawschool) {
+    return NextResponse.json(
+      { error: "제1전공·소속 로스쿨은 필수입니다." },
+      { status: 400 },
+    );
+  }
   if (name.length > NAME_MAX) {
     return NextResponse.json({ error: `이름은 ${NAME_MAX}자 이하여야 합니다.` }, { status: 400 });
   }
@@ -114,7 +122,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (currentLawschool && currentLawschool.length > SCHOOL_NAME_MAX) {
+  if (currentLawschool.length > SCHOOL_NAME_MAX) {
     return NextResponse.json(
       { error: `소속 로스쿨은 ${SCHOOL_NAME_MAX}자 이하여야 합니다.` },
       { status: 400 },
