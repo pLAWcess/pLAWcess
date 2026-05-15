@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { AuthUser } from '@/lib/api';
+import { clearUser, type AuthUser } from '@/lib/api';
 
 const NAV_ITEMS = [
   { href: '/about', label: '서비스 소개' },
@@ -21,10 +21,19 @@ const ADMIN_EXTRA_ITEMS = [
 
 export default function LandingNavbarMobile({ user }: { user: AuthUser | null }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const navItems = user?.current_role === 'admin'
     ? [...NAV_ITEMS, ...ADMIN_EXTRA_ITEMS]
     : NAV_ITEMS;
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    clearUser();
+    setOpen(false);
+    router.push('/');
+    router.refresh();
+  }
 
   return (
     <>
@@ -64,7 +73,7 @@ export default function LandingNavbarMobile({ user }: { user: AuthUser | null })
               </Link>
             );
           })}
-          {!user && (
+          {!user ? (
             <div className="flex flex-col gap-2 pt-3 border-t border-border mt-1">
               <Link
                 href="/login"
@@ -80,6 +89,16 @@ export default function LandingNavbarMobile({ user }: { user: AuthUser | null })
               >
                 회원가입
               </Link>
+            </div>
+          ) : (
+            <div className="mt-1 pt-3 border-t border-border flex items-center justify-between px-3">
+              <span className="text-sm font-medium text-text-primary">{user.name}</span>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-text-secondary hover:text-red-500 transition-colors"
+              >
+                로그아웃
+              </button>
             </div>
           )}
         </div>
