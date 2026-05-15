@@ -1578,11 +1578,31 @@ export type MentorApplicationStatus = {
   submittedAt: string | null;
   missingFields: string[];
   hasRecord: boolean;
+  /** null = Application 없음(미신청). 그 외엔 BE 라벨 그대로. */
+  applicationStatus: ApplicationStatusLabel | null;
+  /** revision/rejected 상태에서만 채워짐 */
+  latestMemo: string | null;
 };
 
 export async function getMentorApplicationStatus(year: string): Promise<MentorApplicationStatus> {
   const res = await fetch(
     `${API_BASE}/api/mentor/applications/status?year=${encodeURIComponent(year)}`,
+    { headers: headers(), credentials: "include" },
+  );
+  return jsonOrError(res, "신청 상태 조회 실패");
+}
+
+export type MenteeApplicationStatus = {
+  /** null = Application 없음(미신청). 그 외엔 BE 라벨 그대로. */
+  applicationStatus: ApplicationStatusLabel | null;
+  submittedAt: string | null;
+  /** revision/rejected 상태에서만 채워짐 */
+  latestMemo: string | null;
+};
+
+export async function getMenteeApplicationStatus(year: string): Promise<MenteeApplicationStatus> {
+  const res = await fetch(
+    `${API_BASE}/api/mentee/applications/status?year=${encodeURIComponent(year)}`,
     { headers: headers(), credentials: "include" },
   );
   return jsonOrError(res, "신청 상태 조회 실패");

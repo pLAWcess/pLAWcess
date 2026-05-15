@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { submitMentorApplication, type CycleSchedule, type MentorApplicationStatus } from '@/lib/api';
+import {
+  submitMentorApplication,
+  getMentorApplicationStatus,
+  type CycleSchedule,
+  type MentorApplicationStatus,
+} from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { isTodayInRange } from '@/lib/schedule';
 import { useIsVerified } from '@/lib/UserContext';
@@ -54,9 +59,9 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
   const [agreed, setAgreed] = useState(false);
   const [showConsentError, setShowConsentError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<MentorApplicationStatus | null>(initialStatus);
 
   const activeSchedule = initialSchedule;
-  const status = initialStatus;
   const year = String(activeSchedule?.process_year ?? new Date().getFullYear());
 
   const isNotRegistered = !activeSchedule || (!activeSchedule.mentor_recruit_start && !activeSchedule.mentor_recruit_end && !activeSchedule.matching_start);
@@ -65,11 +70,15 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
     activeSchedule?.mentor_recruit_end ?? null,
     activeSchedule?.matching_start ?? null,
   );
-  const submitted = !!status?.submitted;
   const missing = status?.missingFields ?? [];
   const allFilled = missing.length === 0;
+  const applicationStatus = status?.applicationStatus ?? null;
+  // 사용자가 (재)제출 가능한 상태: 미신청(null) 또는 보완요청(revision).
+  // 그 외(대기/승인/거절) 는 제출 폼/버튼을 숨기고 상태 카드만 노출한다.
+  const canShowSubmitForm = applicationStatus === null || applicationStatus === 'revision';
+  const isResubmit = applicationStatus === 'revision';
 
-  const canSubmit = !isNotRegistered && recruitState.inRange && !submitted && allFilled && agreed && !isSubmitting && isVerified;
+  const canSubmit = canShowSubmitForm && !isNotRegistered && recruitState.inRange && allFilled && agreed && !isSubmitting && isVerified;
 
   async function handleSubmit() {
     if (!isVerified) {
@@ -84,7 +93,14 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
     setIsSubmitting(true);
     try {
       await submitMentorApplication(year);
-      toast.success('신청서가 제출되었습니다.');
+      toast.success(isResubmit ? '신청서가 재제출되었습니다.' : '신청서가 제출되었습니다.');
+      // 제출 직후 상태 동기화 + SSR refresh (제출일 등 갱신)
+      try {
+        const next = await getMentorApplicationStatus(year);
+        setStatus(next);
+      } catch {
+        // 상태 갱신 실패해도 제출 자체는 성공이므로 무시
+      }
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '신청서 제출에 실패했습니다.');
@@ -100,6 +116,15 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
         <h1 className="text-2xl font-bold text-text-primary">프로세스 신청</h1>
         <p className="text-sm text-text-secondary mt-1">멘토링 프로세스를 신청하고 진행 상황을 확인하세요</p>
       </div>
+
+      {/* 신청 상태 안내 카드 — 미신청 외 상태에서만 노출 */}
+      {applicationStatus && (
+        <ApplicationStatusCard
+          status={applicationStatus}
+          memo={status?.latestMemo ?? null}
+          submittedAt={status?.submittedAt ?? null}
+        />
+      )}
 
       {/* 사업 일정 카드 */}
       {activeSchedule && (
@@ -161,7 +186,8 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
         </div>
       </div>
 
-      {/* 개인정보 동의 카드 */}
+      {/* 개인정보 동의 카드 — (재)제출 가능한 상태일 때만 노출 */}
+      {canShowSubmitForm && (
       <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <h2 className="text-base font-semibold text-text-primary mb-5">개인정보 수집 및 이용 동의</h2>
         <div className="text-sm text-text-body leading-relaxed space-y-4 mb-6">
@@ -205,23 +231,17 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
           </p>
         )}
       </div>
+      )}
 
-      {/* 신청서 카드 */}
+      {/* 신청서 카드 — (재)제출 가능한 상태일 때만 노출 */}
+      {canShowSubmitForm && (
       <div className="bg-white rounded-xl border border-border shadow-sm px-4 sm:px-8 py-6">
         <div className="mb-6">
           <h2 className="text-base font-semibold text-text-primary">pLAWcess 멘토 신청서</h2>
         </div>
 
         <div className="text-center text-sm text-text-secondary leading-relaxed">
-          {submitted ? (
-            <>
-              <p className="text-brand font-medium">신청서가 제출되었습니다.</p>
-              {status?.submittedAt && (
-                <p className="mt-1">제출일: {formatDateKo(status.submittedAt)}</p>
-              )}
-              <p className="mt-1">관리자 승인 후 매칭 풀에 포함됩니다.</p>
-            </>
-          ) : isNotRegistered ? (
+          {isNotRegistered ? (
             <p>현재 진행 중인 pLAWcess 사업의 멘토 모집 기간이 아직 등록되지 않았습니다.</p>
           ) : recruitState.beforeStart ? (
             <p>
@@ -249,7 +269,7 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
           )}
         </div>
 
-        {!submitted && recruitState.inRange && !isNotRegistered && (
+        {recruitState.inRange && !isNotRegistered && (
           <>
             <div className="flex flex-col items-center mt-6 gap-3">
               {!isVerified && (
@@ -268,7 +288,7 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
                 </svg>
-                {isSubmitting ? '제출 중...' : '신청서 제출'}
+                {isSubmitting ? '제출 중...' : isResubmit ? '신청서 재제출' : '신청서 제출'}
               </button>
               {!allFilled && (
                 <p className="text-xs text-text-secondary text-center">
@@ -282,6 +302,75 @@ export default function MentorApplicationsClient({ initialSchedule, initialStatu
           </>
         )}
       </div>
+      )}
+    </div>
+  );
+}
+
+// 신청 상태 안내 카드. 어드민이 사용자 신청에 대해 내린 결정/요청을 사용자에게 보여준다.
+// memo 는 BE 가 revision/rejected 일 때만 채워서 내려주므로, 그대로 노출한다.
+function ApplicationStatusCard({
+  status,
+  memo,
+  submittedAt,
+}: {
+  status: NonNullable<MentorApplicationStatus['applicationStatus']>;
+  memo: string | null;
+  submittedAt: string | null;
+}) {
+  const meta: Record<typeof status, { label: string; description: string; badge: string; tint: string; memoLabel: string | null }> = {
+    pending: {
+      label: '검토 대기 중',
+      description: '관리자가 신청서를 검토 중입니다. 결과가 안내되기 전까지 기다려주세요.',
+      badge: 'bg-gray-200 text-gray-600',
+      tint: 'bg-gray-50 border-border',
+      memoLabel: null,
+    },
+    approved: {
+      label: '승인 완료',
+      description: '신청이 승인되었습니다. 매칭 결과 발표일을 기다려주세요.',
+      badge: 'bg-green-500 text-white',
+      tint: 'bg-green-50 border-green-200',
+      memoLabel: null,
+    },
+    revision: {
+      label: '보완 요청',
+      description: '관리자가 신청서 보완을 요청했습니다. 아래 사유를 확인하고 내용을 수정한 뒤 재제출해주세요.',
+      badge: 'border border-orange-400 text-orange-500 bg-white',
+      tint: 'bg-orange-50 border-orange-200',
+      memoLabel: '보완 요청 사유',
+    },
+    rejected: {
+      label: '거절됨',
+      description: '신청이 거절되었습니다. 자세한 내용은 아래 사유를 확인해주세요.',
+      badge: 'bg-red-500 text-white',
+      tint: 'bg-red-50 border-red-200',
+      memoLabel: '거절 사유',
+    },
+  };
+  const m = meta[status];
+  const submittedLabel = submittedAt ? formatDateKo(submittedAt) : null;
+  return (
+    <div className={`rounded-xl border shadow-sm px-4 sm:px-8 py-6 ${m.tint}`}>
+      <div className="flex items-center gap-3 mb-2">
+        <span className={`inline-flex items-center justify-center min-w-[64px] px-3 py-1 rounded-full text-xs font-semibold ${m.badge}`}>
+          {m.label}
+        </span>
+        {submittedLabel && (
+          <span className="text-xs text-text-secondary">제출일: {submittedLabel}</span>
+        )}
+      </div>
+      <p className="text-sm text-text-body leading-relaxed">{m.description}</p>
+      {m.memoLabel && (
+        <div className="mt-4 bg-white border border-border rounded-md px-4 py-3">
+          <p className="text-xs font-medium text-text-secondary mb-1">{m.memoLabel}</p>
+          {memo ? (
+            <p className="text-sm text-text-primary whitespace-pre-wrap">{memo}</p>
+          ) : (
+            <p className="text-sm text-text-placeholder">관리자가 입력한 사유가 없습니다.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
