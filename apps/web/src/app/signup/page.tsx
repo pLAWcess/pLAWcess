@@ -370,6 +370,7 @@ export default function SignupPage() {
       fd.append('password', form.password);
       fd.append('studentId', form.studentId);
       fd.append('birthDate', form.birthDate);
+      if (form.phone) fd.append('phone', form.phone);
       fd.append('signupVerificationToken', signupVerificationToken);
       if (form.enrollmentFile) fd.append('enrollmentFile', form.enrollmentFile);
       res = await fetch(`${API_BASE}/api/auth/signup`, {
