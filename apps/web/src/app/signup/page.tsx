@@ -51,6 +51,11 @@ const STUDENT_ID_EXPECTED: Array<string | null> = ['2', '0', '2', null, '1', '0'
 const BIRTH_DATE_EXPECTED: Array<string | null> = [null, null, null, null, '.', null, null, '.', null, null, '.'];
 const PHONE_EXPECTED: Array<string | null> = ['0', '1', '0', '-', null, null, null, null, '-', null, null, null, null];
 
+// autoFormat 전용 패턴 — 모든 숫자 자리를 null 로 둬서 사용자가 친 숫자 그대로 슬롯에 채워지게 한다.
+// (검증용 PHONE_EXPECTED 는 "010" 접두를 강제하지만, 포맷터에서 같은 슬롯을 고정 문자로 두면
+// 사용자가 친 첫 숫자가 슬롯 4 로 밀려 잘못 표시된다.)
+const PHONE_FORMAT: Array<string | null> = [null, null, null, '-', null, null, null, null, '-', null, null, null, null];
+
 function checkPrefix(v: string, expected: Array<string | null>): boolean {
   // 형식보다 길어도 에러로 본다 (e.g. "2026.05.14.11")
   if (v.length > expected.length) return false;
@@ -63,6 +68,36 @@ function checkPrefix(v: string, expected: Array<string | null>): boolean {
     }
   }
   return true;
+}
+
+// EXPECTED 슬롯에 맞춰 사용자가 입력한 숫자 사이에 구분자(.·-)를 자동으로 삽입한다.
+// 비숫자는 입력에서 모두 제거한 뒤 슬롯을 채우므로, 붙여넣기/백스페이스도 자연스럽게 동작.
+// 구분자 슬롯은 앞 숫자가 채워진 즉시 추가되므로 마지막 종결 구분자(예: YYYY.MM.DD. 의 끝 '.')도 자동 노출.
+function autoFormat(input: string, expected: Array<string | null>): string {
+  const digits = input.replace(/\D/g, '');
+  if (digits.length === 0) return '';
+  let result = '';
+  let digitIdx = 0;
+  for (const slot of expected) {
+    if (slot === null) {
+      if (digitIdx >= digits.length) break;
+      result += digits[digitIdx];
+      digitIdx++;
+    } else {
+      result += slot;
+    }
+  }
+  return result;
+}
+
+// 자동 포맷 + 백스페이스 보정. 사용자가 자동 추가된 구분자를 지우려 한 경우(직전 값에서 마지막 한 글자만
+// 빠지고 그 글자가 구분자였다면), 그 앞 숫자도 함께 제거해 한 칸 의미 있는 삭제가 되도록 한다.
+function applyAutoFormat(input: string, prev: string, expected: Array<string | null>): string {
+  let v = input;
+  if (v === prev.slice(0, -1) && /[-.]/.test(prev.slice(-1))) {
+    v = v.slice(0, -1);
+  }
+  return autoFormat(v, expected);
 }
 
 const EMPTY_FORM: FormState = {
@@ -87,6 +122,7 @@ export default function SignupPage() {
   const [checkLoading, setCheckLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // 동의 (#159) — 필수 1개 + 선택 1개. 필수 미체크 시 가입 불가.
   const [consent, setConsent] = useState<ConsentState>({
@@ -110,7 +146,14 @@ export default function SignupPage() {
   }, [cooldown]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    // 전화번호/생년월일은 placeholder 형식대로 자동 포맷 (구분자 자동 삽입, 백스페이스 보정).
+    let nextValue = value;
+    if (key === 'phone' && typeof value === 'string') {
+      nextValue = applyAutoFormat(value, form.phone, PHONE_FORMAT) as FormState[K];
+    } else if (key === 'birthDate' && typeof value === 'string') {
+      nextValue = applyAutoFormat(value, form.birthDate, BIRTH_DATE_EXPECTED) as FormState[K];
+    }
+    setForm((prev) => ({ ...prev, [key]: nextValue }));
     if (key === 'loginId') setCheckResult(null);
     if (key === 'email') {
       setEmailVerifyState('idle');
@@ -126,19 +169,19 @@ export default function SignupPage() {
     } else if (key === 'passwordConfirm') {
       setFieldErrors((prev) => ({ ...prev, passwordConfirm: undefined }));
     } else if (key === 'birthDate') {
-      const v = value as string;
+      const v = nextValue as string;
       const err = v.length > 0 && !checkPrefix(v, BIRTH_DATE_EXPECTED)
         ? 'YYYY.MM.DD. 형식으로 입력해주세요 (예: 2000.03.15.)'
         : undefined;
       setFieldErrors((prev) => ({ ...prev, birthDate: err }));
     } else if (key === 'studentId') {
-      const v = value as string;
+      const v = nextValue as string;
       const err = v.length > 0 && !checkPrefix(v, STUDENT_ID_EXPECTED)
         ? '202X100XXX 형식으로 입력해주세요 (예: 2023100123)'
         : undefined;
       setFieldErrors((prev) => ({ ...prev, studentId: err }));
     } else if (key === 'phone') {
-      const v = value as string;
+      const v = nextValue as string;
       const err = v.length > 0 && !checkPrefix(v, PHONE_EXPECTED)
         ? '010-XXXX-XXXX 형식으로 입력해주세요'
         : undefined;
@@ -233,6 +276,14 @@ export default function SignupPage() {
     if (file && !['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
       setFieldErrors((prev) => ({ ...prev, file: 'PDF/JPG/PNG 파일만 업로드 가능합니다.' }));
       return;
+    }
+    // 드래그 앤 드롭은 input[accept] 필터가 적용되지 않아 직접 확장자 검증.
+    if (file) {
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+      if (!['pdf', 'jpg', 'jpeg', 'png'].includes(ext)) {
+        setFieldErrors((prev) => ({ ...prev, file: 'PDF, JPG, PNG 파일만 업로드할 수 있습니다.' }));
+        return;
+      }
     }
     setFieldErrors((prev) => ({ ...prev, file: undefined }));
     update('enrollmentFile', file);
@@ -565,10 +616,37 @@ export default function SignupPage() {
                 />
                 <div
                   id="file"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border rounded-md cursor-pointer hover:bg-gray-50 transition-colors scroll-mt-20"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!dragOver) setDragOver(true);
+                  }}
+                  onDragLeave={(e) => {
+                    // dragLeave 는 자식 요소로 들어갈 때도 발생하므로 currentTarget 밖으로 나갈 때만 false.
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    const file = e.dataTransfer.files?.[0] ?? null;
+                    if (file) handleFile(file);
+                  }}
+                  className={`flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-md cursor-pointer transition-colors scroll-mt-20 ${
+                    dragOver
+                      ? 'border-brand bg-brand/5'
+                      : 'border-border hover:bg-gray-50'
+                  }`}
                 >
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-placeholder mb-2">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`mb-2 ${dragOver ? 'text-brand' : 'text-text-placeholder'}`}>
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
@@ -577,7 +655,9 @@ export default function SignupPage() {
                     <span className="text-sm text-text-primary">{form.enrollmentFile.name}</span>
                   ) : (
                     <>
-                      <span className="text-sm text-text-secondary">클릭하거나 파일을 드래그하여 업로드</span>
+                      <span className={`text-sm ${dragOver ? 'text-brand font-medium' : 'text-text-secondary'}`}>
+                        {dragOver ? '여기에 놓으세요' : '클릭하거나 파일을 드래그하여 업로드'}
+                      </span>
                       <span className="text-xs text-text-placeholder mt-1">PDF, JPG, PNG (최대 4MB)</span>
                     </>
                   )}
