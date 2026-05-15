@@ -12,6 +12,7 @@ import { removeMany } from "@/lib/storage";
 const LOGIN_ID_REGEX = /^[a-zA-Z0-9_]{4,30}$/;
 const STUDENT_ID_REGEX = /^[a-zA-Z0-9]{4,20}$/;
 const BIRTH_DATE_REGEX = /^\d{4}\.\d{2}\.\d{2}\.$/;
+const PHONE_REGEX = /^010-\d{4}-\d{4}$/;
 
 export async function POST(req: NextRequest) {
   let form: FormData;
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
   const password = (form.get("password") ?? "") as string;
   const studentId = (form.get("studentId") ?? "") as string;
   const birthDate = (form.get("birthDate") ?? "") as string;
+  const phone = (form.get("phone") ?? "") as string;
   const signupVerificationToken = (form.get("signupVerificationToken") ?? "") as string;
   const enrollmentFileRaw = form.get("enrollmentFile");
   const enrollmentFile = enrollmentFileRaw instanceof File ? enrollmentFileRaw : null;
@@ -45,6 +47,9 @@ export async function POST(req: NextRequest) {
   }
   if (!BIRTH_DATE_REGEX.test(birthDate)) {
     return NextResponse.json({ error: "생년월일은 YYYY.MM.DD. 형식으로 입력해주세요." }, { status: 400 });
+  }
+  if (phone && !PHONE_REGEX.test(phone)) {
+    return NextResponse.json({ error: "전화번호는 010-XXXX-XXXX 형식으로 입력해주세요." }, { status: 400 });
   }
   const birthDateParsed = labelToDate(birthDate);
   if (!birthDateParsed) {
@@ -113,6 +118,7 @@ export async function POST(req: NextRequest) {
         password_hash,
         student_id: studentId,
         birth_date: birthDateParsed,
+        phone: phone || null,
         current_role: "mentee",
         military_status: "not_applicable",
         enrollment_doc_path: cert.storagePath,
