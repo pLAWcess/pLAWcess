@@ -12,5 +12,10 @@
     "db:migrate": "pnpm --filter @plawcess/database migrate",
     "db:migrate:deploy": "pnpm --filter @plawcess/database migrate:deploy",
     "seed:dummy": "pnpm --filter @plawcess/tools seed:dummy"
+  },
+  "pnpm": {
+    "overrides": {
+      "fast-uri": ">=3.1.2"
+    }
   }
 }
