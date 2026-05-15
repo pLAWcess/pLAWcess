@@ -137,7 +137,31 @@ type ColumnDef<T> = {
   render?: (row: T) => React.ReactNode;
   // table-fixed 컬럼 폭. 미지정 컬럼은 남는 폭을 나눠 받는다.
   widthClass?: string;
+  // 헤더·셀 텍스트 정렬. 기본은 text-left.
+  alignClass?: string;
 };
+
+type CertTarget = { userId: string; name: string; mime: string | null };
+type CertColumnRow = { userId: string; name: string; hasEnrollmentDoc: boolean; enrollmentDocMime: string | null };
+
+function CertCell({ row, onView }: { row: CertColumnRow; onView: (t: CertTarget) => void }) {
+  if (!row.hasEnrollmentDoc) {
+    return <span className="text-xs text-text-placeholder">없음</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onView({ userId: row.userId, name: row.name, mime: row.enrollmentDocMime })}
+      className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+      보기
+    </button>
+  );
+}
 
 function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMenteeRow> | null; statusFilter: 'all' | AdminAccountStatus }) {
   return (
@@ -145,11 +169,12 @@ function MenteePanel({ initialData, statusFilter }: { initialData: Paged<AdminMe
       role="mentee"
       initialData={initialData}
       statusFilter={statusFilter}
-      columns={[
+      buildColumns={(onViewCert) => [
         { key: 'name', label: '이름', widthClass: 'w-32', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
         { key: 'studentId', label: '학번', widthClass: 'w-32' },
         { key: 'firstMajor', label: '전공', render: (m) => m.firstMajor ?? '-' },
         { key: 'accountStatus', label: '계정 상태', widthClass: 'w-28', render: (m) => <StatusBadge status={m.accountStatus} /> },
+        { key: 'hasEnrollmentDoc', label: '재학증명서', widthClass: 'w-24', alignClass: 'text-center', render: (m) => <CertCell row={m} onView={onViewCert} /> },
       ]}
     />
   );
@@ -161,12 +186,13 @@ function MentorPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatu
       role="mentor"
       initialData={null}
       statusFilter={statusFilter}
-      columns={[
+      buildColumns={(onViewCert) => [
         { key: 'name', label: '이름', widthClass: 'w-32', render: (m) => <span className="font-medium text-text-primary">{m.name}</span> },
         { key: 'studentId', label: '학번', widthClass: 'w-32' },
         { key: 'lawSchool', label: '소속 로스쿨', render: (m) => m.lawSchool ?? '-' },
         { key: 'cohort', label: '기수', widthClass: 'w-20', render: (m) => m.cohort != null ? `${m.cohort}기` : '-' },
         { key: 'accountStatus', label: '계정 상태', widthClass: 'w-28', render: (m) => <StatusBadge status={m.accountStatus} /> },
+        { key: 'hasEnrollmentDoc', label: '재학증명서', widthClass: 'w-24', alignClass: 'text-center', render: (m) => <CertCell row={m} onView={onViewCert} /> },
       ]}
     />
   );
@@ -178,27 +204,28 @@ function AdminPanel({ statusFilter }: { statusFilter: 'all' | AdminAccountStatus
       role="admin"
       initialData={null}
       statusFilter={statusFilter}
-      columns={[
+      buildColumns={(onViewCert) => [
         { key: 'name', label: '이름', widthClass: 'w-32', render: (a) => <span className="font-medium text-text-primary">{a.name}</span> },
         { key: 'studentId', label: '학번', widthClass: 'w-32' },
         { key: 'email', label: '이메일' },
         { key: 'accountStatus', label: '계정 상태', widthClass: 'w-28', render: (a) => <StatusBadge status={a.accountStatus} /> },
+        { key: 'hasEnrollmentDoc', label: '재학증명서', widthClass: 'w-24', alignClass: 'text-center', render: (a) => <CertCell row={a} onView={onViewCert} /> },
       ]}
     />
   );
 }
 
-type UserListPanelProps<T extends { userId: string; accountStatus: AdminAccountStatus }> = {
+type UserListPanelProps<T extends CertColumnRow & { accountStatus: AdminAccountStatus }> = {
   role: 'mentee' | 'mentor' | 'admin';
   initialData: Paged<T> | null;
-  columns: ColumnDef<T>[];
+  buildColumns: (onViewCert: (t: CertTarget) => void) => ColumnDef<T>[];
   statusFilter: 'all' | AdminAccountStatus;
 };
 
-function UserListPanel<T extends { userId: string; accountStatus: AdminAccountStatus }>({
+function UserListPanel<T extends CertColumnRow & { accountStatus: AdminAccountStatus }>({
   role,
   initialData,
-  columns,
+  buildColumns,
   statusFilter,
 }: UserListPanelProps<T>) {
   const [rows, setRows] = useState<T[]>(initialData?.data as T[] ?? []);
@@ -214,6 +241,10 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
   // 처리해 버튼 라벨/폭이 변하지 않도록 함(컬럼 폭 재계산으로 인한 시각적 흔들림 방지).
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // 재학증명서 [보기] 버튼 → 모달에서 PDF/이미지 인라인 표시.
+  const [certTarget, setCertTarget] = useState<CertTarget | null>(null);
+  const columns = buildColumns(setCertTarget);
 
   // 검색어 debounce — 입력 도중 매번 API를 때리지 않도록.
   useEffect(() => {
@@ -292,7 +323,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (
-              <th key={String(col.key)} className={`text-left text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap ${col.widthClass ?? ''}`}>
+              <th key={String(col.key)} className={`${col.alignClass ?? 'text-left'} text-xs font-medium text-text-secondary py-3 pr-4 select-none whitespace-nowrap ${col.widthClass ?? ''}`}>
                 {col.label}
               </th>
             ))}
@@ -310,7 +341,7 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
             rows.map((row) => (
               <tr key={row.userId} className="border-b border-border last:border-b-0">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className="py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis">
+                  <td key={String(col.key)} className={`py-4 pr-4 text-sm text-text-primary align-middle whitespace-nowrap overflow-hidden text-ellipsis ${col.alignClass ?? ''}`}>
                     {col.render ? col.render(row) : String(row[col.key] ?? '')}
                   </td>
                 ))}
@@ -344,6 +375,16 @@ function UserListPanel<T extends { userId: string; accountStatus: AdminAccountSt
           userId={editingUserId}
           onClose={() => setEditingUserId(null)}
           onSaved={() => setRefreshKey((k) => k + 1)}
+        />
+      )}
+
+      {certTarget && (
+        <EnrollmentCertModal
+          key={certTarget.userId}
+          userId={certTarget.userId}
+          userName={certTarget.name}
+          mime={certTarget.mime}
+          onClose={() => setCertTarget(null)}
         />
       )}
     </section>
@@ -421,6 +462,78 @@ function UserEditModal({
               embedded
             />
           ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EnrollmentCertModal({
+  userId,
+  userName,
+  mime,
+  onClose,
+}: {
+  userId: string;
+  userName: string;
+  mime: string | null;
+  onClose: () => void;
+}) {
+  // iframe/img 는 same-origin GET 이라 관리자 쿠키가 자동 동봉됨 — 별도 fetch 불필요.
+  // mime 이 null 이면 방어적으로 iframe fallback (백엔드가 application/octet-stream 으로 응답).
+  const url = `/api/admin/users/${userId}/enrollment-cert`;
+  const dlUrl = `${url}?download=1`;
+  const isImage = mime === 'image/jpeg' || mime === 'image/png';
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="재학증명서"
+        className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]"
+      >
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-border shrink-0">
+          <h2 className="text-base font-semibold text-text-primary truncate">
+            재학증명서 — <span className="font-normal text-text-secondary">{userName}</span>
+          </h2>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={dlUrl}
+              download
+              className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-text-secondary border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              다운로드
+            </a>
+            <button type="button" onClick={onClose} aria-label="닫기" className="text-text-placeholder hover:text-text-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        {/* iframe 은 부모가 명시적 height 를 갖지 않으면 기본 ~150px 로 잡히므로
+            고정 높이 + absolute 자식으로 안전하게 채운다. */}
+        <div className="relative h-[80vh] overflow-hidden bg-gray-50">
+          {isImage ? (
+            // 일회성 관리자 검토용 — next/image 의 원격 도메인 화이트리스트/변환 파이프라인을 거칠 이유가 없음.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="재학증명서" className="absolute inset-0 w-full h-full object-contain" />
+          ) : (
+            <iframe src={url} title="재학증명서" className="absolute inset-0 w-full h-full border-0" />
+          )}
         </div>
       </div>
     </div>

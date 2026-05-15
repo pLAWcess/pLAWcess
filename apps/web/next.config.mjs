@@ -17,7 +17,13 @@ const nextConfig = {
     ];
   },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      {
+        source: '/api/admin/users/:userId/enrollment-cert',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }],
+      },
+    ];
   },
 };
 
