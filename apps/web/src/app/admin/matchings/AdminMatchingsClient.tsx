@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import SelectField from '@/components/ui/SelectField';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import {
   getMatchingSuggestions,
   runMatching,
@@ -21,6 +22,8 @@ import { computeDefaultRanks } from '@/lib/matchingDefaults';
 // 멘토 한 명이 담당할 수 있는 최대 멘티 수. 기본 선택 계산 시 이 제약을 지킨다.
 // 관리자가 화면에서 수동으로 바꾸면 cap 위반이 생길 수 있지만 제약하지 않는다 (운영자 재량).
 const MENTOR_CAP = 2;
+// 수동 변경 시 경고 임계값 (#287). 한 멘토가 이만큼 이상이면 confirm 으로 재확인.
+const MENTOR_WARN_CAP = 3;
 
 type MatchStatus = 'editing' | 'confirmed' | 'rejected';
 
@@ -108,6 +111,7 @@ export default function AdminMatchingsClient({
   const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
   const [page, setPage] = useState(1);
   const toast = useToast();
+  const confirm = useConfirm();
 
   const totalRows = rows?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
@@ -167,7 +171,36 @@ export default function AdminMatchingsClient({
     });
   };
 
-  const updateSelectedRank = (menteeApplicationId: string, newRank: number) => {
+  const updateSelectedRank = async (menteeApplicationId: string, newRank: number) => {
+    if (!rows) return;
+
+    const targetRow = rows.find((r) => r.group.menteeApplicationId === menteeApplicationId);
+    if (!targetRow) return;
+    const newCandidate = findCandidate(targetRow.group, newRank);
+    if (!newCandidate) return;
+
+    // 변경 후 같은 멘토에게 배정된 멘티 수 집계 (변경 대상 본인 포함).
+    const newMentorId = newCandidate.mentorApplicationId;
+    let countAfter = 0;
+    for (const r of rows) {
+      const isTarget = r.group.menteeApplicationId === menteeApplicationId;
+      const selected = isTarget
+        ? newCandidate
+        : findCandidate(r.group, r.selectedRank) ?? findCandidate(r.group, 1);
+      if (selected?.mentorApplicationId === newMentorId) countAfter += 1;
+    }
+
+    // 3명 이상이면 어드민에게 재확인 (#287).
+    if (countAfter >= MENTOR_WARN_CAP) {
+      const ok = await confirm({
+        title: '멘토 1명에게 멘티가 몰립니다',
+        message: `${newCandidate.mentorName} 멘토가 ${countAfter}명을 맡게 됩니다.\n그래도 진행하시겠습니까?`,
+        confirmText: '진행',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+
     setRows((prev) =>
       prev?.map((r) =>
         r.group.menteeApplicationId === menteeApplicationId ? { ...r, selectedRank: newRank } : r,
