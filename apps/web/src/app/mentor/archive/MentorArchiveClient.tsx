@@ -18,6 +18,7 @@ import {
   type ArchiveCaseInput,
   type ArchiveListResponse,
 } from '@/lib/api';
+import { useIsVerified } from '@/lib/UserContext';
 
 const LEET_OPTIONS = [
   { label: '전체', min: undefined as number | undefined, max: undefined as number | undefined },
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export default function MentorArchiveClient({ initialPublic, initialMine, initialDefaults }: Props) {
+  const isVerified = useIsVerified();
   const [major, setMajor] = useState('전체');
   const [school, setSchool] = useState('전체');
   const [leetRange, setLeetRange] = useState(0);
@@ -155,10 +157,18 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
   );
 
   function openCreate() {
+    if (!isVerified) {
+      toast.error('계정 검증 후 등록할 수 있습니다.');
+      return;
+    }
     setEditing(null);
     setModalOpen(true);
   }
   function openEdit(c: ArchiveCase) {
+    if (!isVerified) {
+      toast.error('계정 검증 후 수정할 수 있습니다.');
+      return;
+    }
     setEditing(c);
     setModalOpen(true);
   }
@@ -221,7 +231,13 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
         <button
           type="button"
           onClick={openCreate}
-          className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-brand rounded-lg shadow-sm hover:bg-brand-dark hover:shadow transition-all"
+          disabled={!isVerified}
+          title={!isVerified ? '계정 검증 후 등록할 수 있습니다.' : undefined}
+          className={`shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold rounded-lg shadow-sm transition-all ${
+            isVerified
+              ? 'text-white bg-brand hover:bg-brand-dark hover:shadow'
+              : 'text-text-placeholder bg-border cursor-not-allowed'
+          }`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 5v14M5 12h14" />
@@ -273,7 +289,7 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
                         type="button"
                         onClick={() => togglePublished(c)}
                         disabled={busyId === c.id}
-                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         {c.isPublished ? '비공개로' : '공개로'}
                       </button>
@@ -281,7 +297,7 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
                         type="button"
                         onClick={() => openEdit(c)}
                         disabled={busyId === c.id}
-                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-page-bg rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         수정
                       </button>
@@ -289,7 +305,7 @@ export default function MentorArchiveClient({ initialPublic, initialMine, initia
                         type="button"
                         onClick={() => handleDelete(c)}
                         disabled={busyId === c.id}
-                        className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         삭제
                       </button>

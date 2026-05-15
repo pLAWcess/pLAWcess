@@ -310,12 +310,12 @@ export default function AdminAnnouncementsManageClient({
       />
     )}
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">공지사항 관리</h1>
           <p className="mt-1 text-sm text-text-secondary">전체 공지사항을 확인하고 공개 여부를 관리합니다</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-border">
             {([
               { value: 'all', label: '전체' },
@@ -326,7 +326,7 @@ export default function AdminAnnouncementsManageClient({
               <button
                 key={value}
                 onClick={() => setFilter(value)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                   filter === value
                     ? 'bg-white text-text-primary shadow-sm'
                     : 'text-text-secondary hover:text-text-primary'
@@ -338,14 +338,14 @@ export default function AdminAnnouncementsManageClient({
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-white bg-brand rounded-md hover:bg-brand-dark transition-colors whitespace-nowrap"
           >
             + 공지 작성
           </button>
         </div>
       </div>
 
-      <section className="bg-white border border-border rounded-xl px-8 py-6">
+      <section className="bg-white border border-border rounded-xl px-4 py-5 md:px-8 md:py-6">
         {loading ? (
           <p className="py-6 text-sm text-text-secondary">로딩 중...</p>
         ) : error ? (
@@ -357,7 +357,7 @@ export default function AdminAnnouncementsManageClient({
             {filteredList.map((a) => {
               const isDeleted = !!a.deletedAt;
               return (
-                <li key={a.announcementId} className={`py-5 flex items-start justify-between gap-4 ${isDeleted ? 'opacity-40' : ''}`}>
+                <li key={a.announcementId} className={`py-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4 ${isDeleted ? 'opacity-40' : ''}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-text-primary">{a.title}</p>
@@ -378,7 +378,7 @@ export default function AdminAnnouncementsManageClient({
                     <p className="mt-0.5 text-xs text-text-placeholder">#{creationOrder.get(a.announcementId)}</p>
                   </div>
                   {isDeleted && (
-                    <div className="shrink-0 flex gap-2">
+                    <div className="shrink-0 flex flex-wrap gap-2">
                       <button
                         onClick={() => handleRestore(a.announcementId)}
                         disabled={deletingId === a.announcementId}
@@ -396,7 +396,7 @@ export default function AdminAnnouncementsManageClient({
                     </div>
                   )}
                   {!isDeleted && (
-                    <div className="shrink-0 flex gap-2">
+                    <div className="shrink-0 flex flex-wrap gap-2">
                       <button
                         onClick={() => setEditTarget(a)}
                         className="text-xs border border-border px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@plawcess/database";
 import { getTokenFromCookie } from "@/lib/auth";
 import { checkMenteeApplicationDeadline } from "@/lib/deadline";
+import { requireVerified } from "@/lib/verified-guard";
 
 function getUserId(req: NextRequest): string | null {
   return getTokenFromCookie(req)?.user_id ?? null;
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
+
+  const unverified = await requireVerified(userId);
+  if (unverified) return unverified;
 
   const blocked = await checkMenteeApplicationDeadline();
   if (blocked) return blocked;
